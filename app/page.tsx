@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import VideoProviderAnalyzer from "@/components/VideoProviderAnalyzer";
 import ImageAnalyzer from "@/components/ImageAnalyzer";
 import ProductResultsPanel from "@/components/ProductResultsPanel";
@@ -24,10 +24,20 @@ import type { FrameMeta } from "@/lib/api/types";
 import { formatTimestamp } from "@/lib/utils";
 
 const APP_NAME = process.env.NEXT_PUBLIC_APP_NAME || "Pause2Shop";
+const IS_DEMO = process.env.NEXT_PUBLIC_DEMO_MODE === "true";
 
 type Mode = "video" | "image";
 
-/** Reconstruye un FrameMeta a partir de una entrada del historial. */
+type CostData = {
+  openaiVisionCalls: number;
+  openaiVisionCostUsd: number;
+  openaiProductCalls: number;
+  openaiProductCostUsd: number;
+  mockCalls: number;
+  cacheHits: number;
+  totalCostUsd: number;
+};
+
 function metaFromHistory(entry: HistoryEntry): FrameMeta {
   const key = entry.videoKey;
   const sourceType: FrameMeta["sourceType"] = key.startsWith("yt:")
@@ -55,6 +65,10 @@ export default function Home() {
     categoryClicks: {},
     styleClicks: {},
   });
+  const [sessionItems, setSessionItems] = useState<DetectedItem[]>([]);
+  const [selectedOverlayItem, setSelectedOverlayItem] = useState<DetectedItem | null>(null);
+  const [costs, setCosts] = useState<CostData | null>(null);
+  const currentVideoKeyRef = useRef<string | null>(null);
 
   const analysisHook = useFrameAnalysis();
   const {
@@ -76,9 +90,33 @@ export default function Home() {
     setPrefs(loadPreferences());
   }, []);
 
+  // Fetch cost summary every 10s when something has been analyzed
+  useEffect(() => {
+    if (!savedItems.length && !mock) return;
+    async function fetchCosts() {
+      try {
+        const res = await fetch("/api/catalog/costs");
+        if (res.ok) {
+          const data = await res.json() as CostData & { ok: boolean };
+          if (data.ok) setCosts(data);
+        }
+      } catch { /* ignore */ }
+    }
+    void fetchCosts();
+    const id = setInterval(fetchCosts, 10_000);
+    return () => clearInterval(id);
+  }, [savedItems.length, mock]);
+
   const handleRequestAnalysis = useCallback(
     async (dataUrl: string, meta: FrameMeta) => {
       setLastFrame({ url: dataUrl, meta });
+
+      // Reset session items when the video source changes
+      if (currentVideoKeyRef.current !== meta.videoKey) {
+        currentVideoKeyRef.current = meta.videoKey;
+        setSessionItems([]);
+      }
+
       const result = await analyze(dataUrl, meta);
       if (result) {
         const updated = pushHistory({
@@ -88,6 +126,15 @@ export default function Home() {
           frameDataUrl: dataUrl,
         });
         setHistory(updated);
+
+        // Accumulate unique items in the session (dedup by name + category)
+        setSessionItems((prev) => {
+          const existingKeys = new Set(prev.map((it) => `${it.name}|${it.category}`));
+          const newItems = result.items.filter(
+            (it) => !existingKeys.has(`${it.name}|${it.category}`)
+          );
+          return newItems.length > 0 ? [...prev, ...newItems] : prev;
+        });
       }
     },
     [analyze]
@@ -121,19 +168,31 @@ export default function Home() {
     setMode(next);
     analysisHook.reset();
     setLastFrame(null);
+    setSessionItems([]);
+    currentVideoKeyRef.current = null;
   };
+
+  // Current frame items (for overlay — use raw analysis items to preserve bounding boxes)
+  const overlayItems = analysis?.items ?? [];
 
   return (
     <main className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
       <nav className="mb-6 flex items-center justify-between">
         <span className="text-sm font-semibold text-zinc-300">{APP_NAME}</span>
-        <Link
-          href="/catalog"
-          className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-medium text-zinc-200 transition hover:border-white/25 hover:bg-white/10"
-        >
-          🗂️ Catálogo
-        </Link>
+        <div className="flex items-center gap-2">
+          {costs && costs.totalCostUsd > 0 && (
+            <CostBadge costs={costs} />
+          )}
+          <Link
+            href="/catalog"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-medium text-zinc-200 transition hover:border-white/25 hover:bg-white/10"
+          >
+            🗂️ Catálogo
+          </Link>
+        </div>
       </nav>
+
+      {IS_DEMO && <DemoBanner />}
 
       <Header appName={APP_NAME} />
 
@@ -146,6 +205,8 @@ export default function Home() {
             <VideoProviderAnalyzer
               onRequestAnalysis={handleRequestAnalysis}
               analyzing={loading}
+              overlayItems={overlayItems}
+              onOverlayItemClick={setSelectedOverlayItem}
             />
           ) : (
             <ImageAnalyzer
@@ -165,6 +226,15 @@ export default function Home() {
               }
             />
           )}
+
+          {/* Item detail drawer when clicking an overlay box */}
+          {selectedOverlayItem && (
+            <OverlayItemDetail
+              item={selectedOverlayItem}
+              onClose={() => setSelectedOverlayItem(null)}
+              onLinkClick={handleLinkClick}
+            />
+          )}
         </section>
 
         {/* Right: results */}
@@ -176,6 +246,7 @@ export default function Home() {
               warning={warning}
               analysis={analysis}
               items={personalizedItems}
+              sessionItems={sessionItems}
               frameDataUrl={frameDataUrl}
               mock={mock}
               persisted={persisted}
@@ -191,6 +262,106 @@ export default function Home() {
 
       <Footer appName={APP_NAME} />
     </main>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// UI sub-components
+// ---------------------------------------------------------------------------
+
+function DemoBanner() {
+  return (
+    <div className="mb-4 flex items-center gap-2 rounded-xl border border-amber-400/30 bg-amber-500/10 px-4 py-2.5 text-xs text-amber-200">
+      <span className="h-1.5 w-1.5 rounded-full bg-amber-400" />
+      <strong>Demo mode activo</strong> — la app prioriza caché y usa datos de ejemplo cuando no hay API key.
+    </div>
+  );
+}
+
+function CostBadge({ costs }: { costs: CostData }) {
+  const fmt = (n: number) =>
+    n < 0.01 ? `$${(n * 100).toFixed(3)}¢` : `$${n.toFixed(4)}`;
+  return (
+    <span
+      title={`Visión: ${costs.openaiVisionCalls} llamadas · Productos: ${costs.openaiProductCalls} llamadas · Cache: ${costs.cacheHits} hits`}
+      className="inline-flex cursor-help items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-zinc-300"
+    >
+      💰 {fmt(costs.totalCostUsd)}
+      <span className="text-zinc-500">·</span>
+      <span className="text-zinc-500">
+        {costs.openaiVisionCalls + costs.openaiProductCalls} API calls
+      </span>
+      {costs.cacheHits > 0 && (
+        <>
+          <span className="text-zinc-500">·</span>
+          <span className="text-emerald-400">{costs.cacheHits} cache</span>
+        </>
+      )}
+    </span>
+  );
+}
+
+function OverlayItemDetail({
+  item,
+  onClose,
+  onLinkClick,
+}: {
+  item: DetectedItem;
+  onClose: () => void;
+  onLinkClick: (item: DetectedItem, link: ProductLink) => void;
+}) {
+  const marketplace = item.productLinks?.filter((l) => l.type !== "verified_store") ?? [];
+  const verified = item.productLinks?.filter((l) => l.type === "verified_store") ?? [];
+
+  return (
+    <div className="mt-4 rounded-2xl border border-indigo-400/30 bg-indigo-500/10 p-4">
+      <div className="mb-3 flex items-start justify-between gap-3">
+        <div>
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-indigo-400">
+            Objeto seleccionado en el vídeo
+          </p>
+          <h3 className="mt-0.5 text-sm font-bold text-zinc-100">{item.name}</h3>
+          <p className="text-xs text-zinc-400">
+            {item.category} · {item.color} · {Math.round(item.confidence * 100)}% confianza
+          </p>
+        </div>
+        <button
+          onClick={onClose}
+          className="shrink-0 rounded-lg border border-white/10 bg-white/5 px-2 py-1 text-xs text-zinc-400 transition hover:text-zinc-200"
+        >
+          ✕
+        </button>
+      </div>
+      {item.description && (
+        <p className="mb-3 text-xs text-zinc-300">{item.description}</p>
+      )}
+      <div className="flex flex-wrap gap-2">
+        {marketplace.map((link) => (
+          <a
+            key={link.url}
+            href={link.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={() => onLinkClick(item, link)}
+            className="inline-flex items-center gap-1.5 rounded-lg bg-gradient-to-br from-indigo-500 to-fuchsia-500 px-3 py-1.5 text-xs font-semibold text-white transition hover:brightness-110"
+          >
+            {link.label} ↗
+          </a>
+        ))}
+        {verified.map((link) => (
+          <a
+            key={link.url}
+            href={link.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={() => onLinkClick(item, link)}
+            className="inline-flex items-center gap-1 rounded-lg border border-white/10 bg-white/5 px-2.5 py-1 text-xs text-zinc-200 transition hover:bg-white/10"
+          >
+            {link.provider}
+          </a>
+        ))}
+      </div>
+    </div>
   );
 }
 

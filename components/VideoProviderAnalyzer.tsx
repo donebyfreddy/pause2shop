@@ -5,13 +5,24 @@ import { detectVideoProvider, PROVIDER_LABELS } from "@/lib/video/detectVideoPro
 import type { VideoProviderDetectionResult } from "@/lib/video/types";
 import { useScreenCapture, type CaptureStatus } from "@/hooks/useScreenCapture";
 import { useYouTubePlayer } from "@/hooks/useYouTubePlayer";
+import { useAutoCaptureInterval } from "@/hooks/useAutoCaptureInterval";
 import { captureFrameDataUrl } from "@/lib/frameCapture";
 import { formatTimestamp } from "@/lib/utils";
 import type { FrameMeta } from "@/lib/api/types";
+import type { DetectedItem } from "@/lib/types";
+import VideoOverlay from "@/components/VideoOverlay";
+
+const DEFAULT_INTERVAL_S = Number(
+  process.env.NEXT_PUBLIC_DEFAULT_VIDEO_ANALYSIS_INTERVAL_SECONDS ?? "5"
+);
 
 type Props = {
   onRequestAnalysis: (dataUrl: string, meta: FrameMeta) => void;
   analyzing: boolean;
+  /** Items from the latest analysis — used to draw bounding boxes overlay. */
+  overlayItems?: DetectedItem[];
+  /** Called when the user clicks a bounding-box item in the overlay. */
+  onOverlayItemClick?: (item: DetectedItem) => void;
 };
 
 const CAPTURE_HINTS: Record<CaptureStatus, { label: string; tone: string }> = {
@@ -22,14 +33,20 @@ const CAPTURE_HINTS: Record<CaptureStatus, { label: string; tone: string }> = {
   error: { label: "Error de captura", tone: "text-rose-400" },
 };
 
-export default function VideoProviderAnalyzer({ onRequestAnalysis, analyzing }: Props) {
+export default function VideoProviderAnalyzer({
+  onRequestAnalysis,
+  analyzing,
+  overlayItems = [],
+  onOverlayItemClick,
+}: Props) {
   const [rawUrl, setRawUrl] = useState("");
   const [detection, setDetection] = useState<VideoProviderDetectionResult | null>(null);
   const [autoAnalyze, setAutoAnalyze] = useState(true);
+  const [autoCaptureMode, setAutoCaptureMode] = useState(false);
+  const [intervalSeconds, setIntervalSeconds] = useState(DEFAULT_INTERVAL_S);
   const lastAnalyzedRef = useRef<number | null>(null);
   const directVideoRef = useRef<HTMLVideoElement | null>(null);
 
-  // Screen capture (for iframe-based providers)
   const {
     status: captureStatus,
     isActive,
@@ -40,7 +57,6 @@ export default function VideoProviderAnalyzer({ onRequestAnalysis, analyzing }: 
     captureFrame,
   } = useScreenCapture();
 
-  // YouTube IFrame API (only used when provider === youtube)
   const handleYTPaused = useCallback(
     (currentTime: number) => {
       if (!autoAnalyze || !isActive || detection?.provider !== "youtube") return;
@@ -55,7 +71,6 @@ export default function VideoProviderAnalyzer({ onRequestAnalysis, analyzing }: 
       handleYTPaused
     );
 
-  // Reset dedup when URL/detection changes
   useEffect(() => {
     lastAnalyzedRef.current = null;
   }, [detection]);
@@ -65,6 +80,7 @@ export default function VideoProviderAnalyzer({ onRequestAnalysis, analyzing }: 
     const result = detectVideoProvider(rawUrl.trim());
     setDetection(result);
     lastAnalyzedRef.current = null;
+    setAutoCaptureMode(false);
   }
 
   function buildMeta(timestampSeconds: number): FrameMeta {
@@ -114,6 +130,27 @@ export default function VideoProviderAnalyzer({ onRequestAnalysis, analyzing }: 
     doDirectCapture();
   }, [autoAnalyze, doDirectCapture]);
 
+  // Auto-capture interval: fires every N seconds regardless of pause state
+  const doAutoCapture = useCallback(() => {
+    if (!detection || analyzing) return;
+    if (detection.canCaptureFrame) {
+      // Direct video: only capture if actually playing
+      const video = directVideoRef.current;
+      if (!video || video.paused || video.ended) return;
+      doDirectCapture();
+    } else if (isActive) {
+      // Screen capture: always try (the video inside might be playing)
+      const t = detection.provider === "youtube" ? ytGetCurrentTime() : 0;
+      doIframeCaptureAt(t);
+    }
+  }, [detection, analyzing, isActive, doDirectCapture, doIframeCaptureAt, ytGetCurrentTime]);
+
+  useAutoCaptureInterval({
+    enabled: autoCaptureMode && !analyzing,
+    intervalMs: intervalSeconds * 1000,
+    onCapture: doAutoCapture,
+  });
+
   if (!detection) {
     return <UrlInputPanel rawUrl={rawUrl} onChangeUrl={setRawUrl} onLoad={handleLoad} />;
   }
@@ -124,9 +161,7 @@ export default function VideoProviderAnalyzer({ onRequestAnalysis, analyzing }: 
     <div className="space-y-4">
       {/* Detection badge */}
       <div className="flex flex-wrap items-center gap-2 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm">
-        <span className="font-medium text-zinc-200">
-          Proveedor detectado:
-        </span>
+        <span className="font-medium text-zinc-200">Proveedor detectado:</span>
         <ProviderBadge provider={provider} />
         <span className={canEmbed ? "text-emerald-400" : "text-zinc-500"}>
           {canEmbed ? "Compatible para embed" : "No embeddable"}
@@ -135,7 +170,7 @@ export default function VideoProviderAnalyzer({ onRequestAnalysis, analyzing }: 
           · Captura: {canCaptureFrame ? "Directa" : "Requiere pantalla compartida"}
         </span>
         <button
-          onClick={() => { setDetection(null); setRawUrl(""); }}
+          onClick={() => { setDetection(null); setRawUrl(""); setAutoCaptureMode(false); }}
           className="ml-auto text-xs text-zinc-500 hover:text-zinc-200"
         >
           Cambiar URL
@@ -153,12 +188,16 @@ export default function VideoProviderAnalyzer({ onRequestAnalysis, analyzing }: 
           containerRef={ytContainerRef}
           status={ytStatus}
           analyzing={analyzing}
+          overlayItems={overlayItems}
+          onOverlayItemClick={onOverlayItemClick}
         />
       ) : canEmbed && provider !== "direct_mp4" && provider !== "hls" ? (
         <IframeEmbed
           embedUrl={embedUrl!}
           providerLabel={PROVIDER_LABELS[provider]}
           analyzing={analyzing}
+          overlayItems={overlayItems}
+          onOverlayItemClick={onOverlayItemClick}
         />
       ) : (
         <DirectVideoPlayer
@@ -166,6 +205,8 @@ export default function VideoProviderAnalyzer({ onRequestAnalysis, analyzing }: 
           analyzing={analyzing}
           videoRef={directVideoRef}
           onPause={handleDirectPause}
+          overlayItems={overlayItems}
+          onOverlayItemClick={onOverlayItemClick}
         />
       )}
 
@@ -175,20 +216,46 @@ export default function VideoProviderAnalyzer({ onRequestAnalysis, analyzing }: 
       {/* Controls */}
       <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
         <label className="flex cursor-pointer items-center gap-2.5 text-sm text-zinc-200">
-          <span className="relative inline-flex">
-            <input
-              type="checkbox"
-              checked={autoAnalyze}
-              onChange={(e) => setAutoAnalyze(e.target.checked)}
-              className="peer sr-only"
-            />
-            <span className="h-6 w-11 rounded-full bg-white/10 transition peer-checked:bg-indigo-500" />
-            <span className="absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white transition peer-checked:translate-x-5" />
-          </span>
+          <Toggle checked={autoAnalyze} onChange={setAutoAnalyze} />
           Analizar al pausar
         </label>
 
-        {/* Screen capture status (iframe providers) */}
+        {/* Auto-capture interval mode */}
+        {provider !== "unknown" && (
+          <label className="flex cursor-pointer items-center gap-2.5 text-sm text-zinc-200">
+            <Toggle
+              checked={autoCaptureMode}
+              onChange={(v) => {
+                setAutoCaptureMode(v);
+                // If enabling and it's a screen-capture provider, remind user
+              }}
+              color="emerald"
+            />
+            <span>
+              Auto-captura
+              {autoCaptureMode && (
+                <span className="ml-1 text-xs text-emerald-400">
+                  cada {intervalSeconds}s
+                </span>
+              )}
+            </span>
+          </label>
+        )}
+
+        {/* Interval selector (visible only when auto-capture on) */}
+        {autoCaptureMode && (
+          <select
+            value={intervalSeconds}
+            onChange={(e) => setIntervalSeconds(Number(e.target.value))}
+            className="rounded-lg border border-white/10 bg-white/5 px-2 py-1 text-xs text-zinc-200 outline-none"
+          >
+            {[3, 5, 10, 15, 30].map((s) => (
+              <option key={s} value={s}>{s}s</option>
+            ))}
+          </select>
+        )}
+
+        {/* Screen capture status */}
         {!canCaptureFrame && provider !== "unknown" && (
           <div className="ml-auto flex items-center gap-2 text-xs">
             <span className={`flex items-center gap-1.5 ${CAPTURE_HINTS[captureStatus].tone}`}>
@@ -199,13 +266,9 @@ export default function VideoProviderAnalyzer({ onRequestAnalysis, analyzing }: 
         )}
 
         <div className="flex w-full flex-wrap gap-2 sm:w-auto sm:ml-auto">
-          {/* Direct capture providers */}
           {canCaptureFrame && provider !== "unknown" && (
             <button
-              onClick={() => {
-                lastAnalyzedRef.current = null;
-                doDirectCapture();
-              }}
+              onClick={() => { lastAnalyzedRef.current = null; doDirectCapture(); }}
               disabled={analyzing}
               className="rounded-lg bg-gradient-to-br from-indigo-500 to-fuchsia-500 px-3.5 py-2 text-xs font-semibold text-white transition hover:brightness-110 disabled:opacity-40"
             >
@@ -213,7 +276,6 @@ export default function VideoProviderAnalyzer({ onRequestAnalysis, analyzing }: 
             </button>
           )}
 
-          {/* Iframe providers: need screen capture */}
           {!canCaptureFrame && provider !== "unknown" && (
             <>
               {!isActive ? (
@@ -255,6 +317,13 @@ export default function VideoProviderAnalyzer({ onRequestAnalysis, analyzing }: 
         </div>
       )}
 
+      {autoCaptureMode && (
+        <div className="flex items-center gap-2 rounded-xl border border-emerald-400/20 bg-emerald-500/10 px-4 py-2.5 text-xs text-emerald-200">
+          <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" />
+          Capturando automáticamente cada {intervalSeconds}s — la IA analiza solo frames nuevos
+        </div>
+      )}
+
       {provider === "youtube" && (
         <p className="text-center text-[11px] text-zinc-600">
           Posición actual: {formatTimestamp(ytGetCurrentTime())}
@@ -267,6 +336,34 @@ export default function VideoProviderAnalyzer({ onRequestAnalysis, analyzing }: 
 // ---------------------------------------------------------------------------
 // Sub-components
 // ---------------------------------------------------------------------------
+
+function Toggle({
+  checked,
+  onChange,
+  color = "indigo",
+}: {
+  checked: boolean;
+  onChange: (v: boolean) => void;
+  color?: "indigo" | "emerald";
+}) {
+  const bg = checked
+    ? color === "emerald"
+      ? "peer-checked:bg-emerald-500"
+      : "peer-checked:bg-indigo-500"
+    : "";
+  return (
+    <span className="relative inline-flex">
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={(e) => onChange(e.target.checked)}
+        className="peer sr-only"
+      />
+      <span className={`h-6 w-11 rounded-full bg-white/10 transition ${bg}`} />
+      <span className="absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white transition peer-checked:translate-x-5" />
+    </span>
+  );
+}
 
 function UrlInputPanel({
   rawUrl,
@@ -326,16 +423,21 @@ function YouTubeEmbed({
   containerRef,
   status,
   analyzing,
+  overlayItems,
+  onOverlayItemClick,
 }: {
   containerRef: React.RefObject<HTMLDivElement | null>;
   status: string;
   analyzing: boolean;
+  overlayItems: DetectedItem[];
+  onOverlayItemClick?: (item: DetectedItem) => void;
 }) {
   return (
     <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-black shadow-2xl shadow-black/50">
       <div className="aspect-video w-full">
         <div ref={containerRef} className="h-full w-full [&>iframe]:h-full [&>iframe]:w-full" />
       </div>
+      <VideoOverlay items={overlayItems} onItemClick={onOverlayItemClick} />
       {status === "loading" && (
         <div className="absolute inset-0 flex items-center justify-center bg-black/60 text-sm text-zinc-300">
           Cargando reproductor…
@@ -350,10 +452,14 @@ function IframeEmbed({
   embedUrl,
   providerLabel,
   analyzing,
+  overlayItems,
+  onOverlayItemClick,
 }: {
   embedUrl: string;
   providerLabel: string;
   analyzing: boolean;
+  overlayItems: DetectedItem[];
+  onOverlayItemClick?: (item: DetectedItem) => void;
 }) {
   return (
     <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-black shadow-2xl shadow-black/50">
@@ -366,6 +472,7 @@ function IframeEmbed({
           className="h-full w-full"
         />
       </div>
+      <VideoOverlay items={overlayItems} onItemClick={onOverlayItemClick} />
       {analyzing && <AnalyzingOverlay />}
     </div>
   );
@@ -376,11 +483,15 @@ function DirectVideoPlayer({
   analyzing,
   videoRef,
   onPause,
+  overlayItems,
+  onOverlayItemClick,
 }: {
   src: string;
   analyzing: boolean;
   videoRef: React.RefObject<HTMLVideoElement | null>;
   onPause: () => void;
+  overlayItems: DetectedItem[];
+  onOverlayItemClick?: (item: DetectedItem) => void;
 }) {
   return (
     <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-black shadow-2xl shadow-black/50">
@@ -393,6 +504,7 @@ function DirectVideoPlayer({
         className="aspect-video w-full"
         crossOrigin="anonymous"
       />
+      <VideoOverlay items={overlayItems} onItemClick={onOverlayItemClick} />
       {analyzing && <AnalyzingOverlay />}
     </div>
   );

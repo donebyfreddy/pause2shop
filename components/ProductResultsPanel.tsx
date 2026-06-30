@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useState } from "react";
 import type { DetectedItem, FrameAnalysis, ProductLink } from "@/lib/types";
 import { normalizeStyle, prettyStyleLabel } from "@/lib/utils";
 import FramePreview from "./FramePreview";
@@ -13,6 +14,8 @@ type Props = {
   warning?: string | null;
   analysis: FrameAnalysis | null;
   items: DetectedItem[];
+  /** All unique items detected across the whole video session. */
+  sessionItems?: DetectedItem[];
   frameDataUrl: string | null;
   mock: boolean;
   persisted?: boolean;
@@ -23,12 +26,15 @@ type Props = {
   canReanalyze?: boolean;
 };
 
+type Tab = "frame" | "session";
+
 export default function ProductResultsPanel({
   loading,
   error,
   warning,
   analysis,
   items,
+  sessionItems = [],
   frameDataUrl,
   mock,
   persisted,
@@ -38,8 +44,11 @@ export default function ProductResultsPanel({
   onReanalyze,
   canReanalyze,
 }: Props) {
+  const [tab, setTab] = useState<Tab>("frame");
   const vibe = normalizeStyle(analysis?.style_vibe);
   const catalogHref = videoId ? `/catalog?videoId=${videoId}` : "/catalog";
+
+  const showSessionTab = sessionItems.length > 0;
 
   return (
     <aside className="flex h-full flex-col rounded-3xl border border-white/10 bg-zinc-900/60 backdrop-blur">
@@ -59,6 +68,25 @@ export default function ProductResultsPanel({
         )}
       </header>
 
+      {/* Tab bar */}
+      {showSessionTab && (
+        <div className="flex border-b border-white/10">
+          <TabButton
+            active={tab === "frame"}
+            onClick={() => setTab("frame")}
+            label="Este frame"
+            count={items.length}
+          />
+          <TabButton
+            active={tab === "session"}
+            onClick={() => setTab("session")}
+            label="Historial del vídeo"
+            count={sessionItems.length}
+            accent
+          />
+        </div>
+      )}
+
       <div className="flex-1 space-y-4 overflow-y-auto px-5 py-4">
         {mock && (
           <div className="rounded-lg border border-amber-400/20 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
@@ -73,8 +101,7 @@ export default function ProductResultsPanel({
               {savedCount === 1 ? "" : "s"} en tu catálogo
               {!persisted && (
                 <span className="text-emerald-300/70">
-                  {" "}
-                  (en memoria — configura <code className="font-mono">DATABASE_URL</code> para persistir)
+                  {" "}(en memoria — configura <code className="font-mono">DATABASE_URL</code> para persistir)
                 </span>
               )}
             </span>
@@ -93,52 +120,75 @@ export default function ProductResultsPanel({
           </div>
         )}
 
-        {frameDataUrl && <FramePreview dataUrl={frameDataUrl} />}
-
-        {error && (
-          <div className="rounded-lg border border-rose-400/20 bg-rose-500/10 px-3 py-2 text-sm text-rose-200">
-            {error}
-          </div>
-        )}
-
-        {loading && <LoadingAnalysis />}
-
-        {!loading && analysis && (
+        {/* SESSION TAB: all items seen during the video */}
+        {tab === "session" && showSessionTab && (
           <>
-            {analysis.summary && (
-              <p className="text-sm leading-relaxed text-zinc-300">{analysis.summary}</p>
-            )}
-
-            {items.length > 0 && (
-              <div className="rounded-xl border border-indigo-400/20 bg-gradient-to-br from-indigo-500/10 to-fuchsia-500/10 px-4 py-3">
-                <p className="text-xs leading-relaxed text-zinc-200">
-                  Basado en este frame, parece un estilo{" "}
-                  <span className="font-semibold text-indigo-200">
-                    {prettyStyleLabel(vibe)}
-                  </span>
-                  . Te recomiendo priorizar los productos de abajo.
-                </p>
-              </div>
-            )}
-
-            {items.length > 0 ? (
-              <div className="space-y-3">
-                {items.map((item, idx) => (
-                  <ProductCard
-                    key={`${item.name}-${idx}`}
-                    item={item}
-                    rank={idx + 1}
-                    onLinkClick={onLinkClick}
-                  />
-                ))}
-              </div>
-            ) : (
-              <EmptyState />
-            )}
+            <div className="rounded-lg border border-indigo-400/20 bg-indigo-500/10 px-3 py-2 text-xs text-indigo-200">
+              {sessionItems.length} objeto{sessionItems.length === 1 ? "" : "s"} único{sessionItems.length === 1 ? "" : "s"} detectado{sessionItems.length === 1 ? "" : "s"} durante el vídeo
+            </div>
+            <div className="space-y-3">
+              {sessionItems.map((item, idx) => (
+                <ProductCard
+                  key={`session-${item.name}-${idx}`}
+                  item={item}
+                  rank={idx + 1}
+                  onLinkClick={onLinkClick}
+                />
+              ))}
+            </div>
           </>
         )}
 
-        {!loading && !analysis && !error && <Placeholder />}
+        {/* FRAME TAB: items from the current paused frame */}
+        {tab === "frame" && (
+          <>
+            {frameDataUrl && <FramePreview dataUrl={frameDataUrl} />}
+
+            {error && (
+              <div className="rounded-lg border border-rose-400/20 bg-rose-500/10 px-3 py-2 text-sm text-rose-200">
+                {error}
+              </div>
+            )}
+
+            {loading && <LoadingAnalysis />}
+
+            {!loading && analysis && (
+              <>
+                {analysis.summary && (
+                  <p className="text-sm leading-relaxed text-zinc-300">{analysis.summary}</p>
+                )}
+
+                {items.length > 0 && (
+                  <div className="rounded-xl border border-indigo-400/20 bg-gradient-to-br from-indigo-500/10 to-fuchsia-500/10 px-4 py-3">
+                    <p className="text-xs leading-relaxed text-zinc-200">
+                      Estilo detectado:{" "}
+                      <span className="font-semibold text-indigo-200">
+                        {prettyStyleLabel(vibe)}
+                      </span>
+                    </p>
+                  </div>
+                )}
+
+                {items.length > 0 ? (
+                  <div className="space-y-3">
+                    {items.map((item, idx) => (
+                      <ProductCard
+                        key={`${item.name}-${idx}`}
+                        item={item}
+                        rank={idx + 1}
+                        onLinkClick={onLinkClick}
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <EmptyState />
+                )}
+              </>
+            )}
+
+            {!loading && !analysis && !error && <Placeholder />}
+          </>
+        )}
       </div>
 
       <footer className="border-t border-white/10 px-5 py-3 text-[11px] leading-relaxed text-zinc-500">
@@ -146,6 +196,50 @@ export default function ProductResultsPanel({
         personas ni guardamos imágenes en el servidor.
       </footer>
     </aside>
+  );
+}
+
+function TabButton({
+  active,
+  onClick,
+  label,
+  count,
+  accent,
+}: {
+  active: boolean;
+  onClick: () => void;
+  label: string;
+  count: number;
+  accent?: boolean;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={
+        "flex flex-1 items-center justify-center gap-1.5 border-b-2 px-3 py-2.5 text-xs font-medium transition " +
+        (active
+          ? accent
+            ? "border-emerald-400 text-emerald-300"
+            : "border-indigo-400 text-indigo-200"
+          : "border-transparent text-zinc-500 hover:text-zinc-300")
+      }
+    >
+      {label}
+      {count > 0 && (
+        <span
+          className={
+            "rounded-full px-1.5 py-0.5 text-[10px] font-bold " +
+            (active
+              ? accent
+                ? "bg-emerald-500/20 text-emerald-300"
+                : "bg-indigo-500/20 text-indigo-300"
+              : "bg-white/10 text-zinc-400")
+          }
+        >
+          {count}
+        </span>
+      )}
+    </button>
   );
 }
 

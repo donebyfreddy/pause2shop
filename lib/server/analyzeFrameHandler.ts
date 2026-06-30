@@ -13,6 +13,7 @@ import type {
   SavedCatalogItem,
 } from "@/lib/api/types";
 import type { FrameAnalysis } from "@/lib/types";
+import { trackVisionCall, trackProductCalls } from "@/lib/server/costTracker";
 
 // ~8MB techo del payload de imagen decodificada para proteger la función.
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
@@ -202,6 +203,7 @@ async function persist(
             entry.item.id,
             recs
           );
+          trackProductCalls(1);
         }
       } else {
         entry.recommendations = await repo.listRecommendations(entry.item.id);
@@ -261,6 +263,7 @@ export async function handleAnalyzeFrame(
         await analyzeWithOpenAI(imageDataUrl, { apiKey, model })
       );
     }
+    trackVisionCall(mock);
   } catch (err) {
     const message = err instanceof Error ? err.message : "Error desconocido";
     return bad(`No se pudo analizar el frame: ${message}`, 502);

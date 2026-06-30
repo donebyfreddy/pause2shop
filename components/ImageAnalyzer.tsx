@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { FrameMeta } from "@/lib/api/types";
 
 type Props = {
@@ -100,6 +100,26 @@ export default function ImageAnalyzer({ onRequestAnalysis, analyzing, onReset }:
     if (inputRef.current) inputRef.current.value = "";
   };
 
+  // Clipboard paste (Ctrl+V / Cmd+V)
+  useEffect(() => {
+    function onPaste(e: ClipboardEvent) {
+      const items = e.clipboardData?.items;
+      if (!items) return;
+      for (const item of Array.from(items)) {
+        if (item.type.startsWith("image/")) {
+          const file = item.getAsFile();
+          if (file) {
+            e.preventDefault();
+            processFile(file);
+          }
+          break;
+        }
+      }
+    }
+    window.addEventListener("paste", onPaste);
+    return () => window.removeEventListener("paste", onPaste);
+  }, [processFile]);
+
   if (state.phase === "idle" || state.phase === "dragging" || state.phase === "invalid") {
     return (
       <div className="space-y-3">
@@ -118,10 +138,10 @@ export default function ImageAnalyzer({ onRequestAnalysis, analyzing, onReset }:
           <span className="text-4xl">{state.phase === "dragging" ? "⬇️" : "🖼️"}</span>
           <div>
             <p className="text-sm font-medium text-zinc-200">
-              {state.phase === "dragging" ? "Suelta la imagen aquí" : "Sube o arrastra una imagen"}
+              {state.phase === "dragging" ? "Suelta la imagen aquí" : "Sube, arrastra o pega una imagen"}
             </p>
             <p className="mt-1 text-xs text-zinc-500">
-              JPG, PNG, WebP — máx. {MAX_MB} MB
+              JPG, PNG, WebP — máx. {MAX_MB} MB · <kbd className="rounded border border-white/10 bg-white/5 px-1 py-0.5 font-mono text-[10px]">Ctrl+V</kbd> para pegar
             </p>
           </div>
           <span className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-xs font-medium text-zinc-300 transition hover:bg-white/10">
