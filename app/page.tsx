@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import VideoProviderAnalyzer from "@/components/VideoProviderAnalyzer";
 import ImageAnalyzer from "@/components/ImageAnalyzer";
 import ProductResultsPanel from "@/components/ProductResultsPanel";
+import CostPanel from "@/components/CostPanel";
 import { useFrameAnalysis } from "@/hooks/useFrameAnalysis";
 import {
   loadHistory,
@@ -90,22 +91,21 @@ export default function Home() {
     setPrefs(loadPreferences());
   }, []);
 
-  // Fetch cost summary every 10s when something has been analyzed
+  // Poll cost summary every 8s always (starts at mount)
   useEffect(() => {
-    if (!savedItems.length && !mock) return;
     async function fetchCosts() {
       try {
         const res = await fetch("/api/catalog/costs");
         if (res.ok) {
-          const data = await res.json() as CostData & { ok: boolean };
+          const data = (await res.json()) as CostData & { ok: boolean };
           if (data.ok) setCosts(data);
         }
       } catch { /* ignore */ }
     }
     void fetchCosts();
-    const id = setInterval(fetchCosts, 10_000);
+    const id = setInterval(fetchCosts, 8_000);
     return () => clearInterval(id);
-  }, [savedItems.length, mock]);
+  }, []);
 
   const handleRequestAnalysis = useCallback(
     async (dataUrl: string, meta: FrameMeta) => {
@@ -127,13 +127,59 @@ export default function Home() {
         });
         setHistory(updated);
 
-        // Accumulate unique items in the session (dedup by name + category)
+        // Accumulate unique items with seenCount tracking.
+        // Fingerprint: first 4 words of name + category + color
+        // so "camiseta blanca" and "camiseta negra" are distinct keys.
         setSessionItems((prev) => {
-          const existingKeys = new Set(prev.map((it) => `${it.name}|${it.category}`));
-          const newItems = result.items.filter(
-            (it) => !existingKeys.has(`${it.name}|${it.category}`)
+          const fp = (item: DetectedItem): string => {
+            const normName = (item.name ?? "")
+              .toLowerCase()
+              .trim()
+              .replace(/\s+/g, " ")
+              .split(" ")
+              .slice(0, 4)
+              .join(" ");
+            const normCat = (item.category ?? "").toLowerCase().trim();
+            const normColor = (item.color ?? "").toLowerCase().trim();
+            return `${normName}|${normCat}|${normColor}`;
+          };
+
+          const now = Date.now();
+          const indexMap = new Map<string, number>(
+            prev.map((it, i) => [fp(it), i])
           );
-          return newItems.length > 0 ? [...prev, ...newItems] : prev;
+          const next = [...prev];
+          let changed = false;
+
+          for (const item of result.items) {
+            const key = fp(item);
+            if (indexMap.has(key)) {
+              const idx = indexMap.get(key)!;
+              const ex = next[idx];
+              next[idx] = {
+                ...ex,
+                seenCount: (ex.seenCount ?? 1) + 1,
+                lastSeenAt: now,
+                confidence: Math.max(ex.confidence, item.confidence),
+                visible_brand: item.visible_brand ?? ex.visible_brand,
+                logo_description: item.logo_description ?? ex.logo_description,
+                visible_text: item.visible_text ?? ex.visible_text,
+                description: item.description || ex.description,
+              };
+              changed = true;
+            } else {
+              next.push({
+                ...item,
+                seenCount: 1,
+                firstSeenAt: now,
+                lastSeenAt: now,
+              });
+              indexMap.set(key, next.length - 1);
+              changed = true;
+            }
+          }
+
+          return changed ? next : prev;
         });
       }
     },
@@ -179,17 +225,12 @@ export default function Home() {
     <main className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
       <nav className="mb-6 flex items-center justify-between">
         <span className="text-sm font-semibold text-zinc-300">{APP_NAME}</span>
-        <div className="flex items-center gap-2">
-          {costs && costs.totalCostUsd > 0 && (
-            <CostBadge costs={costs} />
-          )}
-          <Link
-            href="/catalog"
-            className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-medium text-zinc-200 transition hover:border-white/25 hover:bg-white/10"
-          >
-            🗂️ Catálogo
-          </Link>
-        </div>
+        <Link
+          href="/catalog"
+          className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-medium text-zinc-200 transition hover:border-white/25 hover:bg-white/10"
+        >
+          🗂️ Catálogo
+        </Link>
       </nav>
 
       {IS_DEMO && <DemoBanner />}
@@ -226,6 +267,9 @@ export default function Home() {
               }
             />
           )}
+
+          {/* Cost tracking panel — always visible */}
+          <CostPanel costs={costs} itemsDetected={sessionItems.length} />
 
           {/* Item detail drawer when clicking an overlay box */}
           {selectedOverlayItem && (
@@ -275,29 +319,6 @@ function DemoBanner() {
       <span className="h-1.5 w-1.5 rounded-full bg-amber-400" />
       <strong>Demo mode activo</strong> — la app prioriza caché y usa datos de ejemplo cuando no hay API key.
     </div>
-  );
-}
-
-function CostBadge({ costs }: { costs: CostData }) {
-  const fmt = (n: number) =>
-    n < 0.01 ? `$${(n * 100).toFixed(3)}¢` : `$${n.toFixed(4)}`;
-  return (
-    <span
-      title={`Visión: ${costs.openaiVisionCalls} llamadas · Productos: ${costs.openaiProductCalls} llamadas · Cache: ${costs.cacheHits} hits`}
-      className="inline-flex cursor-help items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-zinc-300"
-    >
-      💰 {fmt(costs.totalCostUsd)}
-      <span className="text-zinc-500">·</span>
-      <span className="text-zinc-500">
-        {costs.openaiVisionCalls + costs.openaiProductCalls} API calls
-      </span>
-      {costs.cacheHits > 0 && (
-        <>
-          <span className="text-zinc-500">·</span>
-          <span className="text-emerald-400">{costs.cacheHits} cache</span>
-        </>
-      )}
-    </span>
   );
 }
 

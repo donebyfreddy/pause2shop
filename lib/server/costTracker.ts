@@ -15,6 +15,10 @@ type CostSummary = {
   openaiVisionCostUsd: number;
   openaiProductCalls: number;
   openaiProductCostUsd: number;
+  lensSearchCalls: number;
+  lensSearchCostUsd: number;
+  shoppingSearchCalls: number;
+  shoppingSearchCostUsd: number;
   mockCalls: number;
   cacheHits: number;
   totalCostUsd: number;
@@ -26,6 +30,10 @@ const record: CostSummary = {
   openaiVisionCostUsd: 0,
   openaiProductCalls: 0,
   openaiProductCostUsd: 0,
+  lensSearchCalls: 0,
+  lensSearchCostUsd: 0,
+  shoppingSearchCalls: 0,
+  shoppingSearchCostUsd: 0,
   mockCalls: 0,
   cacheHits: 0,
   totalCostUsd: 0,
@@ -48,6 +56,20 @@ export function trackProductCalls(count: number) {
   const cost = PRODUCT_CALL_COST_USD * count;
   record.openaiProductCostUsd += cost;
   record.totalCostUsd += cost;
+}
+
+/** Llamada a reverse image search (SearchAPI/SerpAPI Google Lens). */
+export function trackLensSearch(costUsd: number) {
+  record.lensSearchCalls++;
+  record.lensSearchCostUsd += costUsd;
+  record.totalCostUsd += costUsd;
+}
+
+/** Llamada a shopping por texto (SerpAPI Google Shopping / DataForSEO). */
+export function trackShoppingSearch(costUsd: number) {
+  record.shoppingSearchCalls++;
+  record.shoppingSearchCostUsd += costUsd;
+  record.totalCostUsd += costUsd;
 }
 
 export function trackCacheHit() {

@@ -22,8 +22,8 @@ export type FrameMeta = {
   videoUrl?: string;
   videoTitle?: string;
   timestampSeconds: number;
-  /** Clave de caché/throttle del cliente (videoKey + ":" + segundo). */
-  cacheKey: string;
+  /** Clave de caché/throttle del cliente (videoKey + ":" + segundo). Omitir para saltarse la caché. */
+  cacheKey?: string;
   /** Proveedor detectado (youtube, dailymotion, vimeo, direct_mp4, hls, …). */
   provider?: string;
   /** URL canónica del vídeo. */

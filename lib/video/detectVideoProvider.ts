@@ -26,6 +26,8 @@ const youtubeAdapter: VideoProviderAdapter = {
           videoId = u.pathname.split("/embed/")[1]?.split(/[?#]/)[0] || undefined;
         } else if (u.pathname.startsWith("/shorts/")) {
           videoId = u.pathname.split("/shorts/")[1]?.split(/[?#]/)[0] || undefined;
+        } else if (u.pathname.startsWith("/live/")) {
+          videoId = u.pathname.split("/live/")[1]?.split(/[?#]/)[0] || undefined;
         }
       }
 
@@ -36,14 +38,18 @@ const youtubeAdapter: VideoProviderAdapter = {
 
       return {
         provider: "youtube",
+        sourceType: "external_iframe",
         originalUrl: url,
         normalizedUrl,
         videoId,
         embedUrl,
         canEmbed: true,
         canCaptureFrame: false,
+        canCaptureFrameDirectly: false,
+        requiresScreenCapture: true,
+        preferredCaptureMode: "screen_capture",
         reason:
-          "YouTube detectado. Se puede reproducir mediante iframe. La captura directa de frame requiere compartir pantalla por restricciones cross-origin.",
+          "YouTube detectado. Compatible para embed. Captura: requiere pantalla compartida (cross-origin).",
       };
     } catch {
       return null;
@@ -80,14 +86,18 @@ const dailymotionAdapter: VideoProviderAdapter = {
 
       return {
         provider: "dailymotion",
+        sourceType: "external_iframe",
         originalUrl: url,
         normalizedUrl,
         videoId,
         embedUrl,
         canEmbed: true,
         canCaptureFrame: false,
+        canCaptureFrameDirectly: false,
+        requiresScreenCapture: true,
+        preferredCaptureMode: "screen_capture",
         reason:
-          "Dailymotion detectado. Se puede reproducir mediante iframe. La captura directa de frame puede estar bloqueada por restricciones cross-origin del navegador. Usa captura de pantalla autorizada para analizar frames.",
+          "Dailymotion detectado. Compatible para embed. Captura: requiere pantalla compartida (cross-origin).",
       };
     } catch {
       return null;
@@ -104,15 +114,10 @@ const vimeoAdapter: VideoProviderAdapter = {
       const u = new URL(url);
       let videoId: string | undefined;
 
-      if (
-        u.hostname === "vimeo.com" ||
-        u.hostname === "www.vimeo.com"
-      ) {
-        const match = u.pathname.match(/^\/(\d+)/);
-        videoId = match?.[1] || undefined;
+      if (u.hostname === "vimeo.com" || u.hostname === "www.vimeo.com") {
+        videoId = /^\/(\d+)/.exec(u.pathname)?.[1] || undefined;
       } else if (u.hostname === "player.vimeo.com") {
-        const match = u.pathname.match(/^\/video\/(\d+)/);
-        videoId = match?.[1] || undefined;
+        videoId = /^\/video\/(\d+)/.exec(u.pathname)?.[1] || undefined;
       }
 
       if (!videoId) return null;
@@ -122,14 +127,18 @@ const vimeoAdapter: VideoProviderAdapter = {
 
       return {
         provider: "vimeo",
+        sourceType: "external_iframe",
         originalUrl: url,
         normalizedUrl,
         videoId,
         embedUrl,
         canEmbed: true,
         canCaptureFrame: false,
+        canCaptureFrameDirectly: false,
+        requiresScreenCapture: true,
+        preferredCaptureMode: "screen_capture",
         reason:
-          "Vimeo detectado. Se puede reproducir mediante iframe. La captura directa de frame puede estar bloqueada por restricciones cross-origin. Usa captura de pantalla autorizada para analizar frames.",
+          "Vimeo detectado. Compatible para embed. Captura: requiere pantalla compartida (cross-origin).",
       };
     } catch {
       return null;
@@ -145,18 +154,25 @@ const directMp4Adapter: VideoProviderAdapter = {
     try {
       const u = new URL(url);
       const pathLower = u.pathname.toLowerCase();
-      const isMp4 = pathLower.endsWith(".mp4") || pathLower.includes(".mp4?") || pathLower.includes(".mp4&");
+      const isMp4 =
+        pathLower.endsWith(".mp4") ||
+        pathLower.includes(".mp4?") ||
+        pathLower.includes(".mp4&");
       if (!isMp4) return null;
 
       return {
         provider: "direct_mp4",
+        sourceType: "direct_video",
         originalUrl: url,
         normalizedUrl: url,
         embedUrl: url,
         canEmbed: true,
         canCaptureFrame: true,
+        canCaptureFrameDirectly: true,
+        requiresScreenCapture: false,
+        preferredCaptureMode: "direct_canvas",
         reason:
-          "Vídeo MP4 directo detectado. Se puede reproducir y capturar frames directamente (si el servidor permite CORS).",
+          "MP4 directo detectado. Captura directa disponible (si el servidor permite CORS). No necesitas compartir pantalla.",
       };
     } catch {
       return null;
@@ -172,18 +188,25 @@ const hlsAdapter: VideoProviderAdapter = {
     try {
       const u = new URL(url);
       const pathLower = u.pathname.toLowerCase();
-      const isHls = pathLower.endsWith(".m3u8") || pathLower.includes(".m3u8?") || pathLower.includes(".m3u8&");
+      const isHls =
+        pathLower.endsWith(".m3u8") ||
+        pathLower.includes(".m3u8?") ||
+        pathLower.includes(".m3u8&");
       if (!isHls) return null;
 
       return {
         provider: "hls",
+        sourceType: "direct_video",
         originalUrl: url,
         normalizedUrl: url,
         embedUrl: url,
         canEmbed: true,
         canCaptureFrame: true,
+        canCaptureFrameDirectly: true,
+        requiresScreenCapture: false,
+        preferredCaptureMode: "direct_canvas",
         reason:
-          "Stream HLS detectado. Compatible con reproductor nativo. La captura de frames es posible si el servidor permite CORS.",
+          "Stream HLS detectado. Captura directa disponible si el servidor permite CORS.",
       };
     } catch {
       return null;
@@ -198,12 +221,16 @@ const unknownAdapter: VideoProviderAdapter = {
   detect(url) {
     return {
       provider: "unknown",
+      sourceType: "external_iframe",
       originalUrl: url,
       normalizedUrl: url,
       canEmbed: false,
       canCaptureFrame: false,
+      canCaptureFrameDirectly: false,
+      requiresScreenCapture: false,
+      preferredCaptureMode: "unsupported",
       reason:
-        "Proveedor no reconocido. No se puede reproducir ni capturar frames automáticamente. Prueba con un link de YouTube, Dailymotion, Vimeo, o una URL directa .mp4 o .m3u8.",
+        "Proveedor no reconocido. Prueba con un link de YouTube, Dailymotion, Vimeo, o una URL directa .mp4 o .m3u8. También puedes subir un vídeo directamente.",
     };
   },
 };
@@ -218,6 +245,30 @@ const ADAPTERS: VideoProviderAdapter[] = [
 ];
 
 // ---------------------------------------------------------------------------
+// Uploaded video synthetic detection
+// ---------------------------------------------------------------------------
+
+/**
+ * Creates a synthetic VideoProviderDetectionResult for a locally uploaded video file.
+ * This is not a URL — it uses an objectURL and direct canvas capture.
+ */
+export function createUploadedVideoDetection(fileName: string): VideoProviderDetectionResult {
+  return {
+    provider: "uploaded_video",
+    sourceType: "uploaded_video",
+    originalUrl: fileName,
+    normalizedUrl: fileName,
+    canEmbed: true,
+    canCaptureFrame: true,
+    canCaptureFrameDirectly: true,
+    requiresScreenCapture: false,
+    preferredCaptureMode: "direct_canvas",
+    reason:
+      "Vídeo subido. Captura directa disponible. No necesitas compartir pantalla.",
+  };
+}
+
+// ---------------------------------------------------------------------------
 // Public API
 // ---------------------------------------------------------------------------
 
@@ -230,10 +281,14 @@ export function detectVideoProvider(url: string): VideoProviderDetectionResult {
   if (!trimmed) {
     return {
       provider: "unknown",
+      sourceType: "external_iframe",
       originalUrl: url,
       normalizedUrl: url,
       canEmbed: false,
       canCaptureFrame: false,
+      canCaptureFrameDirectly: false,
+      requiresScreenCapture: false,
+      preferredCaptureMode: "unsupported",
       reason: "URL vacía.",
     };
   }
@@ -252,6 +307,7 @@ export const PROVIDER_LABELS: Record<VideoProvider, string> = {
   vimeo: "Vimeo",
   direct_mp4: "MP4 directo",
   hls: "HLS / Stream",
+  uploaded_video: "Vídeo subido",
   unknown: "Desconocido",
 };
 
@@ -261,6 +317,7 @@ export const PROVIDER_CAN_EMBED: Record<VideoProvider, boolean> = {
   vimeo: true,
   direct_mp4: true,
   hls: true,
+  uploaded_video: true,
   unknown: false,
 };
 
@@ -270,5 +327,6 @@ export const PROVIDER_CAN_CAPTURE: Record<VideoProvider, boolean> = {
   vimeo: false,
   direct_mp4: true,
   hls: true,
+  uploaded_video: true,
   unknown: false,
 };

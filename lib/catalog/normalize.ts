@@ -166,19 +166,28 @@ export function inferItemType(
 }
 
 /**
- * Huella para deduplicación. Mismo vídeo + categoría + color + estilo + marca
- * dentro del mismo bucket de timestamp ⇒ misma huella ⇒ no se duplica.
+ * Huella para deduplicación.
+ * Incluye las primeras 4 palabras del nombre normalizado para distinguir
+ * items de la misma categoría/color pero con descripción diferente
+ * (ej: "camiseta blanca logo" vs "camiseta blanca sin logo").
  */
 export function generateItemFingerprint(input: {
   videoId: string;
+  name?: string | null;
   category?: string | null;
   color?: string | null;
   style?: string | null;
   visibleBrand?: string | null;
   timestampBucket: number;
 }): string {
+  const shortName = normalizeText(input.name)
+    .split(" ")
+    .slice(0, 4)
+    .join(" ") || "_";
+
   return [
     input.videoId.trim(),
+    shortName,
     normalizeText(input.category) || "general",
     normalizeText(input.color) || "_",
     normalizeText(input.style) || "_",
@@ -236,6 +245,7 @@ export function normalizeDetectedItem(
 
   const fingerprint = generateItemFingerprint({
     videoId: ctx.videoId,
+    name,
     category,
     color,
     style,

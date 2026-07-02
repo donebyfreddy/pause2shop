@@ -4,7 +4,7 @@ import {
   isPersistentCatalog,
   normalizeDetectedItem,
 } from "@/lib/catalog";
-import type { FrameSourceType } from "@/lib/catalog/types";
+import type { FrameSourceType, RecommendationInput } from "@/lib/catalog/types";
 import { searchProducts } from "@/lib/products/searchProducts";
 import { analyzeWithOpenAI, mockAnalysis, normalizeAnalysis } from "@/lib/vision";
 import type {
@@ -14,6 +14,8 @@ import type {
 } from "@/lib/api/types";
 import type { FrameAnalysis } from "@/lib/types";
 import { trackVisionCall, trackProductCalls } from "@/lib/server/costTracker";
+import { enrichAnalysisWithVisualMatches } from "@/lib/visualSearch/engine";
+import type { EnrichedItem } from "@/lib/visualSearch/types";
 
 // ~8MB techo del payload de imagen decodificada para proteger la función.
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
@@ -123,6 +125,33 @@ async function parseBody(req: NextRequest): Promise<ParsedBody> {
 }
 
 /**
+ * Convierte los candidatos rankeados del Visual Matching Engine en
+ * recomendaciones persistibles (productos REALES con URL, imagen y precio,
+ * en lugar de sugerencias generadas por el modelo).
+ */
+function recommendationsFromVisualMatch(
+  item: EnrichedItem,
+  limit = 6
+): RecommendationInput[] {
+  const ranked = item.visual_match?.ranked_candidates ?? [];
+  return ranked
+    .filter((c) => c.score > 0)
+    .slice(0, limit)
+    .map((c) => ({
+      provider: c.source,
+      title: c.title,
+      productUrl: c.link,
+      imageUrl: c.imageUrl,
+      price: c.price,
+      currency: c.currency ?? (c.price != null ? "EUR" : null),
+      brand: c.brand,
+      // Normalizamos el score de matching (~0-180) a 0-1 para la columna.
+      similarityScore: Math.min(c.score / 150, 1),
+      reason: `${c.matchType} match (${Math.round(c.score)} pts, ${c.source})`,
+    }));
+}
+
+/**
  * Persiste el análisis en el catálogo: upsert de vídeo, frame, items (con
  * deduplicación) y recomendaciones iniciales. Resiliente: si la persistencia
  * falla, no rompe la respuesta de visión (devuelve warning).
@@ -185,10 +214,26 @@ async function persist(
     saved.push({ item, created, recommendations: [] });
   }
 
-  // Recomendaciones iniciales (matching automático) para los items más fiables.
-  // En paralelo y con tope, para acotar coste/latencia de las llamadas a OpenAI.
+  // Recomendaciones: si el Visual Matching Engine encontró productos reales
+  // (Lens/Shopping), se persisten esos. Solo si no hay match visual se cae al
+  // matching automático con OpenAI, con tope para acotar coste/latencia.
+  const visualRecIndexes = new Set<number>();
+  await Promise.allSettled(
+    saved.map(async (entry, idx) => {
+      const recs = recommendationsFromVisualMatch(analysis.items[idx]);
+      if (recs.length) {
+        entry.recommendations = await repo.replaceRecommendations(
+          entry.item.id,
+          recs
+        );
+        visualRecIndexes.add(idx);
+      }
+    })
+  );
+
   const topIndexes = saved
     .map((s, idx) => ({ idx, c: s.item.confidence }))
+    .filter((x) => !visualRecIndexes.has(x.idx))
     .sort((a, b) => b.c - a.c)
     .slice(0, INITIAL_REC_ITEMS)
     .map((x) => x.idx);
@@ -269,7 +314,18 @@ export async function handleAnalyzeFrame(
     return bad(`No se pudo analizar el frame: ${message}`, 502);
   }
 
-  // 2) Persistencia en catálogo (resiliente).
+  // 2) Visual Matching Engine: reverse image search (Google Lens) + shopping
+  // real (SerpAPI/DataForSEO) con caché por hash. Best-effort: si no hay
+  // motores configurados o fallan, los items conservan sus deep-links.
+  if (!mock) {
+    const { items } = await enrichAnalysisWithVisualMatches(
+      imageDataUrl,
+      analysis
+    );
+    analysis = { ...analysis, items };
+  }
+
+  // 3) Persistencia en catálogo (resiliente).
   try {
     const result = await persist(analysis, meta);
     return NextResponse.json({ ok: true, analysis, mock, ...result });

@@ -30,6 +30,10 @@ export function getPool(): Pool {
           : { rejectUnauthorized: false },
       max: 5,
       idleTimeoutMillis: 30_000,
+      // Sin esto, un host inalcanzable cuelga hasta el timeout TCP del SO
+      // (~75-85s) en vez de fallar rápido, y esa conexión colgada ocupa un
+      // slot del pool hasta entonces — bloqueando las siguientes peticiones.
+      connectionTimeoutMillis: 3_000,
     });
   }
   return globalForPool.__pausePool;

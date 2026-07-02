@@ -28,7 +28,6 @@ export type AnalysisState = {
   frameDataUrl: string | null;
 };
 
-const MIN_INTERVAL_MS = 3000; // throttle: como máximo un análisis / 3s
 const ENDPOINT = "/api/vision/analyze-frame";
 
 const initialState: AnalysisState = {
@@ -52,7 +51,6 @@ export function useFrameAnalysis() {
   const [state, setState] = useState<AnalysisState>(initialState);
 
   const inFlight = useRef(false);
-  const lastCallAt = useRef(0);
   const cache = useRef(new Map<string, CachedResult>());
 
   const analyze = useCallback(
@@ -77,17 +75,7 @@ export function useFrameAnalysis() {
         return cached.analysis;
       }
 
-      const now = Date.now();
-      if (now - lastCallAt.current < MIN_INTERVAL_MS) {
-        setState((s) => ({
-          ...s,
-          error: "Espera un momento antes de analizar otro frame.",
-        }));
-        return null;
-      }
-
       inFlight.current = true;
-      lastCallAt.current = now;
       setState((s) => ({
         ...s,
         loading: true,

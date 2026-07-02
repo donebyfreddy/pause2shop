@@ -1,3 +1,6 @@
+// Solo tipos: el ciclo con visualSearch/types se borra en compilación.
+import type { FallbackResult, VisualMatch } from "./visualSearch/types";
+
 export type TrustLevel = "high" | "medium";
 
 export type ProductLinkType =
@@ -26,6 +29,10 @@ export type DetectedItem = {
   subcategory?: string;
   color?: string;
   visible_brand?: string | null;
+  brand_guess?: string | null;
+  logo_visible?: boolean;
+  logo_description?: string | null;
+  visible_text?: string | null;
   style?: string;
   description: string;
   search_query_es: string;
@@ -36,6 +43,16 @@ export type DetectedItem = {
   why_recommended?: string;
   productLinks?: ProductLink[];
   score?: number;
+
+  // Visual Matching Engine (reverse image shopping). Se rellenan en el
+  // servidor cuando hay motores configurados; ver lib/visualSearch/engine.ts.
+  visual_match?: VisualMatch | null;
+  fallback_results?: FallbackResult[];
+
+  // Session tracking (populated client-side, not from the model).
+  seenCount?: number;
+  firstSeenAt?: number;
+  lastSeenAt?: number;
 
   // Campos adicionales del esquema de catálogo (opcionales: el modelo puede
   // omitirlos y se derivan/normalizan en lib/catalog/normalize.ts).

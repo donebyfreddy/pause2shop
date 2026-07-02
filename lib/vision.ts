@@ -2,56 +2,41 @@ import type { DetectedItem, FrameAnalysis } from "./types";
 import { buildProductLinks } from "./productLinks";
 import { clamp } from "./utils";
 
-export const VISION_PROMPT = `Analiza este frame de vídeo como un experto en shopping visual, moda, decoración y productos de consumo.
+export const VISION_PROMPT = `Actúa como un sistema de visual commerce para vídeo. Analiza el frame y detecta únicamente objetos comprables visibles: ropa, accesorios, muebles, decoración, electrónica, calzado, bolsos y productos físicos.
 
-Detecta únicamente objetos comprables que aparecen visualmente en la imagen.
-Prioriza:
-- ropa
-- calzado
-- accesorios
-- electrónica
-- muebles
-- decoración
-- material deportivo
-- productos de belleza visibles
-- objetos del hogar
-- gadgets
-- bolsos/mochilas
-- relojes/gafas
-- productos de escritorio
-
-Ignora:
-- caras
-- identidad de personas
-- edad exacta
-- género si no es necesario
-- rasgos biométricos
-- contenido sensible
-- texto irrelevante
-- objetos demasiado borrosos
-- marcas que no se vean claramente
+REGLAS IMPORTANTES:
+- No devuelvas nombres genéricos si puedes ser más específico.
+- No inventes marcas. Si no ves logo o texto claro, usa visible_brand: null y brand_guess: null.
+- Si hay texto o logotipo en una prenda, gorra, zapatilla, bolso u objeto, descríbelo en visible_text y logo_description.
+- Detecta logos aunque no sean legibles: describe su forma, posición y color en logo_description.
+- No identifiques personas, caras ni atributos biométricos. Solo objetos comprables.
+- Máximo 8 objetos. Prioriza los más grandes, visibles y comprables.
 
 Para cada objeto devuelve:
-- name: nombre claro en español
-- type: tipo grueso en inglés -> clothing | footwear | accessory | electronics | home | beauty | other
-- category
+- name: nombre específico en español (ej: "camiseta negra manga corta con logo blanco en pecho", no solo "camiseta negra")
+- type: clothing | footwear | accessory | electronics | home | beauty | other
+- category: categoría específica (t-shirt, hoodie, sneakers, sunglasses, bag, chair, table, etc.)
 - subcategory
 - color: color principal
-- secondary_colors: array de colores secundarios (vacío si no hay)
-- pattern: estampado/patrón (liso, rayas, cuadros, floral, logo…) — usa "liso" si es liso
-- material_guess: material probable si se aprecia (algodón, denim, cuero, lana, plástico, metal…), si no null
-- gender_fit: "hombre" | "mujer" | "unisex" si aplica, si no null
-- visible_brand: marca solo si se ve claramente, si no null
-- style: por ejemplo streetwear, minimalista, deportivo, formal, casual, tech, gamer, vintage, luxury, outdoor
-- description: descripción corta visual
-- search_query_es: query optimizada para buscar en Amazon España
-- alternative_queries: 3 queries alternativas en español (sirven como marketplace_keywords)
-- verified_provider_queries: queries para buscar en proveedores oficiales o tiendas fiables
+- secondary_colors: array de colores secundarios
+- pattern: liso | rayas | cuadros | floral | logo | estampado | camuflaje | tie-dye | etc.
+- material_guess: material probable si se aprecia, si no null
+- gender_fit: "hombre" | "mujer" | "unisex" | null
+- visible_brand: marca SI Y SOLO SI se ve claramente el nombre o logo reconocible (Nike, Adidas, Apple…). Si no se ve con claridad: null
+- brand_guess: marca probable solo si hay evidencia visual fuerte (logo inconfundible aunque no sea legible, silueta característica). Si no: null
+- logo_visible: true si hay algún logo aunque no sea legible, false si no hay
+- logo_description: descripción del logo si logo_visible=true (ej: "pequeño logo blanco en el pecho, no legible", "swoosh blanco lateral derecho", "texto negro en frente tipo serif"). null si no hay logo.
+- visible_text: texto legible en el producto si lo hay (ej: "CHAMPION", "NYC", "JUST DO IT"). null si no hay.
+- style: streetwear | minimalista | deportivo | formal | casual | tech | gamer | vintage | luxury | outdoor
+- description: descripción visual detallada del objeto
+- search_query_es: query optimizada y específica para buscar en Amazon España
+- alternative_queries: 3 queries alternativas en español con detalles específicos
+- verified_provider_queries: queries para tiendas oficiales
 - confidence: número de 0 a 1
-- bounding_box: si puedes estimarlo, x/y/width/height normalizado de 0 a 1
-- why_recommended: por qué puede gustarle al usuario según el estilo del vídeo/frame
+- bounding_box: x/y/width/height normalizado de 0 a 1 si puedes estimarlo
+- why_recommended: por qué puede gustarle al usuario
 
-Devuelve solo JSON válido con esta forma:
+Devuelve solo JSON válido:
 {
   "summary": "resumen corto de lo que se ve",
   "style_vibe": "vibe general del frame",
@@ -67,6 +52,10 @@ Devuelve solo JSON válido con esta forma:
       "material_guess": null,
       "gender_fit": null,
       "visible_brand": null,
+      "brand_guess": null,
+      "logo_visible": false,
+      "logo_description": null,
+      "visible_text": null,
       "style": "",
       "description": "",
       "search_query_es": "",
@@ -77,13 +66,7 @@ Devuelve solo JSON válido con esta forma:
       "why_recommended": ""
     }
   ]
-}
-
-No inventes productos exactos.
-No digas que algo es Nike, Adidas, Apple, Zara, etc. si el logo o marca no se ve claramente.
-Si no estás seguro, usa descripciones genéricas.
-Máximo 8 objetos.
-Prioriza los objetos más grandes, visibles y comprables.`;
+}`;
 
 const CONFIDENCE_THRESHOLD = 0.45;
 
@@ -206,6 +189,19 @@ function coerceItem(input: unknown): DetectedItem | null {
     visible_brand:
       typeof i.visible_brand === "string" && i.visible_brand.trim()
         ? i.visible_brand.trim()
+        : null,
+    brand_guess:
+      typeof i.brand_guess === "string" && i.brand_guess.trim()
+        ? i.brand_guess.trim()
+        : null,
+    logo_visible: typeof i.logo_visible === "boolean" ? i.logo_visible : false,
+    logo_description:
+      typeof i.logo_description === "string" && i.logo_description.trim()
+        ? i.logo_description.trim()
+        : null,
+    visible_text:
+      typeof i.visible_text === "string" && i.visible_text.trim()
+        ? i.visible_text.trim()
         : null,
     style: asString(i.style) || undefined,
     description: asString(i.description),
