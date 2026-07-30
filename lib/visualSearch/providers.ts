@@ -1,5 +1,5 @@
 import type { VisualSearchConfig } from "./config";
-import type { VisualCandidate, VisualCandidateSource } from "./types";
+import type { VisualCandidate } from "./types";
 
 /**
  * Clientes de los motores de búsqueda visual/shopping. Todos vía fetch (sin
@@ -75,77 +75,45 @@ function asStr(v: unknown): string | null {
 
 type RawMatch = Record<string, unknown>;
 
-function normalizeLensMatch(
-  raw: RawMatch,
-  source: VisualCandidateSource,
-  idx: number,
-  exact: boolean
-): VisualCandidate | null {
-  const title = asStr(raw.title);
-  const link = asStr(raw.link) ?? asStr(raw.url);
-  if (!title || !link) return null;
-  const { price, currency } = parsePrice(raw.price);
-  return {
-    source,
-    title,
-    link,
-    store: asStr(raw.source) ?? asStr(raw.merchant) ?? domainOf(link),
-    domain: domainOf(link),
-    imageUrl: asStr(raw.thumbnail) ?? asStr(raw.image) ?? null,
-    price,
-    currency: currency ?? asStr(raw.currency),
-    brand: asStr(raw.brand),
-    position: typeof raw.position === "number" ? raw.position : idx + 1,
-    exactImageMatch: exact,
-    queryUsed: null,
-  };
+/**
+ * UNIFICACIÓN: la implementación canónica de Google Lens vive en
+ * lib/visualSearch/reverseImage/providers.ts (clases con matriz de
+ * capacidades, health y queryUsed real). Estas funciones legacy solo
+ * ADAPTAN esa implementación a la firma (imageUrl, config) → candidatos que
+ * usa el engine de frame completo. No mantener dos clientes HTTP de Lens.
+ */
+async function lensViaCanonicalProvider(
+  providerCtor: new () => import("./reverseImage/types").ReverseImageProvider,
+  imageUrl: string,
+  config: VisualSearchConfig
+): Promise<VisualCandidate[]> {
+  const provider = new providerCtor();
+  if (!provider.isConfigured()) return [];
+  const { results } = await provider.search({
+    cropUrl: imageUrl,
+    country: config.country,
+    language: config.language,
+    searchMode: "all",
+  });
+  return results;
 }
 
-/** SearchAPI.io — engine=google_lens (reverse image search real). */
+/** SearchAPI.io — engine=google_lens (delegado en la implementación única). */
 export async function searchApiLens(
   imageUrl: string,
   config: VisualSearchConfig
 ): Promise<VisualCandidate[]> {
-  if (!config.searchApiKey) return [];
-  const params = new URLSearchParams({
-    engine: "google_lens",
-    search_type: "all",
-    url: imageUrl,
-    hl: config.language,
-    country: config.country,
-    api_key: config.searchApiKey,
-  });
-  const json = await fetchJson(`https://www.searchapi.io/api/v1/search?${params}`);
-  if (!json) return [];
-  const exact = Array.isArray(json.exact_matches) ? (json.exact_matches as RawMatch[]) : [];
-  const visual = Array.isArray(json.visual_matches) ? (json.visual_matches as RawMatch[]) : [];
-  return [
-    ...exact.map((m, i) => normalizeLensMatch(m, "searchapi_google_lens", i, true)),
-    ...visual.map((m, i) => normalizeLensMatch(m, "searchapi_google_lens", i, false)),
-  ].filter((c): c is VisualCandidate => c !== null);
+  const { SearchApiGoogleLensProvider } = await import("./reverseImage/providers");
+  return lensViaCanonicalProvider(SearchApiGoogleLensProvider, imageUrl, config);
 }
 
-/** SerpAPI — engine=google_lens (reverse image search real). */
+/** SerpAPI — engine=google_lens (delegado en la implementación única). */
 export async function serpApiLens(
   imageUrl: string,
   config: VisualSearchConfig
 ): Promise<VisualCandidate[]> {
-  if (!config.serpApiKey) return [];
-  const params = new URLSearchParams({
-    engine: "google_lens",
-    url: imageUrl,
-    hl: config.language,
-    country: config.country,
-    api_key: config.serpApiKey,
-  });
-  const json = await fetchJson(`https://serpapi.com/search.json?${params}`);
-  if (!json) return [];
-  const exact = Array.isArray(json.exact_matches) ? (json.exact_matches as RawMatch[]) : [];
-  const visual = Array.isArray(json.visual_matches) ? (json.visual_matches as RawMatch[]) : [];
-  return [
-    ...exact.map((m, i) => normalizeLensMatch(m, "serpapi_google_lens", i, true)),
-    ...visual.map((m, i) => normalizeLensMatch(m, "serpapi_google_lens", i, false)),
-  ].filter((c): c is VisualCandidate => c !== null);
+  const { SerpApiGoogleLensProvider } = await import("./reverseImage/providers");
+  return lensViaCanonicalProvider(SerpApiGoogleLensProvider, imageUrl, config);
 }
 
 /** SerpAPI — engine=google_shopping (búsqueda por texto con productos reales). */

@@ -58,12 +58,56 @@ async function withTimeout<T>(p: Promise<T>): Promise<T> {
   }
 }
 
+// Versiones del pipeline: al cambiar ranking/enrichment/estrategia se
+// invalidan las entradas antiguas de forma natural (las keys viejas expiran
+// solas por TTL y nunca vuelven a leerse).
+const RANKING_VERSION = process.env.RANKING_VERSION || "v3";
+const ENRICHMENT_VERSION = process.env.ENRICHMENT_VERSION || "v2";
+
+function normalizeQuery(q: string | null | undefined): string {
+  return (q ?? "").toLowerCase().replace(/\s+/g, " ").trim();
+}
+
+/** Hash corto y estable de la query (djb2 hex) — suficiente como cache key. */
+export function queryHash(q: string | null | undefined): string {
+  const s = normalizeQuery(q);
+  if (!s) return "noq";
+  let h = 5381;
+  for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) >>> 0;
+  return h.toString(16);
+}
+
 export function lensCacheKey(imageHash: string): string {
-  return `lens:v1:${imageHash}`;
+  return `lens:v2:${imageHash}:${RANKING_VERSION}`;
+}
+
+/**
+ * Caché de candidatos crudos del crop: incluye TODO lo que cambia el
+ * resultado (query de fallback, estrategia, país/idioma, versiones).
+ * v4 = estrategia visual-first (la primera búsqueda va SIN query). Las
+ * entradas antiguas (lenscrop:v1, lens-raw:v3) quedan huérfanas y expiran.
+ */
+export function lensCropCacheKey(input: {
+  cropHash: string;
+  query: string | null | undefined;
+  strategy: string;
+  country: string;
+  language: string;
+}): string {
+  return [
+    "lens-raw:v4",
+    input.cropHash,
+    queryHash(input.query),
+    input.strategy,
+    input.country.toLowerCase(),
+    input.language.toLowerCase(),
+    RANKING_VERSION,
+    ENRICHMENT_VERSION,
+  ].join(":");
 }
 
 export function shoppingCacheKey(provider: string, q: string): string {
-  return `shop:v1:${provider}:${q.toLowerCase().replace(/\s+/g, " ").trim()}`;
+  return `shop:v2:${provider}:${normalizeQuery(q)}`;
 }
 
 export async function cacheGet(key: string): Promise<VisualCandidate[] | null> {

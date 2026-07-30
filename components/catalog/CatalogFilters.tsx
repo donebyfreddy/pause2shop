@@ -45,8 +45,8 @@ const SOURCE_TYPE_OPTIONS: { value: string; label: string }[] = [
 ];
 
 const selectClass =
-  "rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-zinc-200 outline-none transition focus:border-indigo-400/60 focus:bg-white/10";
-const inputClass = selectClass + " placeholder:text-zinc-500";
+  "rounded-lg border border-line bg-white/5 px-3 py-2 text-sm text-ink outline-none transition focus:border-brand-bright/60 focus:bg-white/10";
+const inputClass = selectClass + " placeholder:text-ink-subtle";
 
 export default function CatalogFilters({
   value,
@@ -61,10 +61,10 @@ export default function CatalogFilters({
     value.q || value.category || value.color || value.type || value.status || value.sourceType || videoFilter;
 
   return (
-    <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-4">
+    <div className="rounded-2xl border border-line bg-white/[0.02] p-4">
       <div className="flex flex-col gap-3 md:flex-row md:flex-wrap md:items-center">
         <div className="relative flex-1 md:min-w-[220px]">
-          <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500">
+          <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-subtle">
             🔍
           </span>
           <input
@@ -131,19 +131,22 @@ export default function CatalogFilters({
         />
       </div>
 
-      <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-zinc-500">
+      <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-ink-subtle">
         <span>
           {total} elemento{total === 1 ? "" : "s"}
         </span>
         {!persisted && (
-          <span className="rounded-full border border-amber-400/20 bg-amber-500/10 px-2 py-0.5 text-amber-200">
-            catálogo en memoria
+          <span
+            className="rounded-full border border-warning/20 bg-warning/10 px-2 py-0.5 text-warning"
+            title="La base de datos no está disponible: los elementos y sus imágenes se conservan durante esta sesión y se sincronizarán cuando vuelva la conexión."
+          >
+            Guardado en esta sesión · sincronización pendiente
           </span>
         )}
         {videoFilter && (
           <button
             onClick={onClearVideo}
-            className="rounded-full border border-indigo-400/30 bg-indigo-500/15 px-2 py-0.5 text-indigo-200 transition hover:bg-indigo-500/25"
+            className="rounded-full border border-brand-bright/30 bg-brand/15 px-2 py-0.5 text-brand-bright transition hover:bg-brand/25"
           >
             vídeo: {videoFilter.slice(0, 8)}… ✕
           </button>
@@ -151,7 +154,7 @@ export default function CatalogFilters({
         {hasFilters && (
           <button
             onClick={onClear}
-            className="ml-auto text-zinc-400 transition hover:text-zinc-200"
+            className="ml-auto text-ink-muted transition hover:text-ink"
           >
             Limpiar filtros
           </button>

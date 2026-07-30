@@ -135,6 +135,7 @@ test("normalizeDetectedItem mapea al esquema de catálogo y deriva campos", () =
     input.fingerprint,
     generateItemFingerprint({
       videoId: "v1",
+      name: "Camiseta blanca oversize",
       category: "ropa",
       color: "blanco",
       style: "oversize",

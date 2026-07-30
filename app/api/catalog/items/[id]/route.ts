@@ -95,6 +95,24 @@ export async function PATCH(
   setStr("visibleBrand");
   setStr("searchQuery");
 
+  // URLs de imagen (crop detectado / frame de origen): solo https o data:image.
+  const setImageUrl = (key: "imageCropUrl" | "frameImageUrl") => {
+    const v = body[key];
+    if (typeof v !== "string" || !v.trim()) return true;
+    const url = v.trim();
+    if (!/^https:\/\//i.test(url) && !url.startsWith("data:image/")) {
+      return false;
+    }
+    patch[key] = url;
+    return true;
+  };
+  if (!setImageUrl("imageCropUrl") || !setImageUrl("frameImageUrl")) {
+    return NextResponse.json(
+      { ok: false, error: "Las URLs de imagen deben ser https o data:image." },
+      { status: 400 }
+    );
+  }
+
   try {
     const item = await getCatalogRepository().updateItem(id, patch);
     if (!item) {

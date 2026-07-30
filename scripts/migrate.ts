@@ -1,45 +1,25 @@
 /**
- * Aplicador de migraciones para cualquier Postgres / Supabase.
+ * Aplicador de migraciones para Neon (o cualquier Postgres).
  *
  *   npm run db:migrate
  *
- * Lee DATABASE_URL (de .env.local / .env), aplica en orden los .sql de
- * supabase/migrations/ y registra los aplicados en _catalog_migrations.
- * Es idempotente: las migraciones ya aplicadas se omiten.
+ * Lee DATABASE_URL del entorno, aplica en orden los .sql de db/migrations/ y
+ * registra los aplicados en _catalog_migrations. Es idempotente: las
+ * migraciones ya aplicadas se omiten.
  *
- * Alternativa con Supabase CLI:  supabase db push
+ * El DDL vive en .sql a mano y NO en drizzle-kit generate a propósito: las
+ * migraciones llevan triggers, índices parciales y GIN, backfills y un DO
+ * block que degrada pgvector a jsonb si la extensión no está. Un `generate`
+ * por diff no reproduce eso y borraría la mitad en el primer push. Drizzle es
+ * la capa de consulta tipada (lib/db/schema.ts), no la autoridad del esquema.
  */
-import { readFileSync, readdirSync, existsSync } from "node:fs";
-import { join, dirname } from "node:path";
-import { fileURLToPath } from "node:url";
+import { readFileSync, readdirSync } from "node:fs";
+import { join } from "node:path";
 import { Client } from "pg";
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const ROOT = join(__dirname, "..");
-const MIGRATIONS_DIR = join(ROOT, "supabase", "migrations");
+import { PROJECT_ROOT, describeDatabaseUrl, loadEnv } from "./loadEnv";
 
-/** Carga sencilla de variables de entorno desde .env.local y .env. */
-function loadEnv(): void {
-  for (const file of [".env.local", ".env"]) {
-    const path = join(ROOT, file);
-    if (!existsSync(path)) continue;
-    for (const line of readFileSync(path, "utf8").split("\n")) {
-      const trimmed = line.trim();
-      if (!trimmed || trimmed.startsWith("#")) continue;
-      const eq = trimmed.indexOf("=");
-      if (eq === -1) continue;
-      const key = trimmed.slice(0, eq).trim();
-      let value = trimmed.slice(eq + 1).trim();
-      if (
-        (value.startsWith('"') && value.endsWith('"')) ||
-        (value.startsWith("'") && value.endsWith("'"))
-      ) {
-        value = value.slice(1, -1);
-      }
-      if (!(key in process.env)) process.env[key] = value;
-    }
-  }
-}
+const MIGRATIONS_DIR = join(PROJECT_ROOT, "db", "migrations");
 
 async function main(): Promise<void> {
   loadEnv();
@@ -48,15 +28,40 @@ async function main(): Promise<void> {
   if (!connectionString) {
     console.error(
       "\n✖ Falta DATABASE_URL. Configúrala en .env.local antes de migrar.\n" +
-        "  (En Supabase: Project Settings → Database → Connection string)\n"
+        "  (En Neon: dashboard del proyecto → Connect → connection string\n" +
+        "   del endpoint -pooler.)\n"
     );
     process.exit(1);
   }
 
+  let databaseUrl: URL;
+  try {
+    databaseUrl = new URL(connectionString);
+  } catch {
+    console.error(
+      "\n✖ DATABASE_URL no es una URL válida. Debe comenzar por " +
+        "postgres:// o postgresql://.\n"
+    );
+    process.exit(1);
+  }
+
+  if (!["postgres:", "postgresql:"].includes(databaseUrl.protocol)) {
+    console.error(
+      `\n✖ DATABASE_URL usa ${databaseUrl.protocol}//, pero las migraciones ` +
+        "requieren una cadena postgres:// o postgresql://.\n" +
+        "  Cópiala del dashboard de Neon → Connect (endpoint -pooler).\n"
+    );
+    process.exit(1);
+  }
+
+  // Nunca la URL completa: lleva la contraseña y esto se ejecuta en CI.
+  console.log(`\nBase de datos: ${describeDatabaseUrl(connectionString)}\n`);
+
+  // Neon exige TLS con certificado válido; ver lib/db/pool.ts (sslConfig).
   const ssl =
     process.env.DATABASE_SSL === "false"
       ? false
-      : { rejectUnauthorized: false };
+      : /[?&]sslmode=/i.test(connectionString) || { rejectUnauthorized: true };
 
   const client = new Client({ connectionString, ssl });
   await client.connect();
@@ -75,9 +80,11 @@ async function main(): Promise<void> {
       )
     );
 
+    // El orden es el del prefijo de fecha del nombre, y tiene que ser estable
+    // entre máquinas: `sort()` a secas depende del locale por defecto.
     const files = readdirSync(MIGRATIONS_DIR)
       .filter((f) => f.endsWith(".sql"))
-      .sort();
+      .sort((a, b) => a.localeCompare(b, "en"));
 
     let count = 0;
     for (const file of files) {

@@ -1,0 +1,22 @@
+{
+  "visual_matches": [
+    {
+      "position": 1,
+      "title": "Black hawaiian shirt white flowers",
+      "link": "https://www.asos.com/product/12345",
+      "source": "ASOS",
+      "thumbnail": "https://img.example/asos-thumb.jpg",
+      "price": { "extracted_value": 45.0, "currency": "EUR" }
+    }
+  ],
+  "exact_matches": [
+    {
+      "position": 1,
+      "title": "Camisa negra floral en oferta",
+      "url": "https://www.ebay.es/itm/999",
+      "source": "eBay",
+      "image": "https://img.example/ebay-thumb.jpg",
+      "price": "35,00 €"
+    }
+  ]
+}

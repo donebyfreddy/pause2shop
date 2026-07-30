@@ -1,4 +1,5 @@
 import type { DetectedItem } from "@/lib/types";
+import { classifyMatch } from "./matchConfidence";
 import { COLOR_EN, CATEGORY_EN, translate } from "./queryBuilder";
 import type {
   MatchType,
@@ -125,13 +126,14 @@ export function scoreCandidate(
   return { ...candidate, score, matchType: matchTypeFor(score, breakdown), scoreBreakdown: breakdown };
 }
 
+/**
+ * Clasificación con umbrales configurables (MATCH_*_THRESHOLD) y reglas de
+ * evidencia — ver lib/visualSearch/matchConfidence.ts. A nivel de candidato
+ * un "no fiable" (null) se degrada a "similar"; el corte de fiabilidad para
+ * PRESENTAR el match lo aplica buildVisualMatch.
+ */
 function matchTypeFor(score: number, breakdown: Record<string, number>): MatchType {
-  if (breakdown.exact_image_match) return "exact";
-  if (score >= 95 || (breakdown.same_brand && breakdown.visible_text_match)) {
-    return "near_exact";
-  }
-  if (score >= 70 && breakdown.same_brand) return "near_exact";
-  return "similar";
+  return classifyMatch(score, breakdown) ?? "similar";
 }
 
 /** Dedupe por URL y por (dominio + título normalizado). */

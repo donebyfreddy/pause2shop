@@ -105,6 +105,9 @@ export type CatalogItem = {
   updatedAt: string;
 };
 
+/** Tipo de coincidencia visual del motor de matching. */
+export type RecommendationMatchType = "exact" | "near_exact" | "similar";
+
 export type ProductRecommendation = {
   id: string;
   detectedItemId: string;
@@ -116,6 +119,7 @@ export type ProductRecommendation = {
   currency: string | null;
   brand: string | null;
   similarityScore: number | null;
+  matchType: RecommendationMatchType | null;
   reason: string | null;
   createdAt: string;
 };
@@ -194,6 +198,7 @@ export type RecommendationInput = {
   currency?: string | null;
   brand?: string | null;
   similarityScore?: number | null;
+  matchType?: RecommendationMatchType | null;
   reason?: string | null;
 };
 
@@ -220,6 +225,26 @@ export type CatalogFilters = {
 
 export type CatalogItemWithRecommendations = CatalogItem & {
   recommendations: ProductRecommendation[];
+};
+
+/**
+ * Estado derivado de la persistencia de la imagen detectada (no es columna):
+ *  - none                  → sin crop todavía
+ *  - local_only            → crop en data URL (Storage no disponible)
+ *  - pending_database_sync → crop subido a Storage, fila solo en memoria
+ *  - synced                → crop en Storage y fila en Postgres
+ */
+export type ImagePersistenceStatus =
+  | "none"
+  | "local_only"
+  | "pending_database_sync"
+  | "synced";
+
+/** Item del listado del catálogo, enriquecido para la UI de tarjetas. */
+export type CatalogListItem = CatalogItem & {
+  /** Mejor recomendación (mayor similarityScore) — imagen del producto encontrado. */
+  bestMatch: ProductRecommendation | null;
+  imagePersistenceStatus: ImagePersistenceStatus;
 };
 
 /** Campos editables vía PATCH /api/catalog/items/:id. */

@@ -1,10 +1,12 @@
 "use client";
 
 import Link from "next/link";
+import { Database, PlugZap } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type {
   CatalogItem,
   CatalogItemWithRecommendations,
+  CatalogListItem,
   ItemStatus,
   ProductRecommendation,
 } from "@/lib/catalog/types";
@@ -36,7 +38,7 @@ export default function CatalogClient({ initialVideoId, appName }: Props) {
   const [filters, setFilters] = useState<FilterState>(EMPTY_FILTERS);
   const [videoFilter, setVideoFilter] = useState<string | null>(initialVideoId);
 
-  const [items, setItems] = useState<CatalogItem[]>([]);
+  const [items, setItems] = useState<CatalogListItem[]>([]);
   const [total, setTotal] = useState(0);
   const [persisted, setPersisted] = useState(true);
   const [loading, setLoading] = useState(true);
@@ -90,7 +92,10 @@ export default function CatalogClient({ initialVideoId, appName }: Props) {
   }, [fetchItems]);
 
   const patchInList = useCallback((updated: CatalogItem) => {
-    setItems((list) => list.map((it) => (it.id === updated.id ? updated : it)));
+    // Conserva los campos enriquecidos del listado (bestMatch, estado de imagen).
+    setItems((list) =>
+      list.map((it) => (it.id === updated.id ? { ...it, ...updated } : it))
+    );
     setDetail((d) => (d && d.id === updated.id ? { ...d, ...updated } : d));
   }, []);
 
@@ -181,24 +186,32 @@ export default function CatalogClient({ initialVideoId, appName }: Props) {
 
   return (
     <main className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-      <nav className="mb-6 flex items-center justify-between">
-        <Link
-          href="/"
-          className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-medium text-zinc-200 transition hover:border-white/25 hover:bg-white/10"
-        >
-          ← {appName}
-        </Link>
-        <span className="text-xs text-zinc-500">Catálogo interno</span>
-      </nav>
-
-      <header className="mb-6">
-        <h1 className="text-2xl font-bold tracking-tight text-zinc-100 sm:text-3xl">
-          Catálogo de elementos detectados
-        </h1>
-        <p className="mt-1 text-sm text-zinc-400">
-          Todo lo que la IA ha detectado al pausar tus vídeos. Filtra, revisa y busca
-          productos.
-        </p>
+      <header className="mb-6 flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <h1 className="display text-3xl text-ink sm:text-4xl">
+            Catálogo de elementos detectados
+          </h1>
+          <p className="mt-2 max-w-2xl text-sm leading-relaxed text-ink-muted">
+            Todo lo que el análisis ha detectado en tus vídeos e imágenes. Filtra, revisa y
+            busca productos coincidentes.
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Link
+            href="/admin/connectors"
+            className="inline-flex items-center gap-2 rounded-lg bg-gradient-to-br from-brand to-magenta px-4 py-2 text-sm font-semibold text-white transition hover:brightness-110"
+          >
+            <PlugZap className="size-4" aria-hidden />
+            Abrir scraper
+          </Link>
+          <Link
+            href="/admin/catalog"
+            className="inline-flex items-center gap-2 rounded-lg border border-line px-4 py-2 text-sm font-medium text-ink-muted transition-colors hover:border-brand/40 hover:text-brand-bright"
+          >
+            <Database className="size-4" aria-hidden />
+            Catálogo ingerido
+          </Link>
+        </div>
       </header>
 
       <div className="mb-6">
@@ -217,7 +230,7 @@ export default function CatalogClient({ initialVideoId, appName }: Props) {
       </div>
 
       {error && (
-        <div className="mb-6 rounded-xl border border-rose-400/20 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">
+        <div className="mb-6 rounded-xl border border-danger/20 bg-danger/10 px-4 py-3 text-sm text-danger">
           {error}
         </div>
       )}
@@ -227,7 +240,7 @@ export default function CatalogClient({ initialVideoId, appName }: Props) {
           {Array.from({ length: 8 }).map((_, i) => (
             <div
               key={i}
-              className="aspect-[3/4] animate-pulse rounded-2xl border border-white/10 bg-white/5"
+              className="aspect-[3/4] animate-pulse rounded-2xl border border-line bg-white/5"
             />
           ))}
         </Grid>
@@ -273,21 +286,21 @@ function Grid({ children }: { children: React.ReactNode }) {
 
 function EmptyState({ hasFilters, appName }: { hasFilters: boolean; appName: string }) {
   return (
-    <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-white/10 bg-white/[0.02] py-20 text-center">
+    <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-line bg-white/[0.02] py-20 text-center">
       <div className="text-4xl">🗂️</div>
       {hasFilters ? (
-        <p className="max-w-sm text-sm text-zinc-400">
+        <p className="max-w-sm text-sm text-ink-muted">
           Ningún elemento coincide con los filtros. Prueba a ajustarlos o limpiarlos.
         </p>
       ) : (
         <>
-          <p className="max-w-sm text-sm text-zinc-400">
+          <p className="max-w-sm text-sm text-ink-muted">
             Tu catálogo está vacío. Pausa un vídeo en {appName} para empezar a detectar
             elementos.
           </p>
           <Link
             href="/"
-            className="rounded-lg bg-gradient-to-br from-indigo-500 to-fuchsia-500 px-4 py-2 text-sm font-semibold text-white transition hover:brightness-110"
+            className="rounded-lg bg-gradient-to-br from-brand to-magenta px-4 py-2 text-sm font-semibold text-white transition hover:brightness-110"
           >
             Ir a analizar un vídeo
           </Link>

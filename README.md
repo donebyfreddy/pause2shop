@@ -57,17 +57,23 @@ Abre [http://localhost:3000](http://localhost:3000). El catálogo está en
 ## 🛢️ Base de datos (Postgres / Supabase)
 
 El catálogo persiste en Postgres mediante `pg` (node-postgres) usando `DATABASE_URL`.
-Funciona con Supabase, Neon, RDS o un Postgres local.
+Funciona con Neon, RDS o un Postgres local.
 
-### Opción A — Supabase (recomendado)
+### Opción A — Neon (recomendado)
 
-1. Crea un proyecto en [supabase.com](https://supabase.com).
-2. **Project Settings → Database → Connection string** y copia la URL (usa el _pooler_
-   para serverless). Pégala en `.env.local` como `DATABASE_URL`. Deja `DATABASE_SSL=true`.
-3. Aplica el esquema con una de estas opciones:
-   - `npm run db:migrate` (incluido; aplica los `.sql` de `supabase/migrations/`), o
-   - `supabase db push` (Supabase CLI), o
-   - copia/pega el SQL en el **SQL Editor** de Supabase.
+1. Crea un proyecto en [neon.com](https://neon.com).
+2. En **Connect**, copia la connection string del endpoint **`-pooler`** y pégala en
+   `.env.local` como `DATABASE_URL`. Deja `DATABASE_SSL` vacía: Neon exige TLS y la
+   cadena ya lleva `sslmode=require`.
+
+   El `-pooler` no es opcional en serverless: con el endpoint directo, cada
+   invocación abre su propia conexión y se agota el límite del proyecto.
+3. Aplica el esquema y verifica:
+
+   ```bash
+   npm run db:migrate   # aplica los .sql de db/migrations/
+   npm run db:verify    # conexión + migraciones + tablas + pgvector + escritura
+   ```
 
 ### Opción B — Postgres local
 
@@ -78,10 +84,20 @@ export DATABASE_SSL=false
 npm run db:migrate
 ```
 
-### Tablas
+### Esquema
 
-`video_sources`, `analyzed_frames`, `detected_items`, `product_recommendations`,
-`item_feedback`. Ver `supabase/migrations/20260627000001_init_catalog.sql`.
+Las migraciones viven en `db/migrations/*.sql` y las aplica `scripts/migrate.ts`,
+que registra lo aplicado en `_catalog_migrations` (idempotente).
+
+`lib/db/schema.ts` es el **espejo tipado** (Drizzle) de esas 26 tablas, para
+consultar con tipos en vez de con `any`. No es la fuente de verdad del DDL:
+`drizzle-kit generate`/`push` NO se usan, porque un diff automático no reproduce
+los triggers, los índices parciales/GIN ni el `DO` block que degrada pgvector a
+`jsonb`. **La migración `.sql` primero, el espejo después.**
+
+Tablas principales: `video_sources`, `analyzed_frames`, `detected_items`,
+`product_recommendations`, `item_feedback`, `catalog_products`, `analysis_jobs`.
+Ver `db/migrations/20260627000001_init_catalog.sql`.
 
 > Sin `DATABASE_URL` la app no falla: usa un repositorio **en memoria** (mismo patrón
 > "modo demo" que la visión sin clave). Útil para probar sin instalar nada, pero los
@@ -132,6 +148,38 @@ Cada objeto detectado se normaliza (`lib/catalog/normalize.ts`) y se le calcula 
 objeto reaparece en un timestamp cercano, en vez de duplicar se **actualiza** la fila
 (sube `detection_count`, refresca confianza/metadatos) conservando el estado que hayas
 puesto (revisado / ignorado). Estados posibles: `detected · reviewed · matched · ignored`.
+
+## 🕷️ Scraper de catálogo
+
+El catálogo se llena con un motor de ingesta modular (`lib/catalogIngestion`) que
+descubre fichas por sitemap o crawl de categorías y las extrae **por capas**, de
+barato-y-fiable a caro-y-aproximado:
+
+```
+feed → JSON-LD → JSON embebido → microdata → OpenGraph → selectores CSS
+     → heurísticas de DOM → Playwright → OpenAI (solo si falta algo)
+```
+
+La IA es un **fallback**, no la vía por defecto: solo se llama si tras las capas
+anteriores siguen faltando campos esenciales, y cada producto guarda qué
+extractor resolvió cada campo (`extraction.evidence`) para poder auditarlo desde
+`/admin/catalog` sin volver a la tienda.
+
+**Política, codificada y con tests:** robots.txt se comprueba antes de cada
+petición (también al renderizar), se respeta `Crawl-delay`, el User-Agent no se
+falsea, y ante un CAPTCHA o challenge el job **para y lo reporta** — nunca se
+intenta eludir.
+
+```bash
+npm run scraper:probe -- ecoalf        # diagnóstico, no escribe nada
+npm run scraper:infer -- ecoalf        # infiere el patrón de URL de sus sitemaps
+npm run scraper:smoke -- ecoalf --limit 3   # E2E: guarda productos y comprueba idempotencia
+```
+
+📖 **[docs/SCRAPER.md](docs/SCRAPER.md)** — cómo añadir un conector, jobs y
+reanudación, Playwright en Vercel, y el camino para jobs grandes.
+📊 **[docs/ESTADO_FUENTES.md](docs/ESTADO_FUENTES.md)** — estado **medido** de las
+68 fuentes: verificadas, bloqueadas y con acuerdo pendiente.
 
 ## 🛒 Matching de producto (automático con OpenAI)
 
@@ -203,8 +251,11 @@ lib/
   catalog/ types · normalize · repository · postgresRepository · memoryRepository · index
   products/ types · shared · mockProvider · openaiProvider · searchProducts
   server/analyzeFrameHandler           (pipeline de análisis + persistencia)
+  db/ pool · schema (espejo tipado Drizzle) · index (cliente)
+  mediaStorage/index                   (publicación de frames/crops públicos)
 scripts/migrate.ts                     (aplicador de migraciones)
-supabase/migrations/*.sql              (esquema del catálogo)
+scripts/verifyDb.ts                    (verificación de la conexión a Neon)
+db/migrations/*.sql                    (esquema del catálogo — fuente de verdad)
 test/*.test.ts
 ```
 

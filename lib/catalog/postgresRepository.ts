@@ -130,6 +130,7 @@ function mapRec(r: Row): ProductRecommendation {
     currency: str(r.currency),
     brand: str(r.brand),
     similarityScore: num(r.similarity_score),
+    matchType: (str(r.match_type) as ProductRecommendation["matchType"]) ?? null,
     reason: str(r.reason),
     createdAt: iso(r.created_at),
   };
@@ -255,6 +256,8 @@ export class PostgresCatalogRepository implements CatalogRepository {
          marketplace_keywords = case when array_length(excluded.marketplace_keywords, 1) is not null
                                  then excluded.marketplace_keywords else detected_items.marketplace_keywords end,
          bounding_box = coalesce(excluded.bounding_box, detected_items.bounding_box),
+         image_crop_url = coalesce(excluded.image_crop_url, detected_items.image_crop_url),
+         frame_image_url = coalesce(excluded.frame_image_url, detected_items.frame_image_url),
          frame_id = coalesce(excluded.frame_id, detected_items.frame_id),
          detection_count = detected_items.detection_count + 1,
          updated_at = now()
@@ -386,8 +389,8 @@ export class PostgresCatalogRepository implements CatalogRepository {
         const { rows } = await client.query(
           `insert into product_recommendations
              (detected_item_id, provider, title, product_url, image_url, price,
-              currency, brand, similarity_score, reason)
-           values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) returning *`,
+              currency, brand, similarity_score, match_type, reason)
+           values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) returning *`,
           [
             itemId,
             r.provider,
@@ -398,6 +401,7 @@ export class PostgresCatalogRepository implements CatalogRepository {
             r.currency ?? null,
             r.brand ?? null,
             r.similarityScore ?? null,
+            r.matchType ?? null,
             r.reason ?? null,
           ]
         );
@@ -420,6 +424,25 @@ export class PostgresCatalogRepository implements CatalogRepository {
       [itemId]
     );
     return rows.map(mapRec);
+  }
+
+  async listTopRecommendations(
+    itemIds: string[]
+  ): Promise<Map<string, ProductRecommendation>> {
+    const map = new Map<string, ProductRecommendation>();
+    if (!itemIds.length) return map;
+    const { rows } = await query(
+      `select distinct on (detected_item_id) *
+       from product_recommendations
+       where detected_item_id = any($1::uuid[])
+       order by detected_item_id, similarity_score desc nulls last, created_at desc`,
+      [itemIds]
+    );
+    for (const row of rows) {
+      const rec = mapRec(row);
+      map.set(rec.detectedItemId, rec);
+    }
+    return map;
   }
 
   async addFeedback(input: FeedbackInput): Promise<ItemFeedback> {

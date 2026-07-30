@@ -5,7 +5,10 @@ export type VisualCandidateSource =
   | "searchapi_google_lens"
   | "serpapi_google_lens"
   | "serpapi_google_shopping"
-  | "dataforseo_google_shopping";
+  | "dataforseo_google_shopping"
+  // Catálogo propio (lib/matching): permite que un match del catálogo se
+  // presente con el mismo contrato VisualMatch que consume la UI actual.
+  | "catalog";
 
 /**
  * Candidato normalizado devuelto por cualquier motor (Lens o Shopping).
@@ -55,6 +58,10 @@ export type VisualMatch = {
   product_images: string[];
   purchase_links: PurchaseLink[];
   best_match_score: number;
+  /** Confianza de MATCHING 0-1 (≠ confianza de detección). */
+  match_confidence: number;
+  /** Evidencia legible del mejor candidato ("✓ La marca coincide", …). */
+  evidence: string[];
   /** Motor que aportó el mejor resultado. */
   best_match_source: VisualCandidateSource;
   /** Top candidatos rankeados (para depuración/UI extendida). */

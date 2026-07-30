@@ -144,10 +144,12 @@ test("decodeImageDataUrl produce hash estable por contenido", () => {
   assert.equal(decodeImageDataUrl("data:text/plain;base64,aGk="), null);
 });
 
-test("claves de caché: lens por hash, shopping por query normalizada", () => {
-  assert.equal(lensCacheKey("abc123"), "lens:v1:abc123");
+test("claves de caché VERSIONADAS: lens con versión de ranking, shopping v2 normalizada", () => {
+  // v2+: incluye la versión del ranking — al cambiar el pipeline las entradas
+  // antiguas (v1) quedan huérfanas y no se reutilizan.
+  assert.match(lensCacheKey("abc123"), /^lens:v2:abc123:v\d+$/);
   assert.equal(
     shoppingCacheKey("serpapi_google_shopping", "  Moncler   Burgundy T-Shirt "),
-    "shop:v1:serpapi_google_shopping:moncler burgundy t-shirt"
+    "shop:v2:serpapi_google_shopping:moncler burgundy t-shirt"
   );
 });

@@ -1,0 +1,35 @@
+{
+  "search_metadata": { "engine": "google_lens", "status": "Success" },
+  "exact_matches": [
+    {
+      "position": 1,
+      "title": "Camisa hawaiana negra floral - Ficha de producto",
+      "link": "https://www.zalando.es/camisa-hawaiana-negra-floral.html",
+      "source": "Zalando",
+      "thumbnail": "https://img.example/zalando-thumb.jpg",
+      "price": { "value": 49.95, "extracted_value": 49.95, "currency": "EUR" }
+    },
+    {
+      "position": 2,
+      "title": "La misma foto en un tablón",
+      "link": "https://www.pinterest.com/pin/12345/",
+      "source": "Pinterest",
+      "thumbnail": "https://img.example/pin-thumb.jpg"
+    }
+  ],
+  "visual_matches": [
+    {
+      "position": 1,
+      "title": "Black floral camp collar shirt",
+      "url": "https://store.example/products/black-floral-shirt",
+      "merchant": "Store Example",
+      "image": "https://img.example/visual-1.jpg",
+      "extracted_price": 39.9,
+      "currency": "EUR"
+    },
+    {
+      "position": 2,
+      "title": "Resultado sin enlace utilizable"
+    }
+  ]
+}

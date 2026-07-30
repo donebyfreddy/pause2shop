@@ -1,0 +1,12 @@
+{
+  "products": [
+    {
+      "position": 1,
+      "title": "Camisa hawaiana negra estampado floral blanco",
+      "product_link": "https://www.amazon.es/dp/B0TESTFIX",
+      "seller": "Amazon.es",
+      "image_url": "https://img.example/amazon-thumb.jpg",
+      "price": "39,95 €"
+    }
+  ]
+}

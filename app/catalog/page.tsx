@@ -1,12 +1,14 @@
 import type { Metadata } from "next";
 import CatalogClient from "@/components/catalog/CatalogClient";
+import { SiteHeader } from "@/components/shell/SiteHeader";
+import { SiteFooter } from "@/components/shell/SiteFooter";
 
 const APP_NAME = process.env.NEXT_PUBLIC_APP_NAME || "Pause2Shop";
 
 export const metadata: Metadata = {
-  title: `Catálogo — ${APP_NAME}`,
+  title: "Catálogo",
   description:
-    "Catálogo interno de elementos detectados al pausar tus vídeos: prendas, accesorios y objetos comprables, con recomendaciones de producto.",
+    "Catálogo interno de elementos detectados al analizar vídeos: prendas, accesorios y objetos comprables, con sus coincidencias de producto.",
 };
 
 export default async function CatalogPage({
@@ -18,5 +20,13 @@ export default async function CatalogPage({
   const raw = sp.videoId;
   const videoId = typeof raw === "string" ? raw : null;
 
-  return <CatalogClient initialVideoId={videoId} appName={APP_NAME} />;
+  return (
+    <>
+      <SiteHeader />
+      <div className="flex-1">
+        <CatalogClient initialVideoId={videoId} appName={APP_NAME} />
+      </div>
+      <SiteFooter appName={APP_NAME} />
+    </>
+  );
 }

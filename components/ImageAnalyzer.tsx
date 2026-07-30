@@ -131,20 +131,20 @@ export default function ImageAnalyzer({ onRequestAnalysis, analyzing, onReset }:
           className={
             "flex aspect-video w-full cursor-pointer flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed text-center transition " +
             (state.phase === "dragging"
-              ? "border-indigo-400/60 bg-indigo-500/10 scale-[1.01]"
-              : "border-white/15 bg-white/[0.03] hover:border-indigo-400/40 hover:bg-white/[0.05]")
+              ? "border-brand-bright/60 bg-brand/10 scale-[1.01]"
+              : "border-white/15 bg-white/[0.03] hover:border-brand-bright/40 hover:bg-white/[0.05]")
           }
         >
           <span className="text-4xl">{state.phase === "dragging" ? "⬇️" : "🖼️"}</span>
           <div>
-            <p className="text-sm font-medium text-zinc-200">
+            <p className="text-sm font-medium text-ink">
               {state.phase === "dragging" ? "Suelta la imagen aquí" : "Sube, arrastra o pega una imagen"}
             </p>
-            <p className="mt-1 text-xs text-zinc-500">
-              JPG, PNG, WebP — máx. {MAX_MB} MB · <kbd className="rounded border border-white/10 bg-white/5 px-1 py-0.5 font-mono text-[10px]">Ctrl+V</kbd> para pegar
+            <p className="mt-1 text-xs text-ink-subtle">
+              JPG, PNG, WebP — máx. {MAX_MB} MB · <kbd className="rounded border border-line bg-white/5 px-1 py-0.5 font-mono text-[10px]">Ctrl+V</kbd> para pegar
             </p>
           </div>
-          <span className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-xs font-medium text-zinc-300 transition hover:bg-white/10">
+          <span className="rounded-xl border border-line bg-white/5 px-4 py-2 text-xs font-medium text-ink-muted transition hover:bg-white/10">
             Seleccionar archivo
           </span>
           <input
@@ -158,7 +158,7 @@ export default function ImageAnalyzer({ onRequestAnalysis, analyzing, onReset }:
         </label>
 
         {state.phase === "invalid" && (
-          <div className="rounded-xl border border-rose-400/20 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">
+          <div className="rounded-xl border border-danger/20 bg-danger/10 px-4 py-3 text-sm text-danger">
             {state.error}
           </div>
         )}
@@ -169,7 +169,7 @@ export default function ImageAnalyzer({ onRequestAnalysis, analyzing, onReset }:
   // Ready state: show preview + analyze button
   return (
     <div className="space-y-4">
-      <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-black shadow-2xl shadow-black/50">
+      <div className="relative overflow-hidden rounded-2xl border border-line bg-black shadow-2xl shadow-black/50">
         <div className="relative flex aspect-video w-full items-center justify-center">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
@@ -179,44 +179,44 @@ export default function ImageAnalyzer({ onRequestAnalysis, analyzing, onReset }:
           />
           {analyzing && (
             <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-[2px]">
-              <div className="flex items-center gap-3 rounded-full border border-white/20 bg-black/70 px-5 py-2.5 text-sm font-medium text-white">
-                <span className="h-2 w-2 animate-pulse rounded-full bg-indigo-400" />
+              <div className="flex items-center gap-3 rounded-full border border-line-strong bg-black/70 px-5 py-2.5 text-sm font-medium text-white">
+                <span className="h-2 w-2 animate-pulse rounded-full bg-brand-bright" />
                 Analizando imagen…
               </div>
             </div>
           )}
           {analyzed && !analyzing && (
-            <div className="absolute left-2 top-2 rounded-full border border-emerald-400/30 bg-emerald-500/15 px-2.5 py-1 text-[11px] font-semibold text-emerald-300">
+            <div className="absolute left-2 top-2 rounded-full border border-success/30 bg-success/15 px-2.5 py-1 text-[11px] font-semibold text-success">
               Analizado ✓
             </div>
           )}
         </div>
       </div>
 
-      <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+      <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-line bg-white/[0.03] p-4">
         <div className="flex-1 min-w-0">
-          <p className="truncate text-sm font-medium text-zinc-200">{state.fileName}</p>
-          <p className="text-xs text-zinc-500">{state.sizeKb} KB · imagen subida</p>
+          <p className="truncate text-sm font-medium text-ink">{state.fileName}</p>
+          <p className="text-xs text-ink-subtle">{state.sizeKb} KB · imagen subida</p>
         </div>
 
         <div className="flex gap-2">
           <button
             onClick={handleAnalyze}
             disabled={analyzing || analyzed}
-            className="rounded-lg bg-gradient-to-br from-indigo-500 to-fuchsia-500 px-3.5 py-2 text-xs font-semibold text-white transition hover:brightness-110 disabled:opacity-40"
+            className="rounded-lg bg-gradient-to-br from-brand to-magenta px-3.5 py-2 text-xs font-semibold text-white transition hover:brightness-110 disabled:opacity-40"
           >
             {analyzed ? "Analizado ✓" : analyzing ? "Analizando…" : "Analizar imagen"}
           </button>
           {analyzed && (
             <button
               onClick={handleReset}
-              className="rounded-lg border border-white/10 bg-white/5 px-3.5 py-2 text-xs font-medium text-zinc-300 transition hover:bg-white/10"
+              className="rounded-lg border border-line bg-white/5 px-3.5 py-2 text-xs font-medium text-ink-muted transition hover:bg-white/10"
             >
               Analizar otra imagen
             </button>
           )}
           {!analyzed && (
-            <label className="cursor-pointer rounded-lg border border-white/10 bg-white/5 px-3.5 py-2 text-xs font-medium text-zinc-300 transition hover:bg-white/10">
+            <label className="cursor-pointer rounded-lg border border-line bg-white/5 px-3.5 py-2 text-xs font-medium text-ink-muted transition hover:bg-white/10">
               Cambiar imagen
               <input
                 type="file"

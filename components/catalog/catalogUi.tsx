@@ -1,4 +1,13 @@
-import type { CatalogItem, ItemStatus, ItemType } from "@/lib/catalog/types";
+"use client";
+
+import { useState } from "react";
+import { itemImageCandidates } from "@/lib/catalog/images";
+import type {
+  CatalogItem,
+  ItemStatus,
+  ItemType,
+  RecommendationMatchType,
+} from "@/lib/catalog/types";
 import { cn } from "@/lib/utils";
 
 export const TYPE_LABELS: Record<ItemType, string> = {
@@ -19,10 +28,10 @@ export const STATUS_LABELS: Record<ItemStatus, string> = {
 };
 
 const STATUS_TONES: Record<ItemStatus, string> = {
-  detected: "border-indigo-400/30 bg-indigo-500/15 text-indigo-200",
-  reviewed: "border-sky-400/30 bg-sky-500/15 text-sky-200",
-  matched: "border-emerald-400/30 bg-emerald-500/15 text-emerald-200",
-  ignored: "border-zinc-500/30 bg-zinc-500/15 text-zinc-400",
+  detected: "border-brand-bright/30 bg-brand/15 text-brand-bright",
+  reviewed: "border-info/30 bg-info/15 text-info",
+  matched: "border-success/30 bg-success/15 text-success",
+  ignored: "border-ink-subtle/30 bg-ink-subtle/15 text-ink-muted",
 };
 
 export function StatusBadge({ status }: { status: ItemStatus }) {
@@ -38,14 +47,45 @@ export function StatusBadge({ status }: { status: ItemStatus }) {
   );
 }
 
+export const MATCH_TYPE_LABELS: Record<RecommendationMatchType, string> = {
+  exact: "Match exacto",
+  near_exact: "Casi exacto",
+  similar: "Similar",
+};
+
+const MATCH_TYPE_TONES: Record<RecommendationMatchType, string> = {
+  exact: "border-success/30 bg-success/15 text-success",
+  near_exact: "border-accent/30 bg-accent/15 text-accent",
+  similar: "border-warning/30 bg-warning/15 text-warning",
+};
+
+/** Badge del tipo de coincidencia visual (exact / near_exact / similar). */
+export function MatchTypeBadge({
+  matchType,
+}: {
+  matchType: RecommendationMatchType | null;
+}) {
+  if (!matchType) return null;
+  return (
+    <span
+      className={cn(
+        "rounded-full border px-2 py-0.5 text-[11px] font-semibold",
+        MATCH_TYPE_TONES[matchType]
+      )}
+    >
+      {MATCH_TYPE_LABELS[matchType]}
+    </span>
+  );
+}
+
 export function ConfidenceBadge({ value }: { value: number }) {
   const pct = Math.round(value * 100);
   const tone =
     pct >= 75
-      ? "bg-emerald-500/15 text-emerald-300 border-emerald-500/30"
+      ? "bg-success/15 text-success border-success/30"
       : pct >= 55
-        ? "bg-amber-500/15 text-amber-300 border-amber-500/30"
-        : "bg-zinc-500/15 text-zinc-300 border-zinc-500/30";
+        ? "bg-warning/15 text-warning border-warning/30"
+        : "bg-ink-subtle/15 text-ink-muted border-ink-subtle/30";
   return (
     <span className={cn("rounded-full border px-2 py-0.5 text-[11px] font-semibold", tone)}>
       {pct}%
@@ -55,7 +95,7 @@ export function ConfidenceBadge({ value }: { value: number }) {
 
 export function Chip({ children }: { children: React.ReactNode }) {
   return (
-    <span className="rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[11px] text-zinc-300">
+    <span className="rounded-full border border-line bg-white/5 px-2 py-0.5 text-[11px] text-ink-muted">
       {children}
     </span>
   );
@@ -71,6 +111,15 @@ const TYPE_ICONS: Record<ItemType, string> = {
   other: "🛍️",
 };
 
+/** Icono de placeholder por CATEGORÍA (más específico que el tipo grueso). */
+function placeholderIcon(item: Pick<CatalogItem, "type" | "category">): string {
+  const cat = (item.category ?? "").toLowerCase();
+  if (/coche|car|vehic|automo|suv|deportivo|moto/.test(cat)) return "🚗";
+  if (/reloj|watch/.test(cat)) return "⌚";
+  if (/mueble|silla|sofa|sofá|lampara|lámpara/.test(cat)) return "🛋️";
+  return TYPE_ICONS[(item.type as ItemType) ?? "other"] ?? "🛍️";
+}
+
 export function colorToHex(color?: string | null): string {
   const map: Record<string, string> = {
     negro: "#27272a", blanco: "#a1a1aa", gris: "#52525b", azul: "#3b82f6",
@@ -83,25 +132,61 @@ export function colorToHex(color?: string | null): string {
   return "#6366f1";
 }
 
+type ThumbItem = Pick<
+  CatalogItem,
+  "type" | "color" | "imageCropUrl" | "frameImageUrl" | "name" | "category"
+>;
+
 /**
- * Miniatura del item. No guardamos la imagen del frame (privacidad), así que
- * mostramos un tile con el color detectado + icono del tipo. Si en el futuro se
- * activa Supabase Storage, se usa imageCropUrl/frameImageUrl.
+ * Miniatura del item con la IMAGEN REAL detectada. Orden de fallback:
+ * crop detectado → frame de origen → imagen del mejor match → placeholder por
+ * categoría. Si una URL (p. ej. externa) falla al cargar, avanza a la
+ * siguiente candidata en vez de dejar la tarjeta vacía.
  */
 export function ItemThumb({
   item,
+  matchImageUrl,
   className,
 }: {
-  item: Pick<CatalogItem, "type" | "color" | "imageCropUrl" | "frameImageUrl" | "name">;
+  item: ThumbItem;
+  /** Imagen del producto encontrado, como último recurso visual. */
+  matchImageUrl?: string | null;
   className?: string;
 }) {
-  const img = item.imageCropUrl || item.frameImageUrl;
-  if (img) {
-    // eslint-disable-next-line @next/next/no-img-element
-    return <img src={img} alt={item.name} className={cn("object-cover", className)} />;
+  const candidates = itemImageCandidates(item, matchImageUrl);
+  const [failed, setFailed] = useState<Set<string>>(new Set());
+
+  // Si cambian las imágenes del item, reintenta desde la primera candidata.
+  // Patrón "adjust state during render" recomendado por React (sin efecto).
+  const candidatesKey = candidates.join("|");
+  const [prevKey, setPrevKey] = useState(candidatesKey);
+  if (prevKey !== candidatesKey) {
+    setPrevKey(candidatesKey);
+    setFailed(new Set());
   }
+
+  const src = candidates.find((c) => !failed.has(c));
+  if (src) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={src}
+        alt={item.name}
+        loading="lazy"
+        className={cn("object-cover", className)}
+        onError={() =>
+          setFailed((prev) => {
+            const next = new Set(prev);
+            next.add(src);
+            return next;
+          })
+        }
+      />
+    );
+  }
+
+  // Fallback FINAL: placeholder por categoría (solo si no hay ninguna imagen).
   const hex = colorToHex(item.color);
-  const icon = TYPE_ICONS[(item.type as ItemType) ?? "other"] ?? "🛍️";
   return (
     <div
       className={cn("flex items-center justify-center text-3xl", className)}
@@ -110,7 +195,7 @@ export function ItemThumb({
       }}
       aria-hidden
     >
-      <span>{icon}</span>
+      <span>{placeholderIcon(item)}</span>
     </div>
   );
 }

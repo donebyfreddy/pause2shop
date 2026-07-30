@@ -1,8 +1,17 @@
 "use client";
 
-import type { CatalogItem, FrameSourceType } from "@/lib/catalog/types";
+import { useState } from "react";
+import { recommendationMatchType } from "@/lib/catalog/images";
+import type { CatalogListItem, FrameSourceType } from "@/lib/catalog/types";
 import { formatTimestamp } from "@/lib/utils";
-import { Chip, ConfidenceBadge, ItemThumb, StatusBadge, TYPE_LABELS } from "./catalogUi";
+import {
+  Chip,
+  ConfidenceBadge,
+  ItemThumb,
+  MatchTypeBadge,
+  StatusBadge,
+  TYPE_LABELS,
+} from "./catalogUi";
 
 const SOURCE_LABELS: Partial<Record<FrameSourceType, string>> = {
   youtube: "YouTube",
@@ -28,18 +37,23 @@ function OriginChip({ sourceType }: Readonly<{ sourceType: FrameSourceType }>) {
 }
 
 type Props = {
-  item: CatalogItem;
+  item: CatalogListItem;
   busy?: boolean;
-  onOpen: (item: CatalogItem) => void;
-  onIgnore: (item: CatalogItem) => void;
-  onReview: (item: CatalogItem) => void;
+  onOpen: (item: CatalogListItem) => void;
+  onIgnore: (item: CatalogListItem) => void;
+  onReview: (item: CatalogListItem) => void;
 };
 
 export default function CatalogItemCard({ item, busy, onOpen, onIgnore, onReview }: Props) {
+  const best = item.bestMatch;
+  const matchType = best ? recommendationMatchType(best) : null;
+  const hasDetectedImage = Boolean(item.imageCropUrl || item.frameImageUrl);
+  const [matchThumbBroken, setMatchThumbBroken] = useState(false);
+
   return (
     <article
       className={
-        "group flex flex-col overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03] transition hover:border-white/20 hover:bg-white/[0.05]" +
+        "group flex flex-col overflow-hidden rounded-2xl border border-line bg-white/[0.03] transition hover:border-line-strong hover:bg-white/[0.05]" +
         (item.status === "ignored" ? " opacity-60" : "")
       }
     >
@@ -48,22 +62,48 @@ export default function CatalogItemCard({ item, busy, onOpen, onIgnore, onReview
         className="relative block aspect-square w-full overflow-hidden text-left"
         title="Ver detalle y recomendaciones"
       >
-        <ItemThumb item={item} className="h-full w-full transition group-hover:scale-[1.03]" />
+        {/* Imagen principal: crop REAL detectado en el vídeo (con fallbacks). */}
+        <ItemThumb
+          item={item}
+          matchImageUrl={best?.imageUrl}
+          className="h-full w-full transition group-hover:scale-[1.03]"
+        />
         <span className="absolute left-2 top-2">
           <StatusBadge status={item.status} />
         </span>
         <span className="absolute right-2 top-2">
           <ConfidenceBadge value={item.confidence} />
         </span>
+        {hasDetectedImage && (
+          <span className="absolute bottom-2 left-2 rounded-full border border-brand-bright/30 bg-black/70 px-2 py-0.5 text-[10px] font-semibold text-brand-bright">
+            📸 Detectado en el vídeo
+          </span>
+        )}
+        {/* Miniatura del producto encontrado en Internet, para comparar. */}
+        {best?.imageUrl && !matchThumbBroken && (
+          <span
+            className="absolute bottom-2 right-2 block h-14 w-14 overflow-hidden rounded-lg border-2 border-success/60 bg-black/70 shadow-lg"
+            title={`Producto encontrado: ${best.title}`}
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={best.imageUrl}
+              alt={best.title}
+              loading="lazy"
+              className="h-full w-full object-cover"
+              onError={() => setMatchThumbBroken(true)}
+            />
+          </span>
+        )}
         {item.detectionCount > 1 && (
-          <span className="absolute bottom-2 right-2 rounded-full bg-black/60 px-2 py-0.5 text-[10px] text-zinc-300">
+          <span className="absolute right-2 top-8 rounded-full bg-black/60 px-2 py-0.5 text-[10px] text-ink-muted">
             ×{item.detectionCount}
           </span>
         )}
       </button>
 
       <div className="flex flex-1 flex-col gap-2 p-3">
-        <h3 className="line-clamp-2 text-sm font-semibold leading-tight text-zinc-100">
+        <h3 className="line-clamp-2 text-sm font-semibold leading-tight text-ink">
           {item.name}
         </h3>
 
@@ -74,7 +114,39 @@ export default function CatalogItemCard({ item, busy, onOpen, onIgnore, onReview
           {item.style && <Chip>{item.style}</Chip>}
         </div>
 
-        <p className="text-[11px] text-zinc-500">
+        {/* Estado del matching: producto encontrado vs búsqueda en curso. */}
+        {best ? (
+          <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-ink-muted">
+            <MatchTypeBadge matchType={matchType} />
+            {best.similarityScore != null && (
+              <span
+                title="Confianza en que el resultado web corresponde al mismo producto."
+                className="text-accent"
+              >
+                {Math.round(best.similarityScore * 100)}% coincidencia
+              </span>
+            )}
+            <span className="line-clamp-1 min-w-0 flex-1">
+              {best.brand ? `${best.brand} · ` : ""}
+              {best.provider}
+              {best.price != null
+                ? ` · ${best.price.toFixed(2)} ${best.currency ?? "EUR"}`
+                : ""}
+            </span>
+          </div>
+        ) : (
+          item.status === "detected" && (
+            <p className="text-[11px] text-ink-subtle">Buscando coincidencias visuales…</p>
+          )
+        )}
+
+        {item.imagePersistenceStatus === "local_only" && (
+          <p className="text-[10px] text-warning/70">
+            Disponible en esta sesión · sincronización pendiente
+          </p>
+        )}
+
+        <p className="text-[11px] text-ink-subtle">
           {originLabel(item.sourceType, item.timestampSeconds)}
           {item.visibleBrand ? ` · marca: ${item.visibleBrand}` : ""}
         </p>
@@ -85,15 +157,25 @@ export default function CatalogItemCard({ item, busy, onOpen, onIgnore, onReview
         <div className="mt-auto flex flex-wrap gap-1.5 pt-1">
           <button
             onClick={() => onOpen(item)}
-            className="rounded-lg bg-gradient-to-br from-indigo-500 to-fuchsia-500 px-2.5 py-1.5 text-[11px] font-semibold text-white transition hover:brightness-110"
+            className="rounded-lg bg-gradient-to-br from-brand to-magenta px-2.5 py-1.5 text-[11px] font-semibold text-white transition hover:brightness-110"
           >
-            Ver recomendaciones
+            Ver detalle
           </button>
+          {best && (
+            <a
+              href={best.productUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="rounded-lg border border-success/30 bg-success/10 px-2.5 py-1.5 text-[11px] font-semibold text-success transition hover:bg-success/20"
+            >
+              Ver producto ↗
+            </a>
+          )}
           {item.status !== "reviewed" && (
             <button
               onClick={() => onReview(item)}
               disabled={busy}
-              className="rounded-lg border border-white/10 bg-white/5 px-2.5 py-1.5 text-[11px] font-medium text-zinc-200 transition hover:bg-white/10 disabled:opacity-40"
+              className="rounded-lg border border-line bg-white/5 px-2.5 py-1.5 text-[11px] font-medium text-ink transition hover:bg-white/10 disabled:opacity-40"
             >
               Marcar revisado
             </button>
@@ -102,7 +184,7 @@ export default function CatalogItemCard({ item, busy, onOpen, onIgnore, onReview
             <button
               onClick={() => onIgnore(item)}
               disabled={busy}
-              className="rounded-lg border border-white/10 bg-white/5 px-2.5 py-1.5 text-[11px] font-medium text-zinc-400 transition hover:border-rose-400/30 hover:text-rose-300 disabled:opacity-40"
+              className="rounded-lg border border-line bg-white/5 px-2.5 py-1.5 text-[11px] font-medium text-ink-muted transition hover:border-danger/30 hover:text-danger disabled:opacity-40"
             >
               Ignorar
             </button>
@@ -110,7 +192,7 @@ export default function CatalogItemCard({ item, busy, onOpen, onIgnore, onReview
             <button
               onClick={() => onReview(item)}
               disabled={busy}
-              className="rounded-lg border border-white/10 bg-white/5 px-2.5 py-1.5 text-[11px] font-medium text-zinc-400 transition hover:text-zinc-200 disabled:opacity-40"
+              className="rounded-lg border border-line bg-white/5 px-2.5 py-1.5 text-[11px] font-medium text-ink-muted transition hover:text-ink disabled:opacity-40"
             >
               Reactivar
             </button>

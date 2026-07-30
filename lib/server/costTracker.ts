@@ -21,6 +21,10 @@ type CostSummary = {
   shoppingSearchCostUsd: number;
   mockCalls: number;
   cacheHits: number;
+  /** Llamadas por proveedor de reverse image/shopping (searchapi, serpapi, dataforseo…). */
+  callsByProvider: Record<string, number>;
+  /** Nº de veces que se usó un proveedor de fallback. */
+  fallbacksUsed: number;
   totalCostUsd: number;
   startedAt: number;
 };
@@ -36,6 +40,8 @@ const record: CostSummary = {
   shoppingSearchCostUsd: 0,
   mockCalls: 0,
   cacheHits: 0,
+  callsByProvider: {},
+  fallbacksUsed: 0,
   totalCostUsd: 0,
   startedAt: Date.now(),
 };
@@ -74,6 +80,17 @@ export function trackShoppingSearch(costUsd: number) {
 
 export function trackCacheHit() {
   record.cacheHits++;
+}
+
+/** Registra una llamada de reverse image search con detalle de proveedor. */
+export function trackReverseSearch(
+  provider: string,
+  costUsd: number,
+  opts: { fallback?: boolean } = {}
+) {
+  record.callsByProvider[provider] = (record.callsByProvider[provider] ?? 0) + 1;
+  if (opts.fallback) record.fallbacksUsed++;
+  trackLensSearch(costUsd);
 }
 
 export function getCostSummary(): CostSummary {

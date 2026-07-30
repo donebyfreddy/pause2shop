@@ -1,13 +1,20 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
+import { mapNormalizedBoxToRenderedVideo, isValidBox } from "@/lib/video/boxMapping";
+import { presentationPriority } from "@/lib/priority";
 import type { DetectedItem } from "@/lib/types";
 
 /**
- * Canvas overlay rendered absolutely on top of a video player.
- * Draws bounding boxes for each DetectedItem that has a bounding_box.
- * Bounding box coords are normalized 0..1 (fraction of frame width/height).
- * Clicking a box fires onItemClick with the corresponding item.
+ * Canvas overlay sobre el reproductor: pinta bounding boxes de cada
+ * DetectedItem. Las coordenadas normalizadas 0-1 se convierten a píxeles del
+ * elemento con mapNormalizedBoxToRenderedVideo (única fuente de verdad:
+ * object-fit contain + letterboxing + devicePixelRatio + resize).
+ *
+ * Labels: cortas sobre el vídeo ("Camisa floral · 95%"), con resolución de
+ * colisiones (se desplazan si se solapan). El nombre completo vive en el
+ * panel lateral. Las cajas de prioridad baja (plantas, barandillas…) no se
+ * pintan por defecto.
  */
 
 const BOX_COLORS = [
@@ -24,36 +31,80 @@ const BOX_COLORS = [
 type Props = {
   items: DetectedItem[];
   onItemClick?: (item: DetectedItem) => void;
+  /** Relación de aspecto real del vídeo (videoWidth/videoHeight); 16/9 si se desconoce. */
+  videoAspect?: number | null;
+  /** Pintar también objetos de prioridad baja (debug). */
+  showLowPriority?: boolean;
 };
 
-export default function VideoOverlay({ items, onItemClick }: Props) {
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+type Rect = { x: number; y: number; width: number; height: number };
 
-  // Redraw whenever items change
-  useEffect(() => {
+function intersects(a: Rect, b: Rect): boolean {
+  return (
+    a.x < b.x + b.width &&
+    a.x + a.width > b.x &&
+    a.y < b.y + b.height &&
+    a.y + a.height > b.y
+  );
+}
+
+/** Etiqueta corta para el vídeo: 2-3 palabras + confianza. */
+function shortLabel(item: DetectedItem): string {
+  const words = item.name.split(/\s+/).slice(0, 3).join(" ");
+  const name = words.length > 20 ? `${words.slice(0, 18)}…` : words;
+  return `${name} · ${Math.round(item.confidence * 100)}%`;
+}
+
+export default function VideoOverlay({
+  items,
+  onItemClick,
+  videoAspect,
+  showLowPriority = false,
+}: Props) {
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const visibleItems = items.filter(
+    (it) =>
+      isValidBox(it.bounding_box) &&
+      (showLowPriority || presentationPriority(it) !== "low")
+  );
+
+  const draw = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    const W = canvas.width;
-    const H = canvas.height;
-    ctx.clearRect(0, 0, W, H);
+    // Tamaño físico = tamaño CSS × DPR (nítido en pantallas retina y estable
+    // ante resize/fullscreen).
+    const cssW = canvas.clientWidth || 1;
+    const cssH = canvas.clientHeight || 1;
+    const dpr = window.devicePixelRatio || 1;
+    if (canvas.width !== Math.round(cssW * dpr) || canvas.height !== Math.round(cssH * dpr)) {
+      canvas.width = Math.round(cssW * dpr);
+      canvas.height = Math.round(cssH * dpr);
+    }
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, cssW, cssH);
+    if (visibleItems.length === 0) return;
 
-    const itemsWithBox = items.filter((it) => it.bounding_box);
-    if (itemsWithBox.length === 0) return;
-
+    const aspect = videoAspect && videoAspect > 0 ? videoAspect : 16 / 9;
     ctx.save();
     ctx.font = "bold 11px ui-sans-serif, system-ui, sans-serif";
 
-    itemsWithBox.forEach((item, idx) => {
-      const bb = item.bounding_box!;
-      const color = BOX_COLORS[idx % BOX_COLORS.length];
+    const placedLabels: Rect[] = [];
 
-      const px = bb.x * W;
-      const py = bb.y * H;
-      const pw = bb.width * W;
-      const ph = bb.height * H;
+    visibleItems.forEach((item, idx) => {
+      const rect = mapNormalizedBoxToRenderedVideo(
+        item.bounding_box!,
+        aspect * 1000,
+        1000,
+        cssW,
+        cssH,
+        "contain"
+      );
+      if (rect.width <= 0 || rect.height <= 0) return;
+      const color = BOX_COLORS[idx % BOX_COLORS.length];
+      const { x: px, y: py, width: pw, height: ph } = rect;
 
       // Box stroke
       ctx.strokeStyle = color;
@@ -71,53 +122,82 @@ export default function VideoOverlay({ items, onItemClick }: Props) {
       ctx.strokeStyle = color;
       ctx.stroke();
 
-      // Label
-      const name = item.name.length > 22 ? item.name.slice(0, 20) + "…" : item.name;
-      const conf = `${Math.round(item.confidence * 100)}%`;
-      const label = `${name}  ${conf}`;
-      const tw = ctx.measureText(label).width;
+      // Label con resolución de colisiones: encima → debajo → desplazada.
+      const label = shortLabel(item);
+      const tw = ctx.measureText(label).width + 10;
       const lh = 16;
-      const lx = px;
-      const ly = py > lh + 2 ? py - lh - 2 : py + ph + 2;
+      let lx = Math.min(px, cssW - tw);
+      let ly = py > lh + 2 ? py - lh - 2 : py + ph + 2;
+      let attempts = 0;
+      while (
+        attempts < 6 &&
+        placedLabels.some((r) => intersects(r, { x: lx, y: ly, width: tw, height: lh }))
+      ) {
+        ly += lh + 3;
+        if (ly + lh > cssH) {
+          ly = Math.max(0, py - lh - 2 - (attempts + 1) * (lh + 3));
+          lx = Math.min(px + 12 * (attempts + 1), cssW - tw);
+        }
+        attempts++;
+      }
+      placedLabels.push({ x: lx, y: ly, width: tw, height: lh });
 
       ctx.fillStyle = `${color}d0`;
       ctx.beginPath();
-      ctx.roundRect(lx, ly, tw + 10, lh, 3);
+      ctx.roundRect(lx, ly, tw, lh, 3);
       ctx.fill();
-
       ctx.fillStyle = "#ffffff";
       ctx.fillText(label, lx + 5, ly + 11);
     });
 
     ctx.restore();
-  }, [items]);
+  }, [visibleItems, videoAspect]);
+
+  // Redibuja al cambiar items y al redimensionar el elemento.
+  useEffect(() => {
+    draw();
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const observer = new ResizeObserver(() => draw());
+    observer.observe(canvas);
+    return () => observer.disconnect();
+  }, [draw]);
 
   function handleClick(e: React.MouseEvent<HTMLCanvasElement>) {
     if (!onItemClick) return;
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const rect = canvas.getBoundingClientRect();
-    const mx = (e.clientX - rect.left) / rect.width;
-    const my = (e.clientY - rect.top) / rect.height;
+    const bounds = canvas.getBoundingClientRect();
+    const mx = e.clientX - bounds.left;
+    const my = e.clientY - bounds.top;
+    const aspect = videoAspect && videoAspect > 0 ? videoAspect : 16 / 9;
 
-    for (const item of items) {
-      if (!item.bounding_box) continue;
-      const { x, y, width, height } = item.bounding_box;
-      if (mx >= x && mx <= x + width && my >= y && my <= y + height) {
+    for (const item of visibleItems) {
+      const rect = mapNormalizedBoxToRenderedVideo(
+        item.bounding_box!,
+        aspect * 1000,
+        1000,
+        bounds.width,
+        bounds.height,
+        "contain"
+      );
+      if (
+        mx >= rect.x &&
+        mx <= rect.x + rect.width &&
+        my >= rect.y &&
+        my <= rect.y + rect.height
+      ) {
         onItemClick(item);
         return;
       }
     }
   }
 
-  const hasBoxes = items.some((it) => it.bounding_box);
-  if (!hasBoxes) return null;
+  if (visibleItems.length === 0) return null;
 
   return (
     <canvas
       ref={canvasRef}
-      width={1280}
-      height={720}
       onClick={handleClick}
       title="Haz clic en un objeto para ver detalles"
       className="pointer-events-auto absolute inset-0 h-full w-full cursor-crosshair"

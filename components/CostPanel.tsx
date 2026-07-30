@@ -5,9 +5,22 @@ type CostData = {
   openaiVisionCostUsd: number;
   openaiProductCalls: number;
   openaiProductCostUsd: number;
+  lensSearchCalls?: number;
+  lensSearchCostUsd?: number;
+  shoppingSearchCalls?: number;
+  shoppingSearchCostUsd?: number;
+  callsByProvider?: Record<string, number>;
+  fallbacksUsed?: number;
   mockCalls: number;
   cacheHits: number;
   totalCostUsd: number;
+};
+
+const PROVIDER_LABEL: Record<string, string> = {
+  searchapi_google_lens: "SearchAPI (Lens)",
+  serpapi_google_lens: "SerpAPI (Lens)",
+  serpapi_google_shopping: "SerpAPI (Shopping)",
+  dataforseo_google_shopping: "DataForSEO",
 };
 
 type Props = {
@@ -36,18 +49,18 @@ export default function CostPanel({ costs, itemsDetected }: Props) {
   const isDemo = data.openaiVisionCalls === 0 && data.mockCalls > 0;
 
   return (
-    <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.02] p-4">
+    <div className="panel p-4">
       <div className="mb-3 flex items-center justify-between">
-        <h3 className="text-xs font-semibold uppercase tracking-wider text-zinc-500">
-          💰 Costes IA
+        <h3 className="text-[10px] font-semibold tracking-[0.12em] text-ink-faint uppercase">
+          Consumo y coste de IA
         </h3>
         {isDemo && (
-          <span className="rounded-full border border-amber-400/20 bg-amber-500/10 px-2 py-0.5 text-[10px] font-medium text-amber-300">
+          <span className="rounded-full border border-warning/25 bg-warning/10 px-2 py-0.5 text-[10px] font-medium text-warning">
             modo demo
           </span>
         )}
         {!isDemo && costs && (
-          <span className="rounded-full border border-emerald-400/20 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-medium text-emerald-300">
+          <span className="rounded-full border border-success/25 bg-success/10 px-2 py-0.5 text-[10px] font-medium text-success">
             real
           </span>
         )}
@@ -67,14 +80,38 @@ export default function CostPanel({ costs, itemsDetected }: Props) {
           cost={data.openaiVisionCostUsd}
         />
         <SubStat
-          label="Matching productos"
+          label="Sugerencias IA"
           calls={data.openaiProductCalls}
           cost={data.openaiProductCostUsd}
         />
+        <SubStat
+          label="Reverse search (Lens)"
+          calls={data.lensSearchCalls ?? 0}
+          cost={data.lensSearchCostUsd ?? 0}
+        />
+        <SubStat
+          label="Shopping"
+          calls={data.shoppingSearchCalls ?? 0}
+          cost={data.shoppingSearchCostUsd ?? 0}
+        />
       </div>
 
+      {(Object.keys(data.callsByProvider ?? {}).length > 0 ||
+        (data.fallbacksUsed ?? 0) > 0) && (
+        <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[10px] text-ink-subtle">
+          {Object.entries(data.callsByProvider ?? {}).map(([p, n]) => (
+            <span key={p}>
+              {PROVIDER_LABEL[p] ?? p}: <span className="text-ink-muted">{n}</span>
+            </span>
+          ))}
+          {(data.fallbacksUsed ?? 0) > 0 && (
+            <span className="text-warning">fallbacks: {data.fallbacksUsed}</span>
+          )}
+        </div>
+      )}
+
       {data.mockCalls > 0 && (
-        <p className="mt-2 text-[10px] text-zinc-600">
+        <p className="mt-2 text-[10px] text-ink-faint">
           {data.mockCalls} llamada{data.mockCalls === 1 ? "" : "s"} en modo demo (sin coste)
         </p>
       )}
@@ -94,16 +131,16 @@ function Stat({
   accent?: "emerald";
 }) {
   return (
-    <div className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2">
-      <p className="text-[10px] text-zinc-500">{label}</p>
+    <div className="rounded-xl border border-line bg-white/[0.03] px-3 py-2">
+      <p className="text-[10px] text-ink-subtle">{label}</p>
       <p
         className={
           "mt-0.5 text-sm font-bold tabular-nums " +
           (highlight
-            ? "text-fuchsia-300"
+            ? "text-accent"
             : accent === "emerald"
-              ? "text-emerald-300"
-              : "text-zinc-200")
+              ? "text-success"
+              : "text-ink")
         }
       >
         {value}
@@ -122,12 +159,12 @@ function SubStat({
   cost: number;
 }) {
   return (
-    <div className="flex items-center justify-between rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2">
+    <div className="flex items-center justify-between rounded-xl border border-line bg-white/[0.03] px-3 py-2">
       <div>
-        <p className="text-[10px] text-zinc-500">{label}</p>
-        <p className="text-xs font-medium text-zinc-300">{calls} llamadas</p>
+        <p className="text-[10px] text-ink-subtle">{label}</p>
+        <p className="text-xs font-medium text-ink-muted">{calls} llamadas</p>
       </div>
-      <p className="text-xs font-bold tabular-nums text-zinc-200">{usd(cost)}</p>
+      <p className="text-xs font-bold tabular-nums text-ink">{usd(cost)}</p>
     </div>
   );
 }

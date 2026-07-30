@@ -18,7 +18,10 @@ type Options = {
  */
 export function useAutoCaptureInterval({ enabled, intervalMs, onCapture }: Options) {
   const callbackRef = useRef(onCapture);
-  callbackRef.current = onCapture;
+
+  useEffect(() => {
+    callbackRef.current = onCapture;
+  }, [onCapture]);
 
   useEffect(() => {
     if (!enabled || intervalMs <= 0) return;

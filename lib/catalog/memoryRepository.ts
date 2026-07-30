@@ -127,6 +127,8 @@ export class MemoryCatalogRepository implements CatalogRepository {
           ? input.marketplaceKeywords
           : existing.marketplaceKeywords,
         boundingBox: input.boundingBox ?? existing.boundingBox,
+        imageCropUrl: input.imageCropUrl ?? existing.imageCropUrl,
+        frameImageUrl: input.frameImageUrl ?? existing.frameImageUrl,
         frameId: input.frameId ?? existing.frameId,
         detectionCount: existing.detectionCount + 1,
         updatedAt: now(),
@@ -248,6 +250,7 @@ export class MemoryCatalogRepository implements CatalogRepository {
       currency: r.currency ?? null,
       brand: r.brand ?? null,
       similarityScore: r.similarityScore ?? null,
+      matchType: r.matchType ?? null,
       reason: r.reason ?? null,
       createdAt: now(),
     }));
@@ -264,6 +267,21 @@ export class MemoryCatalogRepository implements CatalogRepository {
     return [...this.recs.values()]
       .filter((r) => r.detectedItemId === itemId)
       .sort((a, b) => (b.similarityScore ?? 0) - (a.similarityScore ?? 0));
+  }
+
+  async listTopRecommendations(
+    itemIds: string[]
+  ): Promise<Map<string, ProductRecommendation>> {
+    const wanted = new Set(itemIds);
+    const map = new Map<string, ProductRecommendation>();
+    for (const rec of this.recs.values()) {
+      if (!wanted.has(rec.detectedItemId)) continue;
+      const current = map.get(rec.detectedItemId);
+      if (!current || (rec.similarityScore ?? 0) > (current.similarityScore ?? 0)) {
+        map.set(rec.detectedItemId, rec);
+      }
+    }
+    return map;
   }
 
   async addFeedback(input: FeedbackInput): Promise<ItemFeedback> {

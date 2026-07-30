@@ -1,12 +1,22 @@
 import { createHash } from "node:crypto";
+
+import {
+  extensionForMime,
+  publishPublicObject,
+  type StorageConfig,
+} from "@/lib/mediaStorage";
 import type { VisualSearchConfig } from "./config";
 
 /**
- * Publicación del frame en Supabase Storage. Google Lens (vía SearchAPI o
- * SerpAPI) exige una URL pública de la imagen: no acepta base64. Subimos el
- * frame una sola vez por hash (idempotente con x-upsert) a un bucket público.
+ * Publicación del frame para los motores de búsqueda visual. Google Lens (vía
+ * SearchAPI o SerpAPI) exige una URL pública de la imagen: no acepta base64.
+ * Subimos el frame una sola vez por hash, de forma idempotente.
  *
- * Privacidad: solo se sube el frame que el usuario ha decidido analizar, con
+ * El "dónde" lo decide el adaptador (lib/mediaStorage), no este módulo:
+ * antes esto hablaba directamente con la API REST de Supabase Storage y cambiar
+ * de proveedor implicaba tocar aquí.
+ *
+ * Privacidad: solo se publica el frame que el usuario ha decidido analizar, con
  * nombre derivado del hash (no enumerable) y reutilizable entre análisis.
  */
 
@@ -32,47 +42,38 @@ export function decodeImageDataUrl(imageDataUrl: string): DecodedImage | null {
   return { buffer, mime, hash };
 }
 
-function extensionFor(mime: string): string {
-  if (mime.includes("png")) return "png";
-  if (mime.includes("webp")) return "webp";
-  return "jpg";
+/** Se mantiene exportada: varios módulos derivan de aquí el nombre del fichero. */
+export function extensionFor(mime: string): string {
+  return extensionForMime(mime);
 }
 
 /**
- * Sube el frame al bucket y devuelve su URL pública, o null si no hay storage
- * configurado o la subida falla (el engine continúa sin Lens en ese caso).
+ * Publica el frame y devuelve su URL pública, o null si no se ha podido (el
+ * engine continúa sin Lens en ese caso, ver engine.ts).
  */
 export async function uploadFramePublic(
   image: DecodedImage,
-  config: VisualSearchConfig
+  config: VisualSearchConfig,
+  /** Carpeta destino: "frames" (frame completo) o "crops" (recorte por objeto). */
+  prefix: "frames" | "crops" = "frames",
+  /**
+   * Origen de la petición en curso. Lo necesita el proveedor `local`, que sirve
+   * la imagen desde la propia app; los proveedores externos lo ignoran.
+   */
+  requestOrigin: string | null = null
 ): Promise<string | null> {
-  const storage = config.storage;
-  if (!storage) return null;
+  const result = await publishPublicObject({
+    hash: image.hash,
+    buffer: image.buffer,
+    mime: image.mime,
+    prefix,
+    requestOrigin,
+    config: config.storage as StorageConfig | undefined,
+  });
 
-  const path = `frames/${image.hash}.${extensionFor(image.mime)}`;
-  const uploadUrl = `${storage.supabaseUrl}/storage/v1/object/${storage.bucket}/${path}`;
-  const publicUrl = `${storage.supabaseUrl}/storage/v1/object/public/${storage.bucket}/${path}`;
-
-  try {
-    const res = await fetch(uploadUrl, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${storage.serviceRoleKey}`,
-        "Content-Type": image.mime,
-        "x-upsert": "true",
-      },
-      body: new Uint8Array(image.buffer),
-    });
-    // 409 = ya existe (carrera con otro upload del mismo hash): la URL vale igual.
-    if (!res.ok && res.status !== 409) {
-      console.warn(
-        `[visualSearch] Subida de frame falló (${res.status}): ${(await res.text().catch(() => "")).slice(0, 200)}`
-      );
-      return null;
-    }
-    return publicUrl;
-  } catch (err) {
-    console.warn("[visualSearch] Subida de frame falló:", err);
+  if (!result.ok) {
+    console.warn(`[visualSearch] Publicación del frame omitida: ${result.reason}`);
     return null;
   }
+  return result.url;
 }

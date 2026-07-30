@@ -3,31 +3,52 @@
 import type { DetectedItem, ProductLink } from "@/lib/types";
 import type { VisualMatch } from "@/lib/visualSearch/types";
 import { cn } from "@/lib/utils";
+import { IS_PRESENTATION } from "@/lib/presentation";
+import ItemCrop from "./ItemCrop";
 
 type Props = {
   item: DetectedItem;
   rank: number;
   onLinkClick: (item: DetectedItem, link: ProductLink) => void;
+  /** Frame del que salió el item, para mostrar el recorte del producto. */
+  frameUrl?: string | null;
 };
 
-function ConfidenceBadge({ value }: { value: number }) {
+/** Confianza de DETECCIÓN: el objeto y sus atributos, NO el producto web. */
+function DetectionBadge({ value }: { value: number }) {
   const pct = Math.round(value * 100);
   const tone =
     pct >= 75
-      ? "bg-emerald-500/15 text-emerald-300 border-emerald-500/30"
+      ? "bg-success/15 text-success border-success/30"
       : pct >= 55
-        ? "bg-amber-500/15 text-amber-300 border-amber-500/30"
-        : "bg-zinc-500/15 text-zinc-300 border-zinc-500/30";
+        ? "bg-warning/15 text-warning border-warning/30"
+        : "bg-ink-subtle/15 text-ink-muted border-ink-subtle/30";
   return (
-    <span className={cn("rounded-full border px-2 py-0.5 text-[11px] font-semibold", tone)}>
-      {pct}% confianza
+    <span
+      title="Confianza en que el objeto y sus atributos han sido identificados correctamente en el vídeo."
+      className={cn("rounded-full border px-2 py-0.5 text-[11px] font-semibold", tone)}
+    >
+      {pct}% detección
+    </span>
+  );
+}
+
+/** Confianza de MATCHING: que el resultado web sea el mismo producto. */
+function MatchConfidenceBadge({ value }: { value: number }) {
+  const pct = Math.round(value * 100);
+  return (
+    <span
+      title="Confianza en que el resultado web corresponde al mismo producto."
+      className="rounded-full border border-accent/30 bg-accent/15 px-2 py-0.5 text-[11px] font-semibold text-accent"
+    >
+      {pct}% coincidencia
     </span>
   );
 }
 
 function Chip({ children }: { children: React.ReactNode }) {
   return (
-    <span className="rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[11px] text-zinc-300">
+    <span className="rounded-full border border-line bg-white/5 px-2 py-0.5 text-[11px] text-ink-muted">
       {children}
     </span>
   );
@@ -53,22 +74,25 @@ function VisualMatchBlock({
   onLinkClick: Props["onLinkClick"];
 }) {
   const tone = match.exact_match_found
-    ? "border-emerald-400/30 bg-emerald-500/10"
-    : "border-sky-400/20 bg-sky-500/[0.07]";
+    ? "border-success/30 bg-success/10"
+    : "border-info/20 bg-info/[0.07]";
   const badgeTone = match.exact_match_found
-    ? "bg-emerald-500/20 text-emerald-200 border-emerald-400/40"
-    : "bg-sky-500/15 text-sky-200 border-sky-400/30";
+    ? "bg-success/20 text-success border-success/40"
+    : "bg-info/15 text-info border-info/30";
   const image = match.product_images[0];
 
   return (
     <div className={cn("mb-3 rounded-xl border p-3", tone)}>
-      <div className="mb-2 flex items-center justify-between gap-2">
-        <span className={cn("rounded-full border px-2 py-0.5 text-[11px] font-bold", badgeTone)}>
-          {match.exact_match_found ? "🎯 " : "≈ "}
-          {MATCH_LABEL[match.match_type]} · {match.best_match_score} pts
+      <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+        <span className="flex flex-wrap items-center gap-1.5">
+          <span className={cn("rounded-full border px-2 py-0.5 text-[11px] font-bold", badgeTone)}>
+            {match.exact_match_found ? "🎯 " : "≈ "}
+            {MATCH_LABEL[match.match_type]}
+          </span>
+          <MatchConfidenceBadge value={match.match_confidence} />
         </span>
         {match.brand && (
-          <span className="text-[11px] font-semibold text-zinc-200">{match.brand}</span>
+          <span className="text-[11px] font-semibold text-ink">{match.brand}</span>
         )}
       </div>
 
@@ -78,12 +102,12 @@ function VisualMatchBlock({
           <img
             src={image}
             alt={match.product_name}
-            className="h-16 w-16 shrink-0 rounded-lg border border-white/10 object-cover"
+            className="h-16 w-16 shrink-0 rounded-lg border border-line object-cover"
             loading="lazy"
           />
         )}
         <div className="min-w-0">
-          <p className="mb-1.5 line-clamp-2 text-xs font-semibold leading-snug text-zinc-100">
+          <p className="mb-1.5 line-clamp-2 text-xs font-semibold leading-snug text-ink">
             {match.product_name}
           </p>
           <div className="flex flex-wrap gap-1.5">
@@ -105,8 +129,8 @@ function VisualMatchBlock({
                 className={cn(
                   "inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-[11px] font-semibold transition",
                   link.type === "exact"
-                    ? "bg-gradient-to-br from-emerald-500 to-teal-500 text-white shadow-md shadow-emerald-500/20 hover:brightness-110"
-                    : "border border-white/10 bg-white/5 text-zinc-200 hover:border-white/25 hover:bg-white/10"
+                    ? "bg-gradient-to-br from-success to-accent text-white shadow-md shadow-success/20 hover:brightness-110"
+                    : "border border-line bg-white/5 text-ink hover:border-line-strong hover:bg-white/10"
                 )}
               >
                 {link.store}
@@ -121,26 +145,162 @@ function VisualMatchBlock({
           </div>
         </div>
       </div>
+
+      {/* Evidencia del match: por qué afirmamos que coincide. */}
+      {match.evidence.length > 0 && (
+        <div className="mt-2 rounded-lg border border-line bg-black/20 px-2.5 py-1.5">
+          <p className="mb-0.5 text-[10px] font-semibold uppercase tracking-wider text-ink-subtle">
+            Coincide en
+          </p>
+          <ul className="space-y-0.5 text-[11px] text-ink-muted">
+            {match.evidence.slice(0, 5).map((line) => (
+              <li key={line}>{line}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {/* Panel técnico plegable: qué fuentes respaldan el match */}
+      <details className="mt-2 text-[10px] text-ink-subtle">
+        <summary className="cursor-pointer select-none transition hover:text-ink-muted">
+          Fuentes de búsqueda
+        </summary>
+        {!IS_PRESENTATION && (
+          <p className="mt-1">
+            Score interno: {match.best_match_score} pts · motor: {match.best_match_source}
+          </p>
+        )}
+        <SourcesBreakdown match={match} />
+      </details>
     </div>
   );
 }
 
-export default function ProductCard({ item, rank, onLinkClick }: Props) {
-  const marketplace = item.productLinks?.filter((l) => l.type !== "verified_store") ?? [];
-  const verified = item.productLinks?.filter((l) => l.type === "verified_store") ?? [];
+/**
+ * Panel de debug del matching por item (proveedor, fallback, cache,
+ * latencia). Oculto en modo presentación; sin secretos.
+ */
+function MatchingDebugPanel({ debug }: { debug: DetectedItem["matching_debug"] }) {
+  if (!debug || IS_PRESENTATION) return null;
+  return (
+    <details className="mt-2 text-[10px] text-ink-faint">
+      <summary className="cursor-pointer select-none transition hover:text-ink-muted">
+        Debug del matching
+      </summary>
+      <div className="mt-1 space-y-0.5">
+        <p>Reverse image search: sí (crop enviado, búsqueda visual pura primero)</p>
+        <p>Proveedor: {debug.providerUsed ?? "—"}</p>
+        <p>Fallback usado: {debug.fallbackUsed ? "sí" : "no"}</p>
+        <p>Cache hit: {debug.cached ? "sí" : "no"}</p>
+        {debug.totalMs != null && <p>Latencia: {debug.totalMs} ms</p>}
+        {debug.detail && <p>Detalle: {debug.detail}</p>}
+        <p>DataForSEO: solo enriquecimiento de precio/tiendas (no identidad)</p>
+      </div>
+    </details>
+  );
+}
+
+/** Desglose de proveedores que aportaron candidatos (sin datos sensibles). */
+function SourcesBreakdown({ match }: { match: VisualMatch }) {
+  const bySource = new Map<string, number>();
+  for (const c of match.ranked_candidates) {
+    bySource.set(c.source, (bySource.get(c.source) ?? 0) + 1);
+  }
+  const LABEL: Record<string, string> = {
+    searchapi_google_lens: "Google Lens",
+    serpapi_google_lens: "Google Lens (fallback)",
+    serpapi_google_shopping: "Google Shopping",
+    dataforseo_google_shopping: "Google Shopping (DataForSEO)",
+  };
+  // "Confirmado por N fuentes" solo si el MISMO dominio del mejor candidato
+  // aparece respaldado por más de un proveedor — sin falsear consenso.
+  const best = match.ranked_candidates[0];
+  const confirmingSources = best?.domain
+    ? new Set(
+        match.ranked_candidates
+          .filter((c) => c.domain === best.domain)
+          .map((c) => c.source)
+      ).size
+    : 0;
+  return (
+    <div className="mt-1.5 space-y-0.5">
+      {[...bySource.entries()].map(([source, count]) => (
+        <p key={source}>
+          {LABEL[source] ?? source}: {count} candidato{count === 1 ? "" : "s"}
+        </p>
+      ))}
+      {confirmingSources >= 2 && (
+        <p className="text-success">✓ Confirmado por {confirmingSources} fuentes</p>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Estado progresivo del matching por objeto (Fase 11): la card aparece con la
+ * detección y este bloque se actualiza cuando la cola de matching resuelve.
+ */
+function MatchingStatusLine({ status }: { status?: DetectedItem["matchingStatus"] }) {
+  if (!status || status === "matched" || status === "similar_only") return null;
+  if (status === "searching" || status === "pending") {
+    return (
+      <div className="mb-3 flex items-center gap-2 rounded-lg border border-info/15 bg-info/[0.06] px-3 py-2 text-[11px] text-info">
+        <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-info" />
+        {status === "pending"
+          ? "Esperando un encuadre mejor…"
+          : "Buscando por imagen (Google Lens)…"}
+      </div>
+    );
+  }
+  const MSG: Record<string, string> = {
+    no_match:
+      "Sin coincidencia exacta — abajo se muestran los productos visualmente más parecidos.",
+    budget_exhausted: "Sin búsqueda externa (límite de consumo alcanzado).",
+    provider_error: "Búsqueda visual no disponible ahora mismo.",
+  };
+  return (
+    <p className="mb-3 rounded-lg border border-line bg-white/[0.02] px-3 py-2 text-[11px] text-ink-subtle">
+      {MSG[status] ?? status}
+    </p>
+  );
+}
+
+/** Evidencia que justifica la marca mostrada (nunca se afirma sin evidencia). */
+function brandEvidence(item: DetectedItem): string | null {
+  if (!item.visible_brand) return null;
+  if (item.visible_text) return `texto visible: “${item.visible_text}”`;
+  if (item.logo_description) return `logo: ${item.logo_description}`;
+  if (item.logo_visible) return "logo reconocible en el producto";
+  return null;
+}
+
+export default function ProductCard({ item, rank, onLinkClick, frameUrl }: Props) {
+  const evidence = brandEvidence(item);
+  // Similares del reverse image search que no están ya en el match principal.
+  const bestLink = item.visual_match?.ranked_candidates?.[0]?.link;
+  const similars = (item.similar_candidates ?? []).filter((c) => c.link !== bestLink);
 
   return (
-    <article className="group rounded-2xl border border-white/10 bg-white/[0.04] p-4 transition hover:border-white/20 hover:bg-white/[0.06]">
+    <article className="group rounded-2xl border border-line bg-white/[0.04] p-4 transition hover:border-line-strong hover:bg-white/[0.06]">
       <div className="mb-2 flex items-start justify-between gap-3">
-        <div className="flex items-start gap-2">
-          <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-indigo-500/30 to-fuchsia-500/30 text-[11px] font-bold text-indigo-200">
-            {rank}
-          </span>
-          <h3 className="text-sm font-semibold leading-tight text-zinc-100">
+        <div className="flex items-start gap-2.5">
+          {frameUrl && item.bounding_box ? (
+            <ItemCrop
+              frameUrl={frameUrl}
+              box={item.bounding_box}
+              alt={item.name}
+              className="h-14 w-14"
+            />
+          ) : (
+            <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-brand/30 to-magenta/30 text-[11px] font-bold text-brand-bright">
+              {rank}
+            </span>
+          )}
+          <h3 className="text-sm font-semibold leading-tight text-ink">
             {item.name}
           </h3>
         </div>
-        <ConfidenceBadge value={item.confidence} />
+        <DetectionBadge value={item.confidence} />
       </div>
 
       <div className="mb-3 flex flex-wrap gap-1.5">
@@ -148,94 +308,114 @@ export default function ProductCard({ item, rank, onLinkClick }: Props) {
         {item.style && <Chip>{item.style}</Chip>}
         {item.color && <Chip>{item.color}</Chip>}
         {item.visible_brand && (
-          <span className="rounded-full border border-indigo-400/30 bg-indigo-500/15 px-2 py-0.5 text-[11px] font-medium text-indigo-200">
+          <span
+            title={evidence ? `Marca afirmada por evidencia — ${evidence}` : undefined}
+            className="rounded-full border border-brand-bright/30 bg-brand/15 px-2 py-0.5 text-[11px] font-medium text-brand-bright"
+          >
             🏷 {item.visible_brand}
+            {evidence && <span className="text-brand-bright/70"> ✓</span>}
           </span>
         )}
         {!item.visible_brand && item.brand_guess && (
-          <span className="rounded-full border border-zinc-400/20 bg-zinc-500/10 px-2 py-0.5 text-[11px] text-zinc-400">
+          <span className="rounded-full border border-ink-muted/20 bg-ink-subtle/10 px-2 py-0.5 text-[11px] text-ink-muted">
             ≈ {item.brand_guess}?
           </span>
         )}
         {item.logo_visible && !item.visible_brand && !item.brand_guess && (
-          <span className="rounded-full border border-amber-400/20 bg-amber-500/10 px-2 py-0.5 text-[11px] text-amber-300">
+          <span className="rounded-full border border-warning/20 bg-warning/10 px-2 py-0.5 text-[11px] text-warning">
             logo visible
           </span>
         )}
         {item.seenCount != null && item.seenCount > 1 && (
-          <span className="rounded-full border border-emerald-400/20 bg-emerald-500/10 px-2 py-0.5 text-[11px] text-emerald-300">
+          <span className="rounded-full border border-success/20 bg-success/10 px-2 py-0.5 text-[11px] text-success">
             ×{item.seenCount} visto
           </span>
         )}
       </div>
 
-      {item.visual_match && (
+      {item.visual_match ? (
         <VisualMatchBlock item={item} match={item.visual_match} onLinkClick={onLinkClick} />
+      ) : (
+        <MatchingStatusLine status={item.matchingStatus} />
       )}
 
       {item.description && (
-        <p className="mb-2 text-xs leading-relaxed text-zinc-400">{item.description}</p>
+        <p className="mb-2 text-xs leading-relaxed text-ink-muted">{item.description}</p>
       )}
 
       {item.visible_text && (
-        <p className="mb-2 rounded-md border border-white/5 bg-white/[0.03] px-2.5 py-1.5 font-mono text-[11px] text-zinc-300">
+        <p className="mb-2 rounded-md border border-line bg-white/[0.03] px-2.5 py-1.5 font-mono text-[11px] text-ink-muted">
           Texto: &ldquo;{item.visible_text}&rdquo;
         </p>
       )}
 
       {item.logo_description && !item.visible_text && (
-        <p className="mb-2 text-[11px] italic text-zinc-500">
+        <p className="mb-2 text-[11px] italic text-ink-subtle">
           Logo: {item.logo_description}
         </p>
       )}
 
       {item.why_recommended && (
-        <p className="mb-3 rounded-lg border border-white/5 bg-white/[0.03] px-3 py-2 text-xs italic leading-relaxed text-zinc-300">
+        <p className="mb-3 rounded-lg border border-line bg-white/[0.03] px-3 py-2 text-xs italic leading-relaxed text-ink-muted">
           💡 {item.why_recommended}
         </p>
       )}
 
-      <div className="flex flex-wrap gap-2">
-        {marketplace.map((link) => (
-          <a
-            key={link.url}
-            href={link.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={() => onLinkClick(item, link)}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-gradient-to-br from-indigo-500 to-fuchsia-500 px-3 py-1.5 text-xs font-semibold text-white shadow-md shadow-indigo-500/20 transition hover:brightness-110"
-          >
-            {link.label} ↗
-          </a>
-        ))}
-      </div>
-
-      {verified.length > 0 && (
-        <details className="mt-3 text-xs">
-          <summary className="cursor-pointer select-none text-zinc-400 transition hover:text-zinc-200">
-            Ver tiendas verificadas ({verified.length})
-          </summary>
-          <div className="mt-2 flex flex-wrap gap-1.5">
-            {verified.map((link) => (
+      {/* RESULTADO PRINCIPAL: los más similares del reverse image search.
+          Sin enlaces manuales a Amazon ni "tiendas verificadas". */}
+      {similars.length > 0 && (
+        <div className="mt-1">
+          <p className="mb-1.5 text-[11px] font-medium text-ink-subtle">
+            {item.visual_match ? "También similares:" : "Productos visualmente similares:"}
+          </p>
+          <div className="flex gap-2 overflow-x-auto pb-1">
+            {similars.slice(0, 5).map((c) => (
               <a
-                key={link.url}
-                href={link.url}
+                key={c.link}
+                href={c.link}
                 target="_blank"
                 rel="noopener noreferrer"
-                onClick={() => onLinkClick(item, link)}
-                className="inline-flex items-center gap-1 rounded-lg border border-white/10 bg-white/5 px-2.5 py-1 text-xs text-zinc-200 transition hover:border-white/25 hover:bg-white/10"
+                onClick={() =>
+                  onLinkClick(item, {
+                    provider: c.store ?? "web",
+                    type: "marketplace",
+                    url: c.link,
+                    label: c.title,
+                    trustLevel: "medium",
+                  })
+                }
+                title={c.title}
+                className="w-24 shrink-0 overflow-hidden rounded-lg border border-line bg-white/[0.03] transition hover:border-line-strong"
               >
-                {link.provider}
-                {link.trustLevel === "high" && (
-                  <span className="text-emerald-400" title="Tienda verificada">
-                    ✓
-                  </span>
+                {c.imageUrl && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={c.imageUrl}
+                    alt={c.title}
+                    loading="lazy"
+                    className="h-20 w-full bg-black/40 object-cover"
+                  />
                 )}
+                <div className="px-1.5 py-1">
+                  <p className="line-clamp-2 text-[10px] leading-tight text-ink-muted">
+                    {c.title}
+                  </p>
+                  <p className="mt-0.5 text-[10px] text-ink-subtle">
+                    {c.store ?? ""}
+                    {c.price != null && (
+                      <span className="ml-1 font-semibold text-success">
+                        {c.price.toLocaleString("es-ES")} {c.currency === "USD" ? "$" : "€"}
+                      </span>
+                    )}
+                  </p>
+                </div>
               </a>
             ))}
           </div>
-        </details>
+        </div>
       )}
+
+      <MatchingDebugPanel debug={item.matching_debug} />
     </article>
   );
 }

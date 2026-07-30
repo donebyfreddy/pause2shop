@@ -2,6 +2,7 @@ import type { FrameAnalysis } from "@/lib/types";
 import type {
   CatalogItem,
   CatalogItemWithRecommendations,
+  CatalogListItem,
   FrameSourceType,
   ItemFeedback,
   ProductRecommendation,
@@ -42,6 +43,9 @@ export type SavedCatalogItem = {
   recommendations: ProductRecommendation[];
 };
 
+/** Estado de la persistencia del catálogo. */
+export type PersistenceStatus = "postgres" | "memory" | "memory_fallback";
+
 export type AnalyzeFrameSuccess = {
   ok: true;
   analysis: FrameAnalysis;
@@ -49,17 +53,27 @@ export type AnalyzeFrameSuccess = {
   mock: boolean;
   /** true si el catálogo persiste en base de datos; false si es en memoria. */
   persisted: boolean;
+  /** Detalle del modo de persistencia (memory_fallback = DB caída, sesión en memoria). */
+  persistence?: PersistenceStatus;
   videoId: string | null;
   frameId: string | null;
   items: SavedCatalogItem[];
   warning?: string;
+  /** Duraciones por etapa (detectionMs, enrichMs, persistenceMs, totalMs). */
+  timings?: Record<string, number>;
 };
 
 export type AnalyzeFrameError = { ok: false; error: string };
 export type AnalyzeFrameApiResponse = AnalyzeFrameSuccess | AnalyzeFrameError;
 
 export type CatalogListResponse =
-  | { ok: true; items: CatalogItem[]; total: number; persisted: boolean }
+  | {
+      ok: true;
+      items: CatalogListItem[];
+      total: number;
+      persisted: boolean;
+      persistence?: PersistenceStatus;
+    }
   | { ok: false; error: string };
 
 export type CatalogItemResponse =

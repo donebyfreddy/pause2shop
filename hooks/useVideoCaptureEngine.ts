@@ -24,10 +24,21 @@ export type EngineLogEvent = {
 // ---------------------------------------------------------------------------
 
 const FRAME_DIFF_THRESHOLD = Number(
-  process.env.NEXT_PUBLIC_FRAME_DIFF_THRESHOLD ?? "0.08",
+  process.env.NEXT_PUBLIC_VIDEO_SCENE_DIFF_THRESHOLD ??
+    process.env.NEXT_PUBLIC_FRAME_DIFF_THRESHOLD ??
+    "0.10",
 );
-const FORCE_EVERY_N = Number(
-  process.env.NEXT_PUBLIC_FORCE_ANALYZE_EVERY_N_FRAMES ?? "5",
+/** Nº de ticks consecutivos saltados tras el cual se fuerza un análisis. */
+const FORCE_AFTER_SKIPS = Number(
+  process.env.NEXT_PUBLIC_VIDEO_FORCE_ANALYSIS_AFTER_SKIPS ?? "4",
+);
+/** Mínimo entre dos análisis remotos: el tick local puede ser mucho más rápido. */
+const MIN_ANALYSIS_INTERVAL_MS = Number(
+  process.env.NEXT_PUBLIC_VIDEO_MIN_ANALYSIS_INTERVAL_MS ?? "1500",
+);
+/** Máximo sin analizar mientras se reproduce, aunque la escena no cambie. */
+const MAX_ANALYSIS_INTERVAL_MS = Number(
+  process.env.NEXT_PUBLIC_VIDEO_MAX_ANALYSIS_INTERVAL_MS ?? "3000",
 );
 
 // ---------------------------------------------------------------------------
@@ -84,7 +95,8 @@ export function useVideoCaptureEngine({
   onLog,
 }: Options): VideoCaptureEngine {
   const prevPixelsRef = useRef<Uint8ClampedArray | null>(null);
-  const frameCountRef = useRef(0);
+  const skipCountRef = useRef(0);
+  const lastAnalysisAtRef = useRef(0);
   const logIdRef = useRef(0);
 
   const log = useCallback(
@@ -109,7 +121,8 @@ export function useVideoCaptureEngine({
       }
 
       if (analyzing) {
-        log("info", "Frame saltado: análisis anterior en curso");
+        // Silencioso en ticks automáticos (con tick de ~400ms sería spam).
+        if (force) log("info", "Frame saltado: análisis anterior en curso");
         return;
       }
 
@@ -125,26 +138,39 @@ export function useVideoCaptureEngine({
         return;
       }
 
-      // ----- Frame diff check -----
-      frameCountRef.current++;
-      const shouldForce = force || frameCountRef.current % FORCE_EVERY_N === 0;
+      // ----- Scheduler -----
+      // El tick local es rápido (~400ms) y barato: solo lee un mini-frame y
+      // decide. El análisis remoto se lanza únicamente si:
+      //   a) hay cambio de escena significativo, o
+      //   b) llevamos demasiados ticks saltados / demasiado tiempo sin analizar,
+      // y nunca antes de MIN_ANALYSIS_INTERVAL_MS del análisis anterior.
+      const now = Date.now();
 
-      if (!shouldForce) {
-        const diffResult = computeFrameDiffFromVideo(video, prevPixelsRef.current);
-        if (diffResult) {
-          prevPixelsRef.current = diffResult.pixels;
-          if (diffResult.diff < FRAME_DIFF_THRESHOLD) {
-            log(
-              "info",
-              `Frame saltado: escena similar (diff=${(diffResult.diff * 100).toFixed(1)}%)`,
-            );
-            return;
-          }
+      if (!force && now - lastAnalysisAtRef.current < MIN_ANALYSIS_INTERVAL_MS) {
+        return; // demasiado pronto — ni siquiera cuenta como skip
+      }
+
+      const diffResult = computeFrameDiffFromVideo(video, prevPixelsRef.current);
+      if (diffResult) prevPixelsRef.current = diffResult.pixels;
+
+      if (!force) {
+        const sceneChanged =
+          !diffResult || diffResult.diff >= FRAME_DIFF_THRESHOLD;
+        const tooManySkips = skipCountRef.current >= FORCE_AFTER_SKIPS;
+        const tooLongSinceLast =
+          now - lastAnalysisAtRef.current >= MAX_ANALYSIS_INTERVAL_MS;
+
+        if (!sceneChanged && !tooManySkips && !tooLongSinceLast) {
+          skipCountRef.current++;
+          log(
+            "info",
+            `Frame saltado: escena similar (diff=${((diffResult?.diff ?? 0) * 100).toFixed(1)}%, skips=${skipCountRef.current})`,
+          );
+          return;
         }
-      } else {
-        // Still update prevPixels on forced captures.
-        const diffResult = computeFrameDiffFromVideo(video, prevPixelsRef.current);
-        if (diffResult) prevPixelsRef.current = diffResult.pixels;
+        if (sceneChanged && diffResult) {
+          log("info", `Escena nueva detectada (diff=${(diffResult.diff * 100).toFixed(1)}%)`);
+        }
       }
 
       // ----- Capture -----
@@ -160,12 +186,13 @@ export function useVideoCaptureEngine({
       }
 
       const src = captureMode === "screen_capture" ? "stream de pantalla" : "canvas directo";
-      const tag = shouldForce && !force ? " (forzado)" : "";
-      log("success", `Frame capturado desde ${src}${tag} — enviando a IA`);
+      log("success", `Frame capturado desde ${src} — enviando a IA`);
 
+      skipCountRef.current = 0;
+      lastAnalysisAtRef.current = now;
       onCapture(dataUrl);
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
     [captureMode, getVideoElement, analyzing, onCapture, log],
   );
 
@@ -174,7 +201,8 @@ export function useVideoCaptureEngine({
 
   const resetDiff = useCallback(() => {
     prevPixelsRef.current = null;
-    frameCountRef.current = 0;
+    skipCountRef.current = 0;
+    lastAnalysisAtRef.current = 0;
   }, []);
 
   return { captureAuto, captureNow, resetDiff };

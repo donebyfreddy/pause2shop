@@ -1,18 +1,30 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
   getCatalogRepository,
+  getPersistenceMode,
   isPersistentCatalog,
   normalizeDetectedItem,
 } from "@/lib/catalog";
 import type { FrameSourceType, RecommendationInput } from "@/lib/catalog/types";
 import { searchProducts } from "@/lib/products/searchProducts";
-import { analyzeWithOpenAI, mockAnalysis, normalizeAnalysis } from "@/lib/vision";
+import {
+  analyzeWithOpenAI,
+  analyzeWithOpenAIStream,
+  mockAnalysis,
+  normalizeAnalysis,
+} from "@/lib/vision";
 import type {
   AnalyzeFrameApiResponse,
   FrameMeta,
+  PersistenceStatus,
   SavedCatalogItem,
 } from "@/lib/api/types";
-import type { FrameAnalysis } from "@/lib/types";
+import type { FrameAnalysis, VideoAnalysisConfig } from "@/lib/types";
+import {
+  isCategoryAllowed,
+  isRelationshipAllowed,
+  parseConfig,
+} from "@/lib/analysis/categories";
 import { trackVisionCall, trackProductCalls } from "@/lib/server/costTracker";
 import { enrichAnalysisWithVisualMatches } from "@/lib/visualSearch/engine";
 import type { EnrichedItem } from "@/lib/visualSearch/types";
@@ -79,6 +91,7 @@ function coerceSourceType(v: unknown): FrameSourceType {
 type ParsedBody = {
   imageDataUrl: string | null;
   meta: Partial<FrameMeta>;
+  config: VideoAnalysisConfig;
 };
 
 async function parseBody(req: NextRequest): Promise<ParsedBody> {
@@ -97,6 +110,7 @@ async function parseBody(req: NextRequest): Promise<ParsedBody> {
     return {
       imageDataUrl: typeof body.image === "string" ? body.image : null,
       meta,
+      config: parseConfig(body.analysisConfig),
     };
   }
 
@@ -108,20 +122,49 @@ async function parseBody(req: NextRequest): Promise<ParsedBody> {
     meta.videoUrl = (form.get("videoUrl") as string) || undefined;
     meta.videoTitle = (form.get("videoTitle") as string) || undefined;
     meta.timestampSeconds = Number(form.get("timestampSeconds")) || 0;
+    const formConfig = form.get("analysisConfig");
+    const config = parseConfig(
+      typeof formConfig === "string" ? safeJson(formConfig) : undefined
+    );
     if (file instanceof Blob) {
       const buf = Buffer.from(await file.arrayBuffer());
       if (buf.byteLength > MAX_IMAGE_BYTES) {
-        return { imageDataUrl: null, meta }; // se valida arriba como 413
+        return { imageDataUrl: null, meta, config }; // se valida arriba como 413
       }
       const mime = file.type || "image/jpeg";
       return {
         imageDataUrl: `data:${mime};base64,${buf.toString("base64")}`,
         meta,
+        config,
       };
     }
+    return { imageDataUrl: null, meta, config };
   }
 
-  return { imageDataUrl: null, meta };
+  return { imageDataUrl: null, meta, config: parseConfig(undefined) };
+}
+
+function safeJson(raw: string): unknown {
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return undefined;
+  }
+}
+
+/** Aplica el filtro de categorías/relationship al análisis mock. */
+function filterMock(
+  analysis: FrameAnalysis,
+  config: VideoAnalysisConfig
+): FrameAnalysis {
+  return {
+    ...analysis,
+    items: analysis.items.filter(
+      (it) =>
+        isCategoryAllowed(it, config.categories) &&
+        isRelationshipAllowed(it.relationship, config)
+    ),
+  };
 }
 
 /**
@@ -156,15 +199,17 @@ function recommendationsFromVisualMatch(
  * deduplicación) y recomendaciones iniciales. Resiliente: si la persistencia
  * falla, no rompe la respuesta de visión (devuelve warning).
  *
- * NOTA de privacidad: NO se guardan imágenes del frame en el servidor (igual
- * que el resto de la app). Sí se guarda el bounding_box para poder recortar en
- * un paso futuro con Supabase Storage. Ver README → "Siguientes pasos".
+ * NOTA de privacidad: solo se guarda la URL del frame si el Visual Matching
+ * Engine ya lo publicó en Storage para la búsqueda inversa (modo imagen). El
+ * crop por objeto se persiste después vía /api/vision/match-object.
  */
 async function persist(
   analysis: FrameAnalysis,
-  meta: Partial<FrameMeta>
+  meta: Partial<FrameMeta>,
+  frameImageUrl: string | null = null
 ): Promise<{
   persisted: boolean;
+  persistence: PersistenceStatus;
   videoId: string | null;
   frameId: string | null;
   items: SavedCatalogItem[];
@@ -209,6 +254,7 @@ async function persist(
       sourceType,
       sourceUrl: meta.videoUrl ?? null,
       timestampSeconds,
+      frameImageUrl,
     });
     const { item, created } = await repo.upsertDetectedItem(input);
     saved.push({ item, created, recommendations: [] });
@@ -235,7 +281,10 @@ async function persist(
     .map((s, idx) => ({ idx, c: s.item.confidence }))
     .filter((x) => !visualRecIndexes.has(x.idx))
     .sort((a, b) => b.c - a.c)
-    .slice(0, INITIAL_REC_ITEMS)
+    // Para frames de vídeo el matching real corre asíncrono en el cliente
+    // (/api/vision/match-object): no pagamos aquí la latencia de las
+    // sugerencias OpenAI inline — solo para imágenes sueltas.
+    .slice(0, sourceType === "image_upload" ? INITIAL_REC_ITEMS : 0)
     .map((x) => x.idx);
 
   await Promise.allSettled(
@@ -256,12 +305,129 @@ async function persist(
     })
   );
 
+  const persistence = getPersistenceMode();
   return {
     persisted: isPersistentCatalog(),
+    persistence,
     videoId: video.id,
     frameId: frame.id,
     items: saved,
+    warning:
+      persistence === "memory_fallback"
+        ? "El análisis se completó. El catálogo se sincronizará cuando vuelva la conexión."
+        : undefined,
   };
+}
+
+/**
+ * Variante en STREAMING (NDJSON) de analyze-frame. Emite una línea JSON por
+ * evento para que el cliente pinte cada objeto según lo genera el modelo:
+ *   {"type":"start"}
+ *   {"type":"item","item":{…},"index":0}        ← uno por objeto, en vivo
+ *   {"type":"analysis","analysis":{…}}          ← análisis completo normalizado
+ *   {"type":"complete", persisted, persistence, videoId, frameId, items,
+ *     warning?, timings}
+ *   {"type":"error","error":"…"}                ← solo si la visión falla
+ */
+export async function handleAnalyzeFrameStream(
+  req: NextRequest
+): Promise<NextResponse | Response> {
+  if (rateLimited(clientKey(req))) {
+    return bad(
+      "Demasiadas peticiones. Espera unos segundos e inténtalo de nuevo.",
+      429
+    );
+  }
+
+  let parsed: ParsedBody;
+  try {
+    parsed = await parseBody(req);
+  } catch {
+    return bad("No se pudo leer el cuerpo de la petición.");
+  }
+  const { imageDataUrl, meta, config } = parsed;
+  if (!imageDataUrl || !imageDataUrl.startsWith("data:image/")) {
+    return bad("Falta una imagen válida (data URL en base64).");
+  }
+  const commaIdx = imageDataUrl.indexOf(",");
+  const approxBytes = commaIdx === -1 ? 0 : (imageDataUrl.length - commaIdx) * 0.75;
+  if (approxBytes > MAX_IMAGE_BYTES) {
+    return bad("La imagen es demasiado grande.", 413);
+  }
+
+  const apiKey = process.env.OPENAI_API_KEY;
+  const model = process.env.VISION_MODEL || "gpt-5-mini";
+  const encoder = new TextEncoder();
+
+  const stream = new ReadableStream<Uint8Array>({
+    async start(controller) {
+      const send = (obj: unknown) =>
+        controller.enqueue(encoder.encode(JSON.stringify(obj) + "\n"));
+      const timings: Record<string, number> = {};
+      const tStart = Date.now();
+      send({ type: "start" });
+
+      let analysis: FrameAnalysis;
+      let mock = false;
+      try {
+        if (!apiKey) {
+          analysis = normalizeAnalysis(filterMock(mockAnalysis(), config));
+          mock = true;
+          analysis.items.forEach((item, index) => send({ type: "item", item, index }));
+        } else {
+          analysis = normalizeAnalysis(
+            await analyzeWithOpenAIStream(
+              imageDataUrl,
+              { apiKey, model, config },
+              (item, index) => send({ type: "item", item, index })
+            )
+          );
+        }
+        trackVisionCall(mock);
+      } catch (err) {
+        send({
+          type: "error",
+          error: `No se pudo analizar el frame: ${err instanceof Error ? err.message : "Error desconocido"}`,
+        });
+        controller.close();
+        return;
+      }
+      timings.detectionMs = Date.now() - tStart;
+
+      // Análisis completo normalizado (orden por relevancia + productLinks).
+      send({ type: "analysis", analysis, mock });
+
+      // Persistencia resiliente: nunca rompe el stream.
+      try {
+        const tPersist = Date.now();
+        const result = await persist(analysis, meta);
+        timings.persistenceMs = Date.now() - tPersist;
+        timings.totalMs = Date.now() - tStart;
+        send({ type: "complete", mock, ...result, timings });
+      } catch (err) {
+        timings.totalMs = Date.now() - tStart;
+        send({
+          type: "complete",
+          mock,
+          persisted: false,
+          persistence: "memory_fallback",
+          videoId: null,
+          frameId: null,
+          items: [],
+          warning: `El análisis funcionó pero no se pudo guardar en el catálogo: ${err instanceof Error ? err.message : "error"}`,
+          timings,
+        });
+      }
+      controller.close();
+    },
+  });
+
+  return new Response(stream, {
+    headers: {
+      "Content-Type": "application/x-ndjson; charset=utf-8",
+      "Cache-Control": "no-cache, no-transform",
+    },
+  });
 }
 
 /** Lógica completa de POST /api/vision/analyze-frame (compartida). */
@@ -282,7 +448,7 @@ export async function handleAnalyzeFrame(
     return bad("No se pudo leer el cuerpo de la petición.");
   }
 
-  const { imageDataUrl, meta } = parsed;
+  const { imageDataUrl, meta, config } = parsed;
   if (!imageDataUrl || !imageDataUrl.startsWith("data:image/")) {
     return bad("Falta una imagen válida (data URL en base64).");
   }
@@ -294,18 +460,22 @@ export async function handleAnalyzeFrame(
   }
 
   const apiKey = process.env.OPENAI_API_KEY;
-  const model = process.env.VISION_MODEL || "gpt-4.1-mini";
+  // gpt-5-mini con reasoning minimal: en benchmark (2026-07) detecta ~12
+  // objetos con boxes en ~17s vs 8 en ~36s de gpt-4.1-mini.
+  const model = process.env.VISION_MODEL || "gpt-5-mini";
 
   // 1) Visión (real o mock).
+  const timings: Record<string, number> = {};
+  const tStart = Date.now();
   let analysis: FrameAnalysis;
   let mock = false;
   try {
     if (!apiKey) {
-      analysis = normalizeAnalysis(mockAnalysis());
+      analysis = normalizeAnalysis(filterMock(mockAnalysis(), config));
       mock = true;
     } else {
       analysis = normalizeAnalysis(
-        await analyzeWithOpenAI(imageDataUrl, { apiKey, model })
+        await analyzeWithOpenAI(imageDataUrl, { apiKey, model, config })
       );
     }
     trackVisionCall(mock);
@@ -313,22 +483,30 @@ export async function handleAnalyzeFrame(
     const message = err instanceof Error ? err.message : "Error desconocido";
     return bad(`No se pudo analizar el frame: ${message}`, 502);
   }
+  timings.detectionMs = Date.now() - tStart;
 
   // 2) Visual Matching Engine: reverse image search (Google Lens) + shopping
   // real (SerpAPI/DataForSEO) con caché por hash. Best-effort: si no hay
   // motores configurados o fallan, los items conservan sus deep-links.
+  let frameImageUrl: string | null = null;
   if (!mock) {
-    const { items } = await enrichAnalysisWithVisualMatches(
+    const tEnrich = Date.now();
+    const { items, outcome } = await enrichAnalysisWithVisualMatches(
       imageDataUrl,
       analysis
     );
     analysis = { ...analysis, items };
+    frameImageUrl = outcome?.frameImageUrl ?? null;
+    timings.enrichMs = Date.now() - tEnrich;
   }
 
   // 3) Persistencia en catálogo (resiliente).
   try {
-    const result = await persist(analysis, meta);
-    return NextResponse.json({ ok: true, analysis, mock, ...result });
+    const tPersist = Date.now();
+    const result = await persist(analysis, meta, frameImageUrl);
+    timings.persistenceMs = Date.now() - tPersist;
+    timings.totalMs = Date.now() - tStart;
+    return NextResponse.json({ ok: true, analysis, mock, ...result, timings });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Error desconocido";
     // La visión funcionó; no rompemos la respuesta por un fallo de catálogo.
@@ -337,6 +515,7 @@ export async function handleAnalyzeFrame(
       analysis,
       mock,
       persisted: false,
+      persistence: "memory_fallback" as const,
       videoId: null,
       frameId: null,
       items: [],

@@ -7,14 +7,30 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "node --import tsx --test \"test/**/*.test.ts\"",
-    "db:migrate": "node --import tsx scripts/migrate.ts"
+    "test": "SCRAPER_AI_ENABLED=false SCRAPER_PLAYWRIGHT_ENABLED=false node --import tsx --test \"test/**/*.test.ts\"",
+    "db:migrate": "node --import tsx scripts/migrate.ts",
+    "db:verify": "node --import tsx scripts/verifyDb.ts",
+    "typecheck": "tsc --noEmit",
+    "env:check": "node --import tsx scripts/envCheck.ts",
+    "scraper:probe": "node --import tsx scripts/scraperProbe.ts",
+    "scraper:infer": "node --import tsx scripts/inferProductPatterns.ts",
+    "scraper:smoke": "node --import tsx scripts/scraperSmoke.ts"
   },
   "dependencies": {
+    "cheerio": "^1.2.0",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "drizzle-orm": "^0.45.2",
+    "lucide-react": "^1.27.0",
+    "motion": "^12.43.0",
     "next": "16.2.9",
     "pg": "^8.22.0",
+    "playwright-core": "^1.62.0",
     "react": "19.2.4",
-    "react-dom": "19.2.4"
+    "react-dom": "19.2.4",
+    "sharp": "^0.33.5",
+    "tailwind-merge": "^3.6.0",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
@@ -22,6 +38,7 @@
     "@types/pg": "^8.20.0",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "drizzle-kit": "^0.31.10",
     "eslint": "^9",
     "eslint-config-next": "16.2.9",
     "tailwindcss": "^4",

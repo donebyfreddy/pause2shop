@@ -3,6 +3,11 @@
  * Todos los motores son opcionales: el engine usa los que estén configurados
  * y degrada con elegancia (Lens → Shopping → deep-links actuales).
  */
+import {
+  getStorageConfig,
+  isStorageConfigured,
+  type StorageConfig,
+} from "@/lib/mediaStorage";
 
 function bool(v: string | undefined, fallback = false): boolean {
   if (v == null || v === "") return fallback;
@@ -36,12 +41,12 @@ export type VisualSearchConfig = {
   costPerLensSearchUsd: number;
   costPerShoppingSearchUsd: number;
   costPerDataForSeoSearchUsd: number;
-  /** Supabase Storage para publicar el frame (requisito de Lens). */
-  storage: {
-    supabaseUrl: string;
-    serviceRoleKey: string;
-    bucket: string;
-  } | null;
+  /**
+   * Storage donde publicar el frame (requisito de Lens: exige URL pública).
+   * Lo resuelve el adaptador de lib/storage; null si el proveedor configurado
+   * no está implementado, y entonces el engine se salta el reverse image search.
+   */
+  storage: StorageConfig | null;
 };
 
 export function getVisualSearchConfig(
@@ -56,13 +61,8 @@ export function getVisualSearchConfig(
       ? { username: dfsUser, password: dfsPass }
       : null;
 
-  const supabaseUrl = env.SUPABASE_URL?.trim();
-  const serviceRoleKey = env.SUPABASE_SERVICE_ROLE_KEY?.trim();
-  const bucket = env.STORAGE_BUCKET?.trim() || "frames";
-  const storage =
-    supabaseUrl && serviceRoleKey
-      ? { supabaseUrl: supabaseUrl.replace(/\/$/, ""), serviceRoleKey, bucket }
-      : null;
+  const storageConfig = getStorageConfig(env);
+  const storage = isStorageConfigured(storageConfig) ? storageConfig : null;
 
   return {
     enabled:

@@ -17,7 +17,7 @@ import type {
 
 /**
  * Contrato del catálogo. Hay dos implementaciones:
- *  - PostgresCatalogRepository (producción: Postgres / Supabase)
+ *  - PostgresCatalogRepository (producción: Neon Postgres)
  *  - MemoryCatalogRepository (fallback sin DATABASE_URL + tests)
  *
  * La elección la hace lib/catalog/index.ts según haya o no DATABASE_URL.
@@ -47,6 +47,13 @@ export interface CatalogRepository {
     recs: RecommendationInput[]
   ): Promise<ProductRecommendation[]>;
   listRecommendations(itemId: string): Promise<ProductRecommendation[]>;
+  /**
+   * Mejor recomendación (mayor similarity_score) por item, en una sola pasada.
+   * Para adjuntar la imagen del producto encontrado a las tarjetas del listado.
+   */
+  listTopRecommendations(
+    itemIds: string[]
+  ): Promise<Map<string, ProductRecommendation>>;
 
   addFeedback(input: FeedbackInput): Promise<ItemFeedback>;
 }

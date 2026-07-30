@@ -1,6 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getCatalogRepository, isPersistentCatalog } from "@/lib/catalog";
-import type { CatalogFilters, ItemStatus } from "@/lib/catalog/types";
+import {
+  getCatalogRepository,
+  getPersistenceMode,
+  isPersistentCatalog,
+} from "@/lib/catalog";
+import type {
+  CatalogFilters,
+  CatalogListItem,
+  ItemStatus,
+} from "@/lib/catalog/types";
+import { deriveImagePersistenceStatus } from "@/lib/catalog/images";
 import type { CatalogListResponse } from "@/lib/api/types";
 
 export const runtime = "nodejs";
@@ -33,12 +42,28 @@ export async function GET(
   };
 
   try {
-    const { items, total } = await getCatalogRepository().listItems(filters);
+    const repo = getCatalogRepository();
+    const { items, total } = await repo.listItems(filters);
+    const persistence = getPersistenceMode();
+
+    // Imagen del producto encontrado: mejor recomendación por item, en una
+    // sola consulta. Best-effort — si falla, las tarjetas salen sin match.
+    const topRecs = await repo
+      .listTopRecommendations(items.map((i) => i.id))
+      .catch(() => new Map());
+
+    const enriched: CatalogListItem[] = items.map((item) => ({
+      ...item,
+      bestMatch: topRecs.get(item.id) ?? null,
+      imagePersistenceStatus: deriveImagePersistenceStatus(item, persistence),
+    }));
+
     return NextResponse.json({
       ok: true,
-      items,
+      items: enriched,
       total,
       persisted: isPersistentCatalog(),
+      persistence,
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Error desconocido";

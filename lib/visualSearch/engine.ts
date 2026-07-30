@@ -12,6 +12,11 @@ import {
   serpApiLens,
   serpApiShopping,
 } from "./providers";
+import {
+  classifyMatch,
+  evidenceLines,
+  matchConfidence,
+} from "./matchConfidence";
 import { buildSearchQueries } from "./queryBuilder";
 import { rankCandidates } from "./rank";
 import { decodeImageDataUrl, uploadFramePublic } from "./storage";
@@ -39,8 +44,6 @@ import type {
  * conserva los deep-links actuales como fallback.
  */
 
-/** Score mínimo para considerar que hay un match real que enseñar. */
-const MIN_MATCH_SCORE = 35;
 /** Score bajo → adjuntamos fallback_results con las queries usadas. */
 const WEAK_MATCH_SCORE = 70;
 const MAX_PURCHASE_LINKS = 4;
@@ -69,7 +72,7 @@ async function runLensSearch(
   const frameUrl = await uploadFramePublic(image, config);
   if (!frameUrl) {
     outcome.warnings.push(
-      "No se pudo publicar el frame (Supabase Storage): reverse image search omitida."
+      "No se pudo publicar el frame en un storage público: reverse image search omitida."
     );
     return [];
   }
@@ -185,12 +188,15 @@ function buildPurchaseLinks(ranked: RankedCandidate[]): PurchaseLink[] {
   return links;
 }
 
-function buildVisualMatch(
+export function buildVisualMatch(
   item: DetectedItem,
   ranked: RankedCandidate[]
 ): VisualMatch | null {
   const best = ranked[0];
-  if (!best || best.score < MIN_MATCH_SCORE) return null;
+  if (!best) return null;
+  // Corte de fiabilidad: bajo el umbral "similar" el candidato es NO FIABLE
+  // y no se presenta como producto encontrado (la UI ofrece búsqueda manual).
+  if (classifyMatch(best.score, best.scoreBreakdown) === null) return null;
   return {
     exact_match_found: best.matchType !== "similar",
     match_type: best.matchType,
@@ -204,6 +210,8 @@ function buildVisualMatch(
       .slice(0, 4),
     purchase_links: buildPurchaseLinks(ranked),
     best_match_score: Math.round(best.score),
+    match_confidence: matchConfidence(best.score),
+    evidence: evidenceLines(best.scoreBreakdown),
     best_match_source: best.source,
     ranked_candidates: ranked.slice(0, MAX_RANKED_CANDIDATES),
   };
