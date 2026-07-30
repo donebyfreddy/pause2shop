@@ -200,6 +200,14 @@ export class PostgresCatalogStore implements CatalogStore {
     return Number(res.rows[0].c);
   }
 
+  /** Un solo GROUP BY en vez de un count por fuente. Ver el interfaz. */
+  async countProductsBySource(): Promise<Map<string, number>> {
+    const res = await getPool().query<{ source: string; c: string }>(
+      "select source, count(*) as c from catalog_products group by source"
+    );
+    return new Map(res.rows.map((r) => [r.source, Number(r.c)]));
+  }
+
   async incrementDuplicates(n = 1): Promise<void> {
     await getPool().query(
       `insert into provider_usage (provider, calls, errors)
@@ -220,6 +228,25 @@ export class PostgresCatalogStore implements CatalogStore {
       paused: res.rows[0].paused,
       lastSyncAt: res.rows[0].last_sync_at ? new Date(res.rows[0].last_sync_at).toISOString() : null,
     };
+  }
+
+  /** Una sola lectura de catalog_sources en vez de una por fuente. */
+  async getAllSourceStates(): Promise<Map<string, SourceState>> {
+    const res = await getPool().query<{
+      id: string;
+      paused: boolean;
+      last_sync_at: string | Date | null;
+    }>("select id, paused, last_sync_at from catalog_sources");
+    return new Map(
+      res.rows.map((r) => [
+        r.id,
+        {
+          id: r.id,
+          paused: r.paused,
+          lastSyncAt: r.last_sync_at ? new Date(r.last_sync_at).toISOString() : null,
+        },
+      ])
+    );
   }
 
   async setSourceState(state: SourceState): Promise<void> {
@@ -304,6 +331,60 @@ export class PostgresCatalogStore implements CatalogStore {
       aiCostUsd: Math.round(Number(row.ai_cost) * 1e6) / 1e6,
       byPrimaryExtractor,
     };
+  }
+
+  /**
+   * Las mismas dos agregaciones que `extractionStats`, pero agrupadas por
+   * `source` para resolver todas las fuentes en 2 queries en vez de 2 por
+   * fuente. Ver el interfaz.
+   */
+  async extractionStatsBySource(): Promise<Map<string, ExtractionStats>> {
+    const where = "where doc ? 'extraction'";
+    const [totals, byExtractor] = await Promise.all([
+      getPool().query(
+        `select
+           source,
+           count(*) filter (where doc->'extraction' is not null and doc->'extraction' <> 'null'::jsonb)::int as total,
+           count(*) filter (where (doc->'extraction'->>'aiUsed')::boolean)::int as with_ai,
+           count(*) filter (where (doc->'extraction'->>'aiUsed')::boolean is false)::int as without_ai,
+           count(*) filter (where (doc->'extraction'->>'browserUsed')::boolean)::int as with_browser,
+           coalesce(sum((doc->'extraction'->>'aiCostUsd')::numeric),0)::numeric as ai_cost,
+           avg((doc->'extraction'->>'confidence')::numeric) as avg_confidence
+         from catalog_products ${where}
+         group by source`
+      ),
+      getPool().query(
+        `select source,
+                coalesce(doc->'extraction'->>'primaryExtractor', 'desconocido') as extractor,
+                count(*)::int as c
+         from catalog_products ${where}
+         group by source, extractor`
+      ),
+    ]);
+
+    const extractors = new Map<string, Record<string, number>>();
+    for (const r of byExtractor.rows) {
+      const bucket = extractors.get(r.source) ?? {};
+      bucket[r.extractor] = r.c;
+      extractors.set(r.source, bucket);
+    }
+
+    const out = new Map<string, ExtractionStats>();
+    for (const row of totals.rows) {
+      const total = row.total as number;
+      out.set(row.source, {
+        total,
+        withAi: row.with_ai,
+        withoutAi: row.without_ai,
+        withBrowser: row.with_browser,
+        aiRatio: total > 0 ? Math.round((row.with_ai / total) * 100) / 100 : null,
+        avgConfidence:
+          row.avg_confidence != null ? Math.round(Number(row.avg_confidence) * 100) / 100 : null,
+        aiCostUsd: Math.round(Number(row.ai_cost) * 1e6) / 1e6,
+        byPrimaryExtractor: extractors.get(row.source) ?? {},
+      });
+    }
+    return out;
   }
 
   async stats(): Promise<StoreStats> {

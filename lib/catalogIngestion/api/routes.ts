@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { Router, ApiError, sendJson, type RequestContext } from "./router";
 import type { CatalogStore } from "../catalog/store";
+import { emptyExtractionStats } from "../catalog/store";
 import type { CatalogProduct, JobRecord, NormalizedProduct } from "../catalog/types";
 import {
   hydrateJobProgress,
@@ -178,10 +179,48 @@ export function buildRouter(store: CatalogStore): Router {
    * tiendas en cada carga del admin sería descortés y lento. Para el resto se
    * devuelve la última medición cacheada, o `not_checked` si nunca se midió.
    */
-  const describeConnector = async (c: CatalogConnector, live: boolean) => {
+  /**
+   * Estados y recuentos de TODAS las fuentes en 2 queries.
+   *
+   * Antes cada `describeConnector` hacía `getSourceState` + `countProducts` del
+   * conector: con 68 fuentes, 136 round trips por petición a través de un pool
+   * de 5 conexiones. Contra un Postgres local (~1 ms) pasaba desapercibido;
+   * contra Neon (cientos de ms por query) la landing tardaba 15-25 s.
+   */
+  const prefetchSourceData = async () => {
+    const [states, counts, extraction, jobs] = await Promise.all([
+      store.getAllSourceStates(),
+      store.countProductsBySource(),
+      store.extractionStatsBySource(),
+      // `listJobs` NO depende del conector: antes se llamaba con los mismos
+      // argumentos 68 veces y se filtraba en JS. Una vez y se agrupa aquí.
+      store.listJobs(100),
+    ]);
+    const jobsBySource = new Map<string, typeof jobs>();
+    for (const j of jobs) {
+      if (!j.source) continue;
+      const bucket = jobsBySource.get(j.source);
+      if (bucket) bucket.push(j);
+      else jobsBySource.set(j.source, [j]);
+    }
+    return { states, counts, extraction, jobsBySource };
+  };
+
+  type SourceData = Awaited<ReturnType<typeof prefetchSourceData>>;
+
+  const describeConnector = async (
+    c: CatalogConnector,
+    live: boolean,
+    /** Datos ya leídos en bloque. Si no se pasan, se leen solo para este id. */
+    prefetched?: SourceData
+  ) => {
     const meta = c.metadata;
-    const state = await store.getSourceState(c.id);
-    const productCount = await store.countProducts(c.id);
+    const state = prefetched
+      ? prefetched.states.get(c.id) ?? { id: c.id, paused: false, lastSyncAt: null }
+      : await store.getSourceState(c.id);
+    const productCount = prefetched
+      ? prefetched.counts.get(c.id) ?? 0
+      : await store.countProducts(c.id);
 
     let health: ConnectorHealthState;
     let note: string;
@@ -217,14 +256,18 @@ export function buildRouter(store: CatalogStore): Router {
 
     // Estadísticas de extracción reales: es lo que responde "¿cuánto de esta
     // fuente ha necesitado IA?" con datos de la base, no con una impresión.
-    const extraction = await store.extractionStats(c.id);
+    const extraction = prefetched
+      ? prefetched.extraction.get(c.id) ?? emptyExtractionStats()
+      : await store.extractionStats(c.id);
 
     // `verifiedLive` NO se declara: se demuestra. Solo es cierto si esta
     // fuente tiene productos reales en el catálogo extraídos por el pipeline.
     const verifiedLive = extraction.total > 0;
     const status = effectiveStatus(c.spec, health, { paused: state.paused, verifiedLive });
 
-    const recentJobs = (await store.listJobs(100)).filter((j) => j.source === c.id);
+    const recentJobs = prefetched
+      ? prefetched.jobsBySource.get(c.id) ?? []
+      : (await store.listJobs(100)).filter((j) => j.source === c.id);
     const lastError =
       recentJobs.flatMap((j) => j.errors).sort((a, b) => b.at.localeCompare(a.at))[0] ?? null;
 
@@ -252,7 +295,10 @@ export function buildRouter(store: CatalogStore): Router {
 
   router.add("GET", "/connectors", async ({ res, query }) => {
     const live = query.get("health") === "live";
-    const connectors = await Promise.all(listConnectors().map((c) => describeConnector(c, live)));
+    const sourceData = await prefetchSourceData();
+    const connectors = await Promise.all(
+      listConnectors().map((c) => describeConnector(c, live, sourceData))
+    );
     sendJson(res, 200, {
       connectors,
       summary: connectorRegistrySummary(),
@@ -747,17 +793,23 @@ export function buildRouter(store: CatalogStore): Router {
       getEmbeddingProvider(),
     ]);
     const registry = connectorRegistrySummary();
-    const connectorStates = await Promise.all(
-      listConnectors().map(async (c) => ({
+    // Una sola lectura de estados. Antes esto hacía DOS `getSourceState` por
+    // conector (una por campo), o sea 136 queries con 68 fuentes.
+    const states = await store.getAllSourceStates();
+    const connectorStates = listConnectors().map((c) => {
+      const state = states.get(c.id);
+      return {
         id: c.id,
-        paused: (await store.getSourceState(c.id)).paused,
-        lastSyncAt: (await store.getSourceState(c.id)).lastSyncAt,
-      }))
-    );
+        paused: state?.paused ?? false,
+        lastSyncAt: state?.lastSyncAt ?? null,
+      };
+    });
     const lastSync = connectorStates
       .map((s) => s.lastSyncAt)
       .filter((v): v is string => Boolean(v))
-      .sort()
+      // ISO-8601 ordena bien lexicográficamente, pero el comparador explícito
+      // evita depender del locale por defecto.
+      .sort((a, b) => a.localeCompare(b, "en"))
       .at(-1) ?? null;
 
     // Tasa de error real sobre los jobs recientes: fetches fallidos / intentos.

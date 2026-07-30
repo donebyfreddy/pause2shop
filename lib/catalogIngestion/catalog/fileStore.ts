@@ -163,6 +163,14 @@ export class FileCatalogStore implements CatalogStore {
     return Object.values(this.data.products).filter((p) => p.source === source).length;
   }
 
+  async countProductsBySource(): Promise<Map<string, number>> {
+    const counts = new Map<string, number>();
+    for (const p of Object.values(this.data.products)) {
+      counts.set(p.source, (counts.get(p.source) ?? 0) + 1);
+    }
+    return counts;
+  }
+
   async incrementDuplicates(n = 1): Promise<void> {
     this.data.duplicatesDetected += n;
     this.scheduleSave();
@@ -170,6 +178,10 @@ export class FileCatalogStore implements CatalogStore {
 
   async getSourceState(id: string): Promise<SourceState> {
     return this.data.sources[id] ?? { id, paused: false, lastSyncAt: null };
+  }
+
+  async getAllSourceStates(): Promise<Map<string, SourceState>> {
+    return new Map(Object.entries(this.data.sources));
   }
 
   async setSourceState(state: SourceState): Promise<void> {
@@ -221,5 +233,20 @@ export class FileCatalogStore implements CatalogStore {
       (p) => !source || p.source === source
     );
     return aggregateExtractionStats(products);
+  }
+
+  async extractionStatsBySource(): Promise<Map<string, ExtractionStats>> {
+    const bySource = new Map<string, CatalogProduct[]>();
+    for (const p of Object.values(this.data.products)) {
+      const bucket = bySource.get(p.source);
+      if (bucket) bucket.push(p);
+      else bySource.set(p.source, [p]);
+    }
+    return new Map(
+      [...bySource].map(([source, products]) => [
+        source,
+        aggregateExtractionStats(products),
+      ])
+    );
   }
 }

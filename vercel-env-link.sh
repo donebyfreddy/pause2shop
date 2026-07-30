@@ -1,6 +1,38 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Sube las variables de un fichero .env al proyecto de Vercel.
+#
+#   ./vercel-env-link.sh [fichero]          # por defecto .env
+#   TARGETS="production" ./vercel-env-link.sh
+#
+# OJO con el fichero de origen: por defecto es `.env`, NO `.env.local`.
+# `.env.local` es el que escribe `vercel env pull`, así que usarlo como origen
+# monta un bucle en el que cualquier basura que ya esté en Vercel se re-sube.
+#
+# ------------------------------------------------------------------------------
+# HISTORIA DE UN BUG, PARA QUE NO VUELVA
+#
+# La versión anterior separaba clave y valor con:
+#
+#     while IFS="|||" read -r KEY VALUE; do
+#
+# En bash `IFS` es un CONJUNTO DE CARACTERES, no un separador de varios
+# caracteres: `IFS="|||"` es exactamente igual que `IFS="|"`. Al leer
+# `CLAVE|||valor`, el primer `|` separa, los otros dos generan campos vacíos y,
+# como VALUE es la última variable, se queda con el resto INCLUIDOS los
+# delimitadores → `VALUE="||valor"`.
+#
+# Resultado: se subieron 131 variables con el prefijo `||` (`||true`,
+# `||sk-proj-…`, `||postgresql://…`). Como `.env.local` se regenera con
+# `vercel env pull`, la corrupción volvió al disco y de ahí a la app, donde
+# `SCRAPER_AI_ENABLED="||true"` se evalúa como false y una connection string
+# `||postgresql://…` no pasa el check de `postgres://`.
+#
+# Ahora el separador es un TAB y se lee con `IFS=$'\t'`, que sí es un único
+# carácter. No cambies esto por un separador de varios caracteres.
+# ------------------------------------------------------------------------------
+
 ENV_FILE="${1:-.env}"
 TARGETS="${TARGETS:-production preview development}"
 
@@ -9,97 +41,122 @@ if [ ! -f "$ENV_FILE" ]; then
   exit 1
 fi
 
-# Detect CLI
+# La CLI tiene que ser >= 58. En la 54, `env add … preview` NO acepta el valor
+# por stdin: contesta `action_required / git_branch_required` y exige
+# `--value <valor>`, que dejaría el secreto visible en `ps`. Con la 58 el stdin
+# funciona y el valor no pasa nunca por argv.
+MIN_CLI_MAJOR=58
+VERCEL="npx --yes vercel@latest"
+
 if command -v vercel >/dev/null 2>&1; then
-  VERCEL="vercel"
-else
-  VERCEL="npx --yes vercel@latest"
+  CLI_MAJOR="$(vercel --version 2>/dev/null | head -1 | sed -E 's/[^0-9]*([0-9]+).*/\1/')"
+  if [ -n "$CLI_MAJOR" ] && [ "$CLI_MAJOR" -ge "$MIN_CLI_MAJOR" ] 2>/dev/null; then
+    VERCEL="vercel"
+  else
+    echo "ℹ️  vercel CLI v${CLI_MAJOR:-?} es < $MIN_CLI_MAJOR: se usa npx vercel@latest."
+    echo "   (Para acelerarlo: npm i -g vercel@latest)"
+  fi
 fi
 
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "🔗 Vercel auto link + env upload"
+echo "🔗 Vercel env upload — origen: $ENV_FILE"
+echo "   destinos: $TARGETS"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
 # ----------------------------------------------------------
-# 1. AUTO LINK (NO PROJECT NAME REQUIRED)
+# 1. LINK
 # ----------------------------------------------------------
-
 if [ ! -f ".vercel/project.json" ]; then
-  echo "📦 Linking project automatically..."
-
+  echo "📦 Linking project…"
   $VERCEL link --yes
-
-  echo "✅ Linked"
 else
-  echo "✅ Already linked"
+  echo "✅ Ya enlazado"
 fi
 
 # ----------------------------------------------------------
-# 2. OPTIONAL PULL (sync project)
+# 2. PARSE
 # ----------------------------------------------------------
+# Los pares van a un fichero temporal con permisos 600 y se borra al salir
+# (incluso si el script falla): lleva secretos en claro. La versión anterior
+# usaba /tmp/env_pairs.txt, una ruta fija y legible por cualquier usuario.
+PAIRS="$(mktemp "${TMPDIR:-/tmp}/vercel-env-pairs.XXXXXX")"
+chmod 600 "$PAIRS"
+trap 'rm -f "$PAIRS"' EXIT INT TERM
 
-echo "📡 Syncing project..."
-$VERCEL pull --yes || true
-
-# ----------------------------------------------------------
-# 3. PARSE .ENV
-# ----------------------------------------------------------
-
-python3 - "$ENV_FILE" <<'PY' > /tmp/env_pairs.txt
+python3 - "$ENV_FILE" <<'PY' > "$PAIRS"
 import sys, re
 
-file = sys.argv[1]
-key_re = re.compile(r"^[A-Z0-9_]+$", re.I)
+path = sys.argv[1]
+key_re = re.compile(r"^[A-Za-z0-9_]+$")
 
 def clean(v):
     v = v.strip()
     if len(v) >= 2 and v[0] == v[-1] and v[0] in ("'", '"'):
-        return v[1:-1]
+        v = v[1:-1]
     return v
 
-with open(file) as f:
-    for line in f:
-        line = line.strip()
-        if not line or line.startswith("#"):
+skipped_empty, skipped_bad = [], []
+with open(path) as f:
+    for raw in f:
+        line = raw.strip()
+        if not line or line.startswith("#") or "=" not in line:
             continue
-        if "=" not in line:
-            continue
-
         k, v = line.split("=", 1)
-        k, v = k.strip(), clean(v.strip())
+        k, v = k.strip(), clean(v)
+        if not key_re.match(k):
+            skipped_bad.append(k)
+            continue
+        if v == "":
+            # Una variable vacía en Vercel no es lo mismo que ausente y
+            # `vercel env add` con stdin vacío falla. Mejor no subirla.
+            skipped_empty.append(k)
+            continue
+        if "\t" in v or "\n" in v:
+            skipped_bad.append(k)
+            continue
+        print(f"{k}\t{v}")
 
-        if key_re.match(k):
-            print(f"{k}|||{v}")
+for k in skipped_empty:
+    print(f"·  vacía, no se sube: {k}", file=sys.stderr)
+for k in skipped_bad:
+    print(f"!  clave/valor no soportado, no se sube: {k}", file=sys.stderr)
 PY
 
+TOTAL=$(wc -l < "$PAIRS" | tr -d ' ')
+echo "📄 $TOTAL variable(s) con valor a subir"
+echo ""
+
 # ----------------------------------------------------------
-# 4. UPLOAD ENV
+# 3. UPLOAD
 # ----------------------------------------------------------
+OK=0
+FAILED=""
 
-COUNT=0
-
-while IFS="|||" read -r KEY VALUE; do
-  [ -z "$KEY" ] && continue
-
-  COUNT=$((COUNT+1))
-
-  TMP=$(mktemp)
-  printf "%s" "$VALUE" > "$TMP"
+# `IFS=$'\t'` — UN carácter. Ver la historia del bug arriba.
+while IFS=$'\t' read -r KEY VALUE; do
+  [ -z "${KEY:-}" ] && continue
 
   for TARGET in $TARGETS; do
-    echo "⬆️  $KEY -> $TARGET"
-    $VERCEL env add "$KEY" "$TARGET" --force < "$TMP" || true
+    # El valor va por una tubería, no por un fichero ni por argv: así no
+    # aparece en `ps` ni queda en disco. Nunca se imprime el valor.
+    if printf '%s' "$VALUE" | $VERCEL env add "$KEY" "$TARGET" --force >/dev/null 2>&1; then
+      echo "⬆️  $KEY → $TARGET"
+      OK=$((OK+1))
+    else
+      echo "❌ $KEY → $TARGET"
+      FAILED="$FAILED $KEY:$TARGET"
+    fi
   done
-
-  rm -f "$TMP"
-done < /tmp/env_pairs.txt
-
-rm -f /tmp/env_pairs.txt
+done < "$PAIRS"
 
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "✅ DONE"
-echo "Variables processed: $COUNT"
+echo "✅ $OK subida(s) correcta(s)"
+if [ -n "$FAILED" ]; then
+  echo "❌ Fallos:$FAILED"
+  echo ""
+  echo "👉 Revisa lo de arriba antes de desplegar."
+  exit 1
+fi
 echo ""
-echo "👉 Deploy:"
-echo "   vercel --prod"
+echo "👉 Despliega:  vercel --prod"

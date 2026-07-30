@@ -78,10 +78,27 @@ export interface CatalogStore {
   setActive(id: string, active: boolean): Promise<void>;
   recordPrice(id: string, point: PricePoint): Promise<void>;
   countProducts(source?: string): Promise<number>;
+  /**
+   * Nº de productos por fuente, TODAS de una vez.
+   *
+   * Existe para no hacer un `countProducts(id)` por conector: con 68 fuentes
+   * eso son 68 round trips, y contra una base remota (Neon) cada uno cuesta
+   * cientos de ms. Aquí es un solo `GROUP BY`.
+   *
+   * Las fuentes sin productos NO aparecen en el mapa: quien lo use debe
+   * asumir 0 por ausencia.
+   */
+  countProductsBySource(): Promise<Map<string, number>>;
   incrementDuplicates(n?: number): Promise<void>;
 
   // --- fuentes ---
   getSourceState(id: string): Promise<SourceState>;
+  /**
+   * Estado de TODAS las fuentes de una vez, por el mismo motivo que
+   * `countProductsBySource`. Las fuentes que nunca se han tocado no están en
+   * el mapa; el estado por defecto es `{ paused: false, lastSyncAt: null }`.
+   */
+  getAllSourceStates(): Promise<Map<string, SourceState>>;
   setSourceState(state: SourceState): Promise<void>;
 
   // --- jobs ---
@@ -92,6 +109,14 @@ export interface CatalogStore {
   stats(): Promise<StoreStats>;
   /** Estadísticas de extracción, globales o de una fuente. */
   extractionStats(source?: string): Promise<ExtractionStats>;
+  /**
+   * Estadísticas de extracción de TODAS las fuentes a la vez.
+   *
+   * `extractionStats(id)` cuesta DOS queries, así que llamarla por conector eran
+   * 136 round trips con 68 fuentes. Las fuentes sin productos no aparecen en el
+   * mapa: usa `emptyExtractionStats()` para ellas.
+   */
+  extractionStatsBySource(): Promise<Map<string, ExtractionStats>>;
 }
 
 /** Agrega estadísticas de extracción en memoria (lo usan los dos backends). */
