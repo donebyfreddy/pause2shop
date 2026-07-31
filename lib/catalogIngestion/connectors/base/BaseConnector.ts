@@ -104,6 +104,7 @@ export interface DiscoverInput {
   /** Techo de peticiones de descubrimiento en esta invocación. */
   maxRequests?: number;
   log?: JobLogger;
+  shouldCancel?: () => boolean;
 }
 
 export interface DiscoverResult {
@@ -111,6 +112,7 @@ export interface DiscoverResult {
   checkpoint: DiscoveryCheckpoint;
   strategiesUsed: string[];
   requests: number;
+  cancelled: boolean;
 }
 
 export interface ScrapeInput {
@@ -461,6 +463,7 @@ export class BaseConnector implements CatalogConnector {
       selectors: this.spec.selectors,
       checkpoint: input.checkpoint ?? null,
       maxRequests: input.maxRequests,
+      shouldCancel: input.shouldCancel,
       localeHints: this.localeHints(),
       fetchDocument: async (url, accept) => {
         try {
@@ -478,6 +481,7 @@ export class BaseConnector implements CatalogConnector {
       checkpoint: result.checkpoint,
       strategiesUsed: result.strategiesUsed,
       requests: result.requests,
+      cancelled: result.cancelled,
     };
   }
 
@@ -716,7 +720,19 @@ export class BaseConnector implements CatalogConnector {
     const startedAt = Date.now();
     const batchSize = options.batchSize ?? scraperConfig.batchSize;
     const timeBudgetMs = options.timeBudgetMs ?? Number.POSITIVE_INFINITY;
-    const limit = Math.min(options.limit ?? 100, scraperConfig.maxProductsPerJob);
+    // Un `limit` explícito (pruebas: "Zara, 3 productos") es autoritativo y no
+    // se recorta más. Si no se pide uno, se usa el techo configurado de la
+    // fuente (`SCRAPER_MAX_PRODUCTS_PER_SOURCE`); `0` ahí significa "sin
+    // límite funcional" — el descubrimiento y el scraping igualmente avanzan
+    // por lotes, nunca de golpe, así que no hace falta un techo bajo para que
+    // sea seguro en Vercel.
+    const sourceCap = scraperConfig.maxProductsPerSource;
+    let limit = Number.POSITIVE_INFINITY;
+    if (typeof options.limit === "number" && options.limit > 0) {
+      limit = options.limit;
+    } else if (sourceCap > 0) {
+      limit = sourceCap;
+    }
     const isolationKey = options.jobId ?? this.id;
 
     // Contadores previos: un job reanudado no reinicia sus cifras.
@@ -803,12 +819,22 @@ export class BaseConnector implements CatalogConnector {
           limit,
           checkpoint: discovery,
           log,
+          shouldCancel: options.shouldCancel,
         });
         urls = result.urls;
         discovery = result.checkpoint;
         checkpoint.urls = urls;
         checkpoint.discovery = discovery;
         checkpoint.index ??= 0;
+        if (result.cancelled) {
+          log({ stage: "discover", level: "warn", message: "descubrimiento cancelado desde el admin" });
+          return {
+            progress,
+            completed: false,
+            errors,
+            stoppedReason: "cancelado desde el admin (durante el descubrimiento)",
+          };
+        }
         log({
           stage: "discover",
           level: urls.length > 0 ? "success" : "warn",

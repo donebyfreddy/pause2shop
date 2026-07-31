@@ -5,6 +5,8 @@ import { usePathname } from "next/navigation";
 import { motion } from "motion/react";
 import {
   ArrowLeft,
+  ChevronsLeft,
+  ChevronsRight,
   Database,
   LayoutDashboard,
   ListChecks,
@@ -14,7 +16,7 @@ import {
   Settings,
   X,
 } from "lucide-react";
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { useTranslations } from "next-intl";
 import { cn } from "@/lib/ui/cn";
 import { LogoMark } from "@/components/shell/Logo";
@@ -30,7 +32,20 @@ import { ServiceStatusPill } from "./ServiceStatusPill";
  * Los estilos direccionales de este componente (posición/transform de la
  * barra lateral, padding del contenido) usan propiedades lógicas (`start-`,
  * `ps-`) y las variantes `rtl:`/`ltr:` de Tailwind para funcionar en árabe.
+ *
+ * El translate que oculta la barra en móvil va SIEMPRE bajo `max-lg:`. Tailwind
+ * v4 emite `ltr:`/`rtl:` como variantes incondicionales (sin media query) y
+ * `lg:` como una regla dentro de `@media`; con la misma especificidad, dos
+ * reglas que fijan la propiedad `translate` se resuelven por orden de
+ * aparición en la hoja generada, no por "cuál aplica en este viewport" — así
+ * que un `ltr:-translate-x-full` sin acotar ganaba siempre a `lg:translate-x-0`
+ * y la barra quedaba fuera de pantalla también en escritorio (con el
+ * contenido ya desplazado por el `ps-64`, dejando el hueco vacío a la
+ * izquierda). Acotando el estado oculto a `max-lg:` las dos reglas dejan de
+ * solaparse en cualquier viewport: no hay orden de cascada que desempatar.
  */
+
+const SIDEBAR_COLLAPSED_KEY = "p2s.admin.sidebarCollapsed";
 
 type NavItem = {
   href: string;
@@ -63,6 +78,26 @@ export function AdminShell({
   const t = useTranslations("admin.shell");
   const pathname = usePathname();
   const [navOpen, setNavOpen] = useState(false);
+  const [collapsed, setCollapsed] = useState(false);
+
+  // El ancho persistido es una preferencia de escritorio (localStorage no
+  // existe en el render de servidor): se lee tras montar, así el primer
+  // pintado siempre coincide entre servidor y cliente y no hay parpadeo de
+  // hidratación.
+  useEffect(() => {
+    if (window.localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === "1") {
+      setCollapsed(true);
+    }
+  }, []);
+
+  const toggleCollapsed = () => {
+    setCollapsed((prev) => {
+      const next = !prev;
+      window.localStorage.setItem(SIDEBAR_COLLAPSED_KEY, next ? "1" : "0");
+      return next;
+    });
+  };
+
   // El menú móvil se cierra al pulsar un enlace (en el propio evento, no en un
   // efecto sobre `pathname`: eso provocaría un render en cascada).
   const closeNav = () => setNavOpen(false);
@@ -75,16 +110,25 @@ export function AdminShell({
       {/* ------------------------- sidebar ------------------------- */}
       <aside
         className={cn(
-          "fixed inset-y-0 start-0 z-50 flex w-64 flex-col border-e border-line bg-canvas-raised transition-transform duration-300 lg:translate-x-0",
-          navOpen ? "translate-x-0" : "ltr:-translate-x-full rtl:translate-x-full"
+          "fixed inset-y-0 start-0 z-50 flex flex-col border-e border-line bg-canvas-raised transition-[translate,width] duration-300 lg:translate-x-0",
+          collapsed ? "w-64 lg:w-[76px]" : "w-64",
+          // El estado "oculto" (móvil, drawer cerrado) va SIEMPRE bajo `max-lg:`
+          // — ver nota de arriba sobre por qué NO puede ser una variante
+          // incondicional a la vez que existe `lg:translate-x-0`.
+          navOpen ? "translate-x-0" : "max-lg:ltr:-translate-x-full max-lg:rtl:translate-x-full"
         )}
       >
-        <div className="flex h-16 items-center justify-between gap-2 border-b border-line px-4">
-          <Link href="/admin" className="flex items-center gap-2.5">
+        <div
+          className={cn(
+            "flex h-16 items-center gap-2 border-b border-line px-4",
+            collapsed ? "justify-between lg:justify-center lg:px-0" : "justify-between"
+          )}
+        >
+          <Link href="/admin" className="flex items-center gap-2.5 overflow-hidden">
             <LogoMark />
-            <span className="flex flex-col leading-none">
-              <span className="text-[13px] font-semibold text-ink">Pause2Shop</span>
-              <span className="mt-0.5 text-[10px] tracking-[0.12em] text-ink-faint uppercase">
+            <span className={cn("flex flex-col leading-none", collapsed && "lg:hidden")}>
+              <span className="text-[13px] font-semibold whitespace-nowrap text-ink">Pause2Shop</span>
+              <span className="mt-0.5 text-[10px] whitespace-nowrap tracking-[0.12em] text-ink-faint uppercase">
                 {t("operationsLabel")}
               </span>
             </span>
@@ -102,6 +146,7 @@ export function AdminShell({
         <nav className="flex-1 space-y-0.5 overflow-y-auto p-3" aria-label={t("sectionsNav")}>
           {NAV.map((item) => {
             const active = isActive(item);
+            const label = t(`nav.${item.labelKey}`);
             return (
               <Link
                 key={item.href}
@@ -109,7 +154,8 @@ export function AdminShell({
                 onClick={closeNav}
                 aria-current={active ? "page" : undefined}
                 className={cn(
-                  "relative flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-[13px] font-medium transition-colors",
+                  "group relative flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-[13px] font-medium transition-colors",
+                  collapsed && "lg:justify-center lg:px-2",
                   active ? "text-ink" : "text-ink-subtle hover:bg-white/[0.04] hover:text-ink"
                 )}
               >
@@ -121,24 +167,57 @@ export function AdminShell({
                   />
                 )}
                 <item.icon
-                  className={cn("relative size-4", active ? "text-brand-bright" : "")}
+                  className={cn("relative size-4 shrink-0", active ? "text-brand-bright" : "")}
                   aria-hidden
                 />
-                <span className="relative">{t(`nav.${item.labelKey}`)}</span>
+                <span className={cn("relative whitespace-nowrap", collapsed && "lg:hidden")}>
+                  {label}
+                </span>
+                {collapsed && (
+                  <span
+                    role="tooltip"
+                    className="pointer-events-none absolute start-full top-1/2 z-50 ms-2 hidden -translate-y-1/2 whitespace-nowrap rounded-md border border-line bg-canvas-raised px-2 py-1 text-[12px] text-ink opacity-0 shadow-panel transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100 lg:group-hover:block lg:group-focus-visible:block"
+                  >
+                    {label}
+                  </span>
+                )}
               </Link>
             );
           })}
         </nav>
 
         <div className="border-t border-line p-3">
-          <ServiceStatusPill />
+          <button
+            type="button"
+            onClick={toggleCollapsed}
+            aria-label={collapsed ? t("expandNav") : t("collapseNav")}
+            title={collapsed ? t("expandNav") : t("collapseNav")}
+            className={cn(
+              "hidden w-full items-center gap-2 rounded-lg px-3 py-2 text-[12px] text-ink-subtle transition-colors hover:bg-white/[0.04] hover:text-ink lg:flex",
+              collapsed && "justify-center"
+            )}
+          >
+            {collapsed ? (
+              <ChevronsRight className="size-3.5 shrink-0" aria-hidden />
+            ) : (
+              <ChevronsLeft className="size-3.5 shrink-0" aria-hidden />
+            )}
+            {!collapsed && <span className="whitespace-nowrap">{t("collapseNav")}</span>}
+          </button>
+          <div className={cn(collapsed && "lg:hidden")}>
+            <ServiceStatusPill />
+          </div>
           <Link
             href="/"
             onClick={closeNav}
-            className="mt-2 flex items-center gap-2 rounded-lg px-3 py-2 text-[12px] text-ink-subtle transition-colors hover:bg-white/[0.04] hover:text-ink"
+            title={collapsed ? t("backToProduct") : undefined}
+            className={cn(
+              "mt-2 flex items-center gap-2 rounded-lg px-3 py-2 text-[12px] text-ink-subtle transition-colors hover:bg-white/[0.04] hover:text-ink",
+              collapsed && "lg:justify-center"
+            )}
           >
-            <ArrowLeft className="size-3.5 rtl:-scale-x-100" aria-hidden />
-            {t("backToProduct")}
+            <ArrowLeft className="size-3.5 shrink-0 rtl:-scale-x-100" aria-hidden />
+            <span className={cn(collapsed && "lg:hidden")}>{t("backToProduct")}</span>
           </Link>
         </div>
       </aside>
@@ -154,7 +233,12 @@ export function AdminShell({
       )}
 
       {/* ------------------------- contenido ------------------------- */}
-      <div className="flex min-w-0 flex-1 flex-col lg:ps-64">
+      <div
+        className={cn(
+          "flex min-w-0 flex-1 flex-col transition-[padding] duration-300",
+          collapsed ? "lg:ps-[76px]" : "lg:ps-64"
+        )}
+      >
         <header className="sticky top-0 z-30 border-b border-line bg-canvas/85 backdrop-blur-xl">
           <div className="flex min-h-16 flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-6">
             <div className="flex min-w-0 items-center gap-3">

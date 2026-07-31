@@ -1,5 +1,8 @@
 // Solo tipos: el ciclo con visualSearch/types se borra en compilación.
 import type { FallbackResult, VisualMatch } from "./visualSearch/types";
+import type { ProductMatchingMode } from "./matching/types";
+
+export type { ProductMatchingMode };
 
 export type TrustLevel = "high" | "medium";
 
@@ -57,7 +60,20 @@ export type VideoAnalysisConfig = {
   personCentric: boolean;
   /** true ⇒ permite lanzar reverse image search por producto único. */
   reverseImageSearch: boolean;
+  /**
+   * Fuente de coincidencias: dónde se buscan los productos comprables una vez
+   * detectado el objeto. Viaja al backend en CADA análisis (imagen, vídeo,
+   * frame pausado) y decide qué resolvedor se ejecuta.
+   */
+  matchingMode: ProductMatchingMode;
 };
+
+/**
+ * Nombre de dominio de la configuración compartida de un análisis. Es el mismo
+ * objeto que `VideoAnalysisConfig` — se usa igual en imagen y en vídeo, así que
+ * "Video…" solo se conserva por compatibilidad con el código existente.
+ */
+export type AnalysisSettings = VideoAnalysisConfig;
 
 export type DetectedItem = {
   name: string;
@@ -133,6 +149,14 @@ export type DetectedItem = {
     cached: boolean;
     totalMs?: number;
     detail?: string;
+    /** Fuente de coincidencias con la que se resolvió este objeto. */
+    matchingMode?: ProductMatchingMode;
+    /**
+     * true SOLO cuando el catálogo no dio una coincidencia fiable y por eso se
+     * recurrió a la búsqueda externa. Distinto de `fallbackUsed`, que es el
+     * relevo entre proveedores externos (SearchAPI → SerpAPI).
+     */
+    externalFallbackUsed?: boolean;
   };
 
   // Session tracking (populated client-side, not from the model).

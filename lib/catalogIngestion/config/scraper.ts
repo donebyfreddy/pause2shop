@@ -29,8 +29,12 @@ export interface ScraperConfig {
   maxRetries: number;
   /** Productos por lote de job (un lote = una invocación serverless). */
   batchSize: number;
-  /** Techo duro de productos que procesa un job completo. */
-  maxProductsPerJob: number;
+  /**
+   * Techo de productos que procesa un job completo (a través de todas sus
+   * invocaciones/reanudaciones). `0` = sin límite funcional — el job sigue
+   * procesándose por lotes hasta agotar el descubrimiento, nunca de golpe.
+   */
+  maxProductsPerSource: number;
   logLevel: ScraperLogLevel;
   /**
    * Navegador remoto vía CDP. Es la vía de producción en serverless: en vez de
@@ -67,6 +71,19 @@ function optional(name: string): string | null {
   return raw == null || raw.trim() === "" ? null : raw.trim();
 }
 
+/**
+ * Como `num()`, pero `0` es un valor válido ("sin límite") en vez de quedar
+ * pisado por un `min`. Lee `name` y, si no está definida, cae a `legacyName`
+ * (compatibilidad con `SCRAPER_MAX_PRODUCTS_PER_JOB`) antes de usar `fallback`.
+ */
+function unlimitedOr(name: string, legacyName: string, fallback: number): number {
+  const raw = process.env[name] ?? process.env[legacyName];
+  if (raw == null || raw.trim() === "") return fallback;
+  const n = Number(raw);
+  if (!Number.isFinite(n) || n < 0) return fallback;
+  return Math.floor(n);
+}
+
 export function getScraperConfig(): ScraperConfig {
   return {
     aiEnabled: bool("SCRAPER_AI_ENABLED", true) && Boolean(process.env.OPENAI_API_KEY),
@@ -79,7 +96,7 @@ export function getScraperConfig(): ScraperConfig {
     navigationTimeoutMs: num("SCRAPER_NAVIGATION_TIMEOUT_MS", 30000, 1000),
     maxRetries: num("SCRAPER_MAX_RETRIES", 2, 0, 10),
     batchSize: num("SCRAPER_BATCH_SIZE", 10, 1, 500),
-    maxProductsPerJob: num("SCRAPER_MAX_PRODUCTS_PER_JOB", 100, 1, 10000),
+    maxProductsPerSource: unlimitedOr("SCRAPER_MAX_PRODUCTS_PER_SOURCE", "SCRAPER_MAX_PRODUCTS_PER_JOB", 0),
     logLevel: (str("SCRAPER_LOG_LEVEL", "info") as ScraperLogLevel) || "info",
     browserWsEndpoint: optional("SCRAPER_BROWSER_WS_ENDPOINT"),
     chromiumPath: optional("SCRAPER_CHROMIUM_PATH"),

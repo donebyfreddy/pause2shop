@@ -29,6 +29,7 @@ import {
   Skeleton,
   useToast,
 } from "@/components/ui";
+import { MatchingSourceCard } from "@/components/admin/MatchingSourceCard";
 import { adminPost, useAdminResource } from "@/lib/admin/client";
 import type { Settings } from "@/lib/catalogService/types";
 
@@ -254,6 +255,9 @@ export function SettingsView() {
             </DataRow>
           </CardBody>
         </Card>
+
+        {/* --------------- fuente de coincidencias (producto) -------------- */}
+        <MatchingSourceCard />
 
         {/* --------------------------- scraping --------------------------- */}
         <Card className="lg:col-span-2">

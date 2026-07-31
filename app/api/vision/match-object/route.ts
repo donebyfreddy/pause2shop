@@ -25,6 +25,10 @@ import {
   trackShoppingSearch,
   trackVisionCall,
 } from "@/lib/server/costTracker";
+import {
+  catalogResultToVisualMatch,
+  catalogSimilarCandidates,
+} from "@/lib/matching/presentation";
 import { getCatalogRepository } from "@/lib/catalog";
 import { isHttpUrl, MAX_INLINE_CROP_BYTES } from "@/lib/catalog/images";
 import type { RecommendationInput } from "@/lib/catalog/types";
@@ -32,7 +36,7 @@ import {
   externalOutcomeToResult,
   getMatchingConfig,
   getMatchingProvider,
-  isMatchingMode,
+  normalizeMatchingMode,
   type MatchingMode,
   type ProductMatchingResult,
 } from "@/lib/matching";
@@ -269,69 +273,6 @@ async function persistDetectedCrop(
   } catch {
     // Best-effort.
   }
-}
-
-/**
- * Construye un VisualMatch presentable desde el mejor match del CATÁLOGO,
- * para que la UI actual (que consume VisualMatch) muestre el resultado sin
- * tocarla. "exact" solo con identidad por hash — nunca por embedding.
- */
-function catalogResultToVisualMatch(
-  matching: ProductMatchingResult,
-  item: DetectedItem
-): VisualMatch | null {
-  const best = matching.matches.find((m) => m.source === "catalog");
-  if (!best) return null;
-  const identityByHash =
-    best.matchStage === "exact_hash" || best.matchStage === "perceptual_hash";
-  const reliable = matching.matchLabel === "CATALOG_MATCH";
-  let store = "Catálogo";
-  try {
-    store = new URL(best.productUrl).hostname.replace(/^www\./, "");
-  } catch {
-    // productUrl sin hostname válido: se deja la etiqueta genérica.
-  }
-  return {
-    exact_match_found: reliable && identityByHash,
-    match_type: reliable ? (identityByHash ? "exact" : "near_exact") : "similar",
-    product_name: best.title,
-    brand: best.brand,
-    color: item.color ?? null,
-    product_images: best.imageUrl ? [best.imageUrl] : [],
-    purchase_links: [
-      {
-        store,
-        url: best.productUrl,
-        type: reliable ? "exact" : "search",
-        price: best.price,
-        currency: best.currency,
-      },
-    ],
-    // El score del catálogo ya es 0-1: se presenta en escala 0-100 sin pasar
-    // por el normalizador aditivo del pipeline externo.
-    best_match_score: Math.round(best.scores.finalScore * 100),
-    match_confidence: best.scores.finalScore,
-    evidence: best.evidence,
-    best_match_source: "catalog",
-    ranked_candidates: [],
-  };
-}
-
-/** Los matches del catálogo como candidatos similares para la UI. */
-function catalogSimilarCandidates(
-  matching: ProductMatchingResult
-): SimilarCandidate[] {
-  return matching.matches
-    .filter((m) => m.source === "catalog" && Boolean(m.imageUrl))
-    .slice(0, 6)
-    .map((m) => ({
-      title: m.title,
-      link: m.productUrl,
-      imageUrl: m.imageUrl,
-      store: m.merchant,
-      price: m.price,
-      currency: m.currency,
-    }));
 }
 
 type ExternalPipelineArgs = {
@@ -649,16 +590,15 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   // Modo efectivo: override por request (selector de la demo) → env → default
   // external-only. Un valor desconocido en el body se ignora en silencio.
   const matchingConfig = getMatchingConfig();
-  const mode: MatchingMode = isMatchingMode(body.matchingMode)
-    ? body.matchingMode
-    : matchingConfig.mode;
+  const mode: MatchingMode =
+    normalizeMatchingMode(body.matchingMode) ?? matchingConfig.mode;
 
   const pipelineArgs: ExternalPipelineArgs = {
     req, crop, decoded, detected, videoKey, itemId, skipCache, t0,
   };
 
   // external-only: el flujo actual intacto, más los metadatos normalizados.
-  if (mode === "external-only") {
+  if (mode === "external_only") {
     const external = await runExternalPipeline(pipelineArgs);
     const matching = externalOutcomeToResult(
       {

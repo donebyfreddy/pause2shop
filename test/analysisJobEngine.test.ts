@@ -329,7 +329,7 @@ test("cancel: el job deja de aceptar frames y el matching se omite", async () =>
   );
 });
 
-test("MAX_EXTERNAL_SEARCHES_PER_PRODUCT=0 fuerza catalog-only en el matching", async () => {
+test("MAX_EXTERNAL_SEARCHES_PER_PRODUCT=0 fuerza catalog_only en el matching", async () => {
   const calls: MatchCall[] = [];
   const detector = new ScriptedDetector({ "0.000": [tazaSmall] });
   const deps = makeDeps(detector, fakeMatcher(calls), {
@@ -347,7 +347,7 @@ test("MAX_EXTERNAL_SEARCHES_PER_PRODUCT=0 fuerza catalog-only en el matching", a
   const finalized = await finalizeAnalysisJob(created.job.id, deps);
   assert.equal(finalized.ok, true);
   assert.equal(calls.length, 1);
-  assert.equal(calls[0].mode, "catalog-only");
+  assert.equal(calls[0].mode, "catalog_only");
 });
 
 test("un fallo de matching deja el job en partially_completed sin perder el resto", async () => {

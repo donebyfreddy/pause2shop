@@ -1,6 +1,6 @@
 import { CatalogClient, getCatalogClient } from "./catalogClient";
 import { CatalogMatchingProvider } from "./catalogProvider";
-import { getMatchingConfig, isMatchingMode, type MatchingConfig } from "./config";
+import { getMatchingConfig, type MatchingConfig } from "./config";
 import {
   ExternalVisualSearchProvider,
   type ExternalSearchFn,
@@ -12,7 +12,7 @@ import {
 import type { MatchingMode, ProductMatchingProvider } from "./types";
 
 export * from "./types";
-export { getMatchingConfig, isMatchingMode } from "./config";
+export { catalogThresholdFor, getMatchingConfig, isMatchingMode } from "./config";
 export type { MatchingConfig } from "./config";
 export { CatalogClient, getCatalogClient } from "./catalogClient";
 export { CatalogMatchingProvider } from "./catalogProvider";
@@ -25,6 +25,8 @@ export {
 export {
   CatalogFirstMatchingProvider,
   HybridMatchingProvider,
+  dedupeAcrossSources,
+  productIdentityKey,
 } from "./hybridProvider";
 
 /** Dependencias inyectables del orquestador (tests y wiring del route). */
@@ -65,17 +67,34 @@ export function getMatchingProvider(
           fallbackUsed: false,
           cached: false,
           timings: {},
-        }))
+        })),
+      config.externalMatchMinScore
     );
 
   switch (mode) {
-    case "catalog-only":
-      return catalog;
-    case "external-only":
-      return external;
-    case "catalog-first":
+    case "catalog_only":
+      return stampMode(catalog, "catalog_only");
+    case "external_only":
+      return stampMode(external, "external_only");
+    case "catalog_first":
       return new CatalogFirstMatchingProvider({ catalog, external, client, config });
     case "hybrid":
       return new HybridMatchingProvider({ catalog, external, client, config });
   }
+}
+
+/**
+ * Marca el resultado con el modo que lo produjo. Los providers simples no
+ * conocen la estrategia que los envuelve; los compuestos sí y ya se marcan.
+ */
+function stampMode(
+  provider: ProductMatchingProvider,
+  mode: MatchingMode
+): ProductMatchingProvider {
+  return {
+    async search(input) {
+      const result = await provider.search(input);
+      return { ...result, matchingMode: mode };
+    },
+  };
 }

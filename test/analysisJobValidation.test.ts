@@ -87,7 +87,7 @@ test("un matchingMode desconocido cae al default sin romper", async () => {
     deps
   );
   assert.equal(created.ok, true);
-  if (created.ok) assert.equal(created.job.matchingMode, "external-only");
+  if (created.ok) assert.equal(created.job.matchingMode, "catalog_first");
 });
 
 test("createAnalysisJob propaga los errores de validación con su status", async () => {

@@ -56,6 +56,9 @@ function match(partial: Partial<NormalizedProductMatch>): NormalizedProductMatch
     availability: "unknown",
     matchStage: "embedding",
     provider: "catalog",
+    category: null,
+    model: null,
+    matchType: "probable",
     scores: {
       detectionScore: 0.7,
       visualScore: null,
@@ -116,6 +119,9 @@ function externalHit(finalScore = 0.8): ProductMatchingResult {
         matchStage: null,
         provider: "searchapi_google_lens",
         title: "Producto externo",
+        // URL distinta a la del catálogo: son productos DISTINTOS. Si
+        // compartieran URL, el dedup de hybrid los fusionaría (y con razón).
+        productUrl: "https://otra-tienda.example/x9",
         scores: { ...match({}).scores, finalScore },
       }),
     ],
@@ -281,6 +287,59 @@ test("hybrid: identidad por hash en el catálogo NO justifica la búsqueda exter
   assert.equal(result.matches.every((m) => m.source === "catalog"), true);
 });
 
+test("hybrid: el mismo producto en ambas fuentes se deduplica y gana el de mayor score", async () => {
+  const sameUrl = "https://tienda.example/p1";
+  const provider = new HybridMatchingProvider({
+    catalog: fakeProvider(catalogHit(0.6)),
+    external: fakeProvider({
+      ...externalHit(0.8),
+      matches: [
+        match({
+          source: "external",
+          productId: null,
+          matchStage: null,
+          provider: "searchapi_google_lens",
+          productUrl: sameUrl,
+          scores: { ...match({}).scores, finalScore: 0.8 },
+        }),
+      ],
+    }),
+    client: fakeClient(),
+    config,
+  });
+
+  const result = await provider.search(INPUT);
+  assert.equal(result.matches.length, 1, "el mismo producto no se lista dos veces");
+  assert.equal(result.matches[0].source, "external");
+  assert.equal(result.matches[0].scores.finalScore, 0.8);
+});
+
+test("hybrid: a igualdad de score gana el catálogo (fuente verificada)", async () => {
+  const sameUrl = "https://tienda.example/p1";
+  const provider = new HybridMatchingProvider({
+    catalog: fakeProvider(catalogHit(0.7)),
+    external: fakeProvider({
+      ...externalHit(0.7),
+      matches: [
+        match({
+          source: "external",
+          productId: null,
+          matchStage: null,
+          provider: "searchapi_google_lens",
+          productUrl: sameUrl,
+          scores: { ...match({}).scores, finalScore: 0.7 },
+        }),
+      ],
+    }),
+    client: fakeClient(),
+    config,
+  });
+
+  const result = await provider.search(INPUT);
+  assert.equal(result.matches.length, 1);
+  assert.equal(result.matches[0].source, "catalog");
+});
+
 test("hybrid: catálogo caído → siguen llegando los matches externos", async () => {
   const provider = new HybridMatchingProvider({
     catalog: fakeProvider(noMatchResult({ warnings: ["catálogo caído"] })),
@@ -299,11 +358,11 @@ test("getMatchingProvider devuelve la estrategia pedida", async () => {
   const catalog = fakeProvider(catalogHit(0.9));
   const external = fakeProvider(externalHit());
 
-  const catalogOnly = getMatchingProvider("catalog-only", { config, catalog, external });
+  const catalogOnly = getMatchingProvider("catalog_only", { config, catalog, external });
   assert.equal((await catalogOnly.search(INPUT)).matchLabel, "CATALOG_MATCH");
   assert.equal(external.calls, 0);
 
-  const externalOnly = getMatchingProvider("external-only", { config, catalog, external });
+  const externalOnly = getMatchingProvider("external_only", { config, catalog, external });
   assert.equal((await externalOnly.search(INPUT)).matchLabel, "EXTERNAL_MATCH");
   assert.equal(external.calls, 1);
 });

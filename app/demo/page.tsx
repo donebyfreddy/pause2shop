@@ -2,13 +2,14 @@
 
 import Link from "next/link";
 import { useFormatter, useTranslations } from "next-intl";
-import { SiteHeader } from "@/components/shell/SiteHeader";
-import { SiteFooter } from "@/components/shell/SiteFooter";
+import { PublicHeader } from "@/components/shell/PublicHeader";
+import { PublicFooter } from "@/components/shell/PublicFooter";
 import { useCallback, useEffect, useRef, useState } from "react";
 import AnalysisConfigSelector from "@/components/AnalysisConfigSelector";
 import VideoOverlay from "@/components/VideoOverlay";
 import { captureFrameDataUrl } from "@/lib/frameCapture";
-import { defaultAnalysisConfig, serializeConfig } from "@/lib/analysis/categories";
+import { serializeConfig } from "@/lib/analysis/categories";
+import { useAnalysisSettings } from "@/hooks/useAnalysisSettings";
 import type {
   AnalysisJobStatusView,
   CropRequest,
@@ -32,8 +33,6 @@ import { formatTimestamp } from "@/lib/utils";
 const CLIENT_MAX_DURATION_S = Number(
   process.env.NEXT_PUBLIC_MAX_VIDEO_DURATION_SECONDS ?? "120"
 );
-
-const MODES: MatchingMode[] = ["catalog-only", "catalog-first", "external-only", "hybrid"];
 
 const LABEL_STYLES: Record<string, string> = {
   CATALOG_MATCH: "border-success/50 bg-success/15 text-success",
@@ -139,10 +138,10 @@ export default function DemoPage() {
   const [videoAspect, setVideoAspect] = useState<number | null>(null);
   const [validationError, setValidationError] = useState<string | null>(null);
 
-  const [matchingMode, setMatchingMode] = useState<MatchingMode>("catalog-first");
-  const [analysisConfig, setAnalysisConfig] = useState<VideoAnalysisConfig>(
-    defaultAnalysisConfig
-  );
+  // Misma configuración compartida que el estudio (persistida en localStorage):
+  // la fuente de coincidencias elegida aquí se conserva al volver a /studio.
+  const { settings: analysisConfig, setSettings: setAnalysisConfig } =
+    useAnalysisSettings();
   const [showBoxes, setShowBoxes] = useState(true);
 
   const [phase, setPhase] = useState<Phase>("idle");
@@ -259,7 +258,7 @@ export default function DemoPage() {
           mimeType: fileInfo.type,
           sizeBytes: fileInfo.size,
           durationSeconds: duration,
-          matchingMode,
+          matchingMode: analysisConfig.matchingMode,
           analysisConfig: serializeConfig(analysisConfig),
         }),
       });
@@ -332,7 +331,7 @@ export default function DemoPage() {
       setError(err instanceof Error ? err.message : t("errors.unknown"));
       setPhase("error");
     }
-  }, [analysisConfig, duration, fileInfo, fulfillCropRequests, matchingMode, validationError, t]);
+  }, [analysisConfig, duration, fileInfo, fulfillCropRequests, validationError, t]);
 
   const cancelAnalysis = useCallback(async () => {
     cancelRef.current = true;
@@ -349,19 +348,12 @@ export default function DemoPage() {
   }, []);
 
 
-  const modeCopy: Record<MatchingMode, { label: string; hint: string }> = {
-    "catalog-only": { label: t("matchingMode.catalogOnly.label"), hint: t("matchingMode.catalogOnly.hint") },
-    "catalog-first": { label: t("matchingMode.catalogFirst.label"), hint: t("matchingMode.catalogFirst.hint") },
-    "external-only": { label: t("matchingMode.externalOnly.label"), hint: t("matchingMode.externalOnly.hint") },
-    hybrid: { label: t("matchingMode.hybrid.label"), hint: t("matchingMode.hybrid.hint") },
-  };
-
   const counters = job?.counters;
   const timings = job?.timings;
 
   return (
     <>
-      <SiteHeader />
+      <PublicHeader />
       <main className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
       <header className="mb-6 flex flex-wrap items-end justify-between gap-4">
         <div>
@@ -382,9 +374,12 @@ export default function DemoPage() {
         {/* Columna izquierda: vídeo + configuración */}
         <section className="space-y-4">
           <div className="rounded-2xl border border-line bg-white/[0.03] p-4">
-            <h1 className="text-base font-semibold text-ink">
+            {/* h2, no h1: el h1 de la página es el título de la demo, arriba.
+                Había dos h1 y eso rompe el esquema de encabezados para lectores
+                de pantalla y para cualquier herramienta que derive el índice. */}
+            <h2 className="text-base font-semibold text-ink">
               {t("upload.title", { seconds: CLIENT_MAX_DURATION_S })}
-            </h1>
+            </h2>
             <p className="mt-1 text-xs text-ink-subtle">{t("upload.description")}</p>
             <input
               type="file"
@@ -425,39 +420,8 @@ export default function DemoPage() {
             </div>
           )}
 
-          {/* Selector de modo de matching */}
-          <div className="rounded-2xl border border-line bg-white/[0.03] p-4">
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-subtle">
-              {t("matchingMode.title")}
-            </p>
-            <div className="mt-2 flex flex-wrap gap-2">
-              {MODES.map((mode) => {
-                const active = matchingMode === mode;
-                const { label, hint } = modeCopy[mode];
-                return (
-                  <button
-                    key={mode}
-                    type="button"
-                    disabled={running}
-                    onClick={() => setMatchingMode(mode)}
-                    aria-pressed={active}
-                    className={
-                      "flex flex-col items-start rounded-lg border px-3 py-1.5 text-left transition disabled:opacity-50 " +
-                      (active
-                        ? "border-brand-bright/60 bg-brand/20"
-                        : "border-line bg-white/[0.02] hover:border-line-strong")
-                    }
-                  >
-                    <span className={"text-xs font-semibold " + (active ? "text-brand-bright" : "text-ink-muted")}>
-                      {label}
-                    </span>
-                    <span className="text-[10px] text-ink-subtle">{hint}</span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
+          {/* La "Fuente de coincidencias" ya no se pinta aquí: vive dentro de
+              AnalysisConfigSelector, el MISMO componente que usa el estudio. */}
           <AnalysisConfigSelector
             config={analysisConfig}
             onChange={setAnalysisConfig}
@@ -672,7 +636,7 @@ export default function DemoPage() {
         </p>
       )}
       </main>
-      <SiteFooter />
+      <PublicFooter />
     </>
   );
 }

@@ -7,7 +7,11 @@ import {
   type CatalogSearchMatch,
   type CatalogSearchResponse,
 } from "./catalogClient";
-import { getMatchingConfig, type MatchingConfig } from "./config";
+import {
+  catalogThresholdFor,
+  getMatchingConfig,
+  type MatchingConfig,
+} from "./config";
 import type {
   MatchLabel,
   NormalizedProductMatch,
@@ -15,7 +19,7 @@ import type {
   ProductMatchingProvider,
   ProductMatchingResult,
 } from "./types";
-import { noMatchResult } from "./types";
+import { classifyMatchType, noMatchResult } from "./types";
 
 /**
  * Estrategia CATALOG: busca el crop en el catálogo propio (catalog-scraper)
@@ -66,13 +70,23 @@ function evidenceFor(m: CatalogSearchMatch, brandSent: string | null): string[] 
 export function toNormalizedMatch(
   m: CatalogSearchMatch,
   item: DetectedItem,
-  brandSent: string | null
+  brandSent: string | null,
+  threshold: number
 ): NormalizedProductMatch {
   const brandMatches = Boolean(
     brandSent &&
       m.brand &&
       m.brand.trim().toLowerCase() === brandSent.trim().toLowerCase()
   );
+  // Un hash exacto/perceptual ES identidad: la imagen indexada es la misma.
+  const identity = m.matchStage === "exact_hash" || m.matchStage === "perceptual_hash";
+  const matchType = identity
+    ? "exact"
+    : classifyMatchType(
+        m.finalScore >= threshold ? "CATALOG_MATCH" : "SIMILAR",
+        m.finalScore,
+        "catalog"
+      );
   return {
     source: "catalog",
     productId: m.productId,
@@ -86,6 +100,11 @@ export function toNormalizedMatch(
     availability: m.availability ?? "unknown",
     matchStage: m.matchStage,
     provider: "catalog",
+    // El contrato /products/search/image no devuelve categoría ni modelo del
+    // producto: no se infieren de la detección (sería afirmar lo que no consta).
+    category: null,
+    model: null,
+    matchType,
     scores: {
       detectionScore: Number.isFinite(item.confidence) ? item.confidence : null,
       visualScore: m.visualScore ?? null,
@@ -175,17 +194,16 @@ export class CatalogMatchingProvider implements ProductMatchingProvider {
       }
     }
 
+    const threshold = catalogThresholdFor(this.config, input.item.category);
     const matches = (data.matches ?? [])
-      .map((m) => toNormalizedMatch(m, input.item, brand))
+      .map((m) => toNormalizedMatch(m, input.item, brand, threshold))
       .sort((a, b) => b.scores.finalScore - a.scores.finalScore);
 
     const best = matches[0];
     let matchLabel: MatchLabel = "NO_MATCH";
     if (best) {
       matchLabel =
-        best.scores.finalScore >= this.config.catalogMatchMinScore
-          ? "CATALOG_MATCH"
-          : "SIMILAR";
+        best.scores.finalScore >= threshold ? "CATALOG_MATCH" : "SIMILAR";
     }
 
     return {
@@ -195,6 +213,13 @@ export class CatalogMatchingProvider implements ProductMatchingProvider {
       fallbackUsed: false,
       cached,
       timings: { catalogMs: Date.now() - t0 },
+      catalogAttempted: true,
+      externalAttempted: false,
+      externalFallbackUsed: false,
+      unresolvedReason:
+        matchLabel === "NO_MATCH"
+          ? "Sin coincidencia suficiente en el catálogo."
+          : undefined,
     };
   }
 }

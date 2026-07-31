@@ -71,7 +71,10 @@ async function runSync(
   const summary = await connector.syncProducts({
     store,
     mode: job.mode ?? "full",
-    limit: job.limit ?? 100,
+    // `job.limit` es `null` cuando no se pidió un límite explícito: se deja
+    // `undefined` para que `syncProducts` use `SCRAPER_MAX_PRODUCTS_PER_SOURCE`
+    // en vez de resucitar aquí un techo bajo por defecto.
+    limit: job.limit ?? undefined,
     checkpoint: job.checkpoint,
     onProgress: persist,
     shouldCancel,

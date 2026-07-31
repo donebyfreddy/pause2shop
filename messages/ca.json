@@ -21,7 +21,13 @@
     "openMenu": "Obre el menú",
     "closeMenu": "Tanca el menú",
     "mainNav": "Navegació principal",
-    "mobileNav": "Navegació mòbil"
+    "mobileNav": "Navegació mòbil",
+    "product": "Producte",
+    "howItWorks": "Com funciona",
+    "demo": "Demo",
+    "integration": "Integració",
+    "useCases": "Casos d'ús",
+    "skipToContent": "Ves al contingut"
   },
   "actions": {
     "tryNow": "Prova-ho ara",
@@ -94,199 +100,483 @@
     }
   },
   "landing": {
+    "meta": {
+      "title": "Converteix cada escena en una oportunitat de compra",
+      "description": "Pause2Shop detecta els productes visibles a cada escena del teu contingut, els creua amb el teu catàleg i retorna coincidències fiables per escena i timestamp. S'integra per API: no substitueix el teu reproductor."
+    },
     "hero": {
-      "badge": "Detecció visual de producte en vídeo, en temps real",
-      "title": "Pausa el vídeo.",
-      "subtitle": "Troba el producte.",
-      "description": "Pause2Shop analitza vídeo i imatge, detecta cada peça de roba, calçat o complement i el creua contra un catàleg de moda propi i una cerca visual inversa. Amb procedència i confiança en cada resultat.",
-      "ctaPrimary": "Prova-ho ara",
-      "ctaSecondary": "Veure catàleg",
-      "ctaTertiary": "Veure demo"
+      "eyebrow": "Visual commerce per a vídeo i VOD",
+      "titleLine1": "Converteix cada escena",
+      "titleLine2": "en una oportunitat de compra.",
+      "description": "Pause2Shop detecta els productes visibles a cada escena, els creua amb el catàleg i retorna coincidències fiables per contingut, escena i timestamp.",
+      "ctaPrimary": "Provar-ho amb un vídeo",
+      "ctaSecondary": "Veure la demo interactiva",
+      "ctaTertiary": "Explorar el catàleg"
+    },
+    "heroDemo": {
+      "windowLabel": "anàlisi d'escena · {timecode}",
+      "demoBadge": "Escena de demostració",
+      "play": "Reproduir la demo",
+      "pause": "Pausar la demo",
+      "thresholdLabel": "Llindar de publicació",
+      "thresholdValue": "≥ {value}%",
+      "thresholdNote": "Per sota del llindar la coincidència no es publica: passa a revisió o es retén."
+    },
+    "demo": {
+      "matchesTitle": "Coincidències",
+      "source": "catàleg propi",
+      "atTimecode": "escena {timecode}",
+      "noPrice": "—",
+      "scoreShort": "{score}% match",
+      "viewProduct": "Veure el producte",
+      "detectionSummary": "{objects} objectes detectats · deduplicació activa",
+      "selectObject": "{label}, {confidence}% de confiança, {relationship}. Selecciona'l per veure'n la coincidència.",
+      "objects": {
+        "coat": "Abric llarg",
+        "bag": "Bossa shopper",
+        "boot": "Botí",
+        "armchair": "Butaca",
+        "lamp": "Llum de peu",
+        "cushion": "Coixí",
+        "watch": "Rellotge",
+        "sneaker": "Sabatilla",
+        "headphones": "Auriculars"
+      },
+      "relationship": {
+        "worn": "posat",
+        "held": "a la mà",
+        "background": "al fons"
+      },
+      "matches": {
+        "coat": {
+          "title": "Abric llarg de llana"
+        },
+        "bag": {
+          "title": "Bossa shopper de pell"
+        },
+        "boot": {
+          "title": "Botí de canya baixa"
+        },
+        "armchair": {
+          "title": "Butaca entapissada en bouclé"
+        },
+        "lamp": {
+          "title": "Llum de peu amb pantalla tèxtil"
+        },
+        "cushion": {
+          "title": "Coixí de lli"
+        },
+        "watch": {
+          "title": "Rellotge d'acer amb corretja de pell"
+        },
+        "sneaker": {
+          "title": "Sabatilla de pell blanca"
+        },
+        "headphones": {
+          "title": "Auriculars de casc"
+        }
+      },
+      "categories": {
+        "clothing": "Roba",
+        "footwear": "Calçat",
+        "watches_jewelry": "Rellotges i joieria",
+        "bags_accessories": "Bosses i accessoris",
+        "electronics": "Electrònica",
+        "vehicles": "Vehicles",
+        "furniture_home": "Mobles i llar",
+        "decoration": "Decoració"
+      },
+      "scenes": {
+        "street": "Exterior, pla mig",
+        "living": "Sala d'estar, pla general",
+        "studio": "Plató, pla curt"
+      },
+      "status": {
+        "published": "Publicat",
+        "review": "En revisió",
+        "withheld": "No es mostra"
+      },
+      "statusHint": {
+        "review": "Pendent de revisió",
+        "withheld": "Per sota del llindar"
+      }
+    },
+    "interactiveDemo": {
+      "label": "Demo interactiva",
+      "heading": "Mira com una escena es converteix en catàleg",
+      "description": "Prem un objecte del frame o una coincidència del panell: els dos costats queden sincronitzats. Canvia d'escena per veure com es recalcula el catàleg en un altre punt del vídeo.",
+      "analyzing": "Analitzant el frame…",
+      "timelineLabel": "Escenes del vídeo",
+      "hint": "Prem un objecte del frame o una targeta per veure'n el detall.",
+      "emptyTitle": "Cap objecte en aquesta escena",
+      "emptyBody": "L'anàlisi no ha trobat productes per damunt del mínim de detecció. Val més no proposar res que proposar alguna cosa dubtosa.",
+      "disclaimer": "Escena i coincidències de demostració, amb dades locals. L'estudi executa aquest mateix flux sobre el teu contingut.",
+      "detail": {
+        "object": "Objecte",
+        "score": "Confiança",
+        "timestamp": "Timestamp",
+        "category": "Categoria",
+        "status": "Estat"
+      }
+    },
+    "trust": {
+      "metricsLabel": "Mètriques de l'entorn de proves",
+      "metricsNote": "Xifres llegides en directe de l'entorn de proves, no d'un desplegament en producció. Si el servei de catàleg no respon es mostra «—», mai un valor de farciment.",
+      "capabilities": {
+        "vod": "VOD i sota demanda",
+        "closedCatalog": "Catàleg tancat",
+        "visualMatching": "Matching visual",
+        "timestamp": "Timestamp editorial",
+        "threshold": "Llindar configurable",
+        "exceptionQueue": "Cua d'excepció"
+      },
+      "stats": {
+        "sources": "Fonts al registre",
+        "products": "Productes al catàleg",
+        "embeddingCoverage": "Amb embedding visual",
+        "categories": "Categories detectables"
+      }
     },
     "howItWorks": {
-      "title": "Com funciona",
-      "step1": {
-        "title": "Pausa",
-        "description": "Atura el vídeo en el moment exacte."
-      },
-      "step2": {
-        "title": "Detecta",
-        "description": "La IA localitza els productes visibles al fotograma."
-      },
-      "step3": {
-        "title": "Troba",
-        "description": "Coincidència contra catàleg i cerca visual inversa."
-      },
-      "heading": "Cinc passos entre un frame i un producte comprable",
-      "description": "El pipeline complet s'executa per cada objecte detectat, amb pressupost de crides i memòria cau a cada etapa.",
+      "label": "Com funciona",
+      "heading": "Del màster al catàleg, en quatre passos",
+      "description": "El mateix frame recorre el pipeline complet. Cada pas té el seu propi control de cost i la seva pròpia memòria cau.",
+      "architectureCta": "Veure l'arquitectura tècnica",
       "steps": {
-        "capture": {
-          "title": "Captura de frames",
-          "body": "Del vídeo (pujat, YouTube o pantalla) s'extreuen frames candidats per FPS i detecció de canvi d'escena. Els frames quasi idèntics es descarten per hash perceptual: no paguen detecció.",
-          "meta": "rVFC · scene diff · hash perceptual"
+        "analyze": {
+          "title": "Analitzem el contingut",
+          "body": "Es recorre el vídeo i es trien els frames que aporten informació nova —els canvis d'escena, no tots els fotogrames—. El resultat és una línia de temps de moments analitzables."
         },
         "detect": {
-          "title": "Detecció multimodal",
-          "body": "Un model de visió localitza cada objecte amb caixa, categoria, color i relació amb la persona (posat, sostingut, de fons). Només s'analitzen les categories que hagis triat.",
-          "meta": "bounding boxes · relació · confiança"
-        },
-        "dedupe": {
-          "title": "Seguiment i deduplicació",
-          "body": "Els objectes conserven la seva identitat entre frames i es fusionen globalment: la mateixa jaqueta que reapareix deu vegades és un únic producte, amb el seu millor retall seleccionat.",
-          "meta": "trackIds · NMS · millor crop"
+          "title": "Detectem els productes",
+          "body": "Un model de visió localitza cada objecte amb la seva caixa, la seva categoria i la seva relació amb la persona en escena. Els objectes conserven la identitat entre frames, així que una peça que reapareix no es compta dues vegades."
         },
         "match": {
-          "title": "Coincidència amb catàleg",
-          "body": "Cada retall es cerca primer al catàleg propi en cascada: hash exacte → hash perceptual → embedding visual. Si no hi ha prou coincidència, es recorre a la cerca visual inversa.",
-          "meta": "catalog-first · pgvector · CLIP"
+          "title": "Cerquem al catàleg",
+          "body": "Cada retall es compara amb el teu catàleg mitjançant representacions visuals. En surten candidats ordenats per semblança, amb les seves variants de talla i color."
         },
-        "result": {
-          "title": "Resultat amb procedència",
-          "body": "Cada resultat arriba amb score, etapa que l'ha resolt i origen (catàleg o proveïdor extern). No es publica res per sota del llindar de confiança configurat.",
-          "meta": "score · matchStage · origin"
+        "publish": {
+          "title": "Publiquem només el que és fiable",
+          "body": "Cada candidat passa pel llindar acordat i per les teves regles. El que supera el criteri es publica, el dubtós va a una cua de revisió i la resta no es mostra."
+        }
+      },
+      "chips": {
+        "frames": "frames",
+        "sceneChange": "canvi d'escena",
+        "timeline": "línia de temps",
+        "objects": "objectes",
+        "crops": "retalls",
+        "tracking": "tracking",
+        "dedupe": "deduplicació",
+        "embeddings": "embeddings",
+        "candidates": "candidats",
+        "ranking": "rànquing",
+        "variants": "variants",
+        "threshold": "llindar",
+        "rules": "regles",
+        "exception": "excepció",
+        "traceability": "traçabilitat"
+      },
+      "lanes": {
+        "published": "Es publica",
+        "review": "A revisió",
+        "withheld": "No es mostra",
+        "note": "Repartiment amb un llindar del {threshold}%"
+      }
+    },
+    "integration": {
+      "label": "Integració",
+      "headingLine1": "Una capa d'intel·ligència visual,",
+      "headingLine2": "no un reproductor nou.",
+      "description": "Pause2Shop se situa entre el teu contingut i la teva experiència de compra. No toca el senyal, no substitueix el player i no bloqueja la reproducció.",
+      "layerLabel": "Pause2Shop",
+      "layerNote": "L'anàlisi s'executa en diferit; la consulta respon des de la memòria cau.",
+      "input": {
+        "title": "Contingut, màster o VOD",
+        "body": "La teva biblioteca tal com és avui. Se'n processa una còpia: el màster no es modifica."
+      },
+      "output": {
+        "title": "Player, companion o compra",
+        "body": "El teu reproductor i la teva experiència actual, consultant l'API quan els convé."
+      },
+      "layer": {
+        "processing": {
+          "title": "Processament",
+          "body": "Anàlisi d'escenes, detecció i retalls. Feina pesada, fora del camí de la petició."
+        },
+        "catalog": {
+          "title": "Catàleg per escena",
+          "body": "Productes associats a escena i timestamp, amb el seu score i la seva procedència."
+        },
+        "api": {
+          "title": "API de consulta",
+          "body": "Resposta desada a la memòria cau per escena. Només lectura del que ja s'ha publicat."
+        }
+      },
+      "flow": {
+        "ingest": "ingesta",
+        "query": "consulta a l'API"
+      },
+      "guarantees": {
+        "signal": "No altera el senyal ni el màster: el processament treballa sobre una còpia.",
+        "playback": "No bloqueja la reproducció: si la consulta falla, el player continua igual.",
+        "noMatch": "Si no hi ha coincidència fiable no es mostra res, mai un resultat de farciment.",
+        "api": "Integració per API REST: no cal cap SDK dins del reproductor.",
+        "traceability": "Cada resultat guarda de quina escena, quin frame i quina etapa ha sortit.",
+        "latency": "La consulta se serveix des de la memòria cau per escena; l'anàlisi pesada va a part."
+      }
+    },
+    "confidence": {
+      "label": "Precisió i control editorial",
+      "heading": "Si hi ha dubte, no es publica.",
+      "description": "El sistema prioritza la precisió visible: només mostra coincidències que superen el criteri acordat amb tu. Mou el llindar i mira com canvia el repartiment.",
+      "slider": {
+        "label": "Llindar de publicació",
+        "note": "Repartiment de les {total} coincidències de la demo amb el llindar actual. El que queda fins a 20 punts per sota va a revisió; la resta es retén."
+      },
+      "outcome": {
+        "published": "Es publiquen",
+        "review": "A revisió",
+        "withheld": "Es retenen"
+      },
+      "zones": {
+        "high": {
+          "title": "Confiança alta",
+          "body": "Supera el llindar. Es publica de manera automàtica o preaprovada, segons les teves regles.",
+          "rule": "score ≥ llindar"
+        },
+        "medium": {
+          "title": "Confiança mitjana",
+          "body": "Es queda a prop però no n'hi ha prou. Entra a la cua d'excepció perquè hi decideixi una persona.",
+          "rule": "llindar − 20 ≤ score < llindar"
+        },
+        "low": {
+          "title": "Confiança baixa",
+          "body": "No es mostra: ni a l'espectador ni a l'API. L'absència és preferible a l'error.",
+          "rule": "score < llindar − 20"
+        }
+      },
+      "controls": {
+        "title": "Què pots controlar",
+        "score": "Llindar de publicació configurable per catàleg i per contingut.",
+        "brandRules": "Regles per marca: què es pot publicar i amb quina prioritat.",
+        "allowlist": "Llistes de permesos i bloquejats per producte i per categoria.",
+        "audit": "Registre de qui ha aprovat què i quan.",
+        "feedback": "Correccions fetes des de la revisió, que alimenten l'ajust del llindar."
+      },
+      "quality": {
+        "title": "Com es mesura",
+        "note": "No publiquem valors per a aquestes mètriques perquè depenen del catàleg i del contingut de cada client. Es mesuren durant el pilot, sobre un conjunt d'escenes acordat, i es revisen conjuntament.",
+        "recall": {
+          "term": "Recall de detecció",
+          "definition": "Dels productes realment visibles en escena, quants en detecta el sistema."
+        },
+        "precision": {
+          "term": "Precisió del matching",
+          "definition": "De les coincidències proposades, quantes són el producte correcte."
+        },
+        "coverage": {
+          "term": "Cobertura de catàleg",
+          "definition": "Quina part del que s'ha detectat té un equivalent real al teu catàleg."
+        },
+        "published": {
+          "term": "Precisió publicada",
+          "definition": "Precisió mesurada només sobre el que ha superat el llindar: el número que veu l'espectador."
         }
       }
     },
     "useCases": {
-      "title": "Casos d'ús",
-      "heading": "Pensat per a catàlegs de vídeo, no per a una foto solta",
+      "label": "Casos d'ús",
+      "heading": "Del vídeo complet al catàleg de productes",
+      "description": "El mateix pipeline serveix per a un catàleg de VOD, per a una experiència de descobriment i per a un informe de product placement. Cada cas porta el seu estat real.",
+      "stage": {
+        "works": "Funciona",
+        "pilot": "Pilot",
+        "future": "Evolució"
+      },
       "primary": {
-        "title": "VOD i vídeo a demanda",
-        "body": "Converteix un catàleg de vídeo en un catàleg de producte. S'analitza el vídeo complet, es dedupliquen les reaparicions i es lliura la llista de productes amb el seu timestamp d'aparició.",
-        "point1": "Vídeos de fins a 2 minuts per job (configurable)",
-        "point2": "Timestamp i frame d'origen per producte",
-        "point3": "Pressupost de crides i cost per vídeo"
+        "title": "VOD i contingut sota demanda",
+        "body": "Converteix una biblioteca de vídeo en un catàleg navegable per escena. Es processa el contingut complet, es dedupliquen els objectes que reapareixen i s'entrega la llista de productes amb el seu timestamp d'aparició.",
+        "point1": "Catàleg per escena i timestamp, llest per consultar per API",
+        "point2": "Deduplicació entre escenes: un objecte recurrent no es repeteix",
+        "point3": "Pressupost d'anàlisi i cost per contingut, visibles abans de llançar"
       },
       "secondary": {
-        "discovery": {
-          "title": "Descobriment de producte",
-          "body": "L'usuari veu alguna cosa a la pantalla i vol saber què és. Una imatge n'hi ha prou per iniciar la cerca."
+        "pauseDiscovery": {
+          "title": "Descobriment en pausar",
+          "body": "L'espectador pausa i veu què hi ha a la pantalla. La consulta es resol contra el que ja s'ha publicat per a aquella escena."
         },
-        "catalogMatch": {
-          "title": "Coincidència amb catàleg",
-          "body": "Creua detecions contra el teu propi catàleg abans de sortir a Internet: més precisió i menor cost."
+        "ownCatalog": {
+          "title": "Matching contra catàleg propi",
+          "body": "Les coincidències surten del teu catàleg abans de mirar a fora: més precisió, menys cost i control del que apareix."
         },
-        "visualShopping": {
-          "title": "Shopping visual",
-          "body": "Resultats comprables amb preu, disponibilitat i enllaç directe a la fitxa de la botiga."
+        "controlledDemo": {
+          "title": "Demo comercial controlada",
+          "body": "Escenes i resultats preparats per ensenyar en una reunió sense dependre de credencials externes ni de la xarxa."
+        }
+      },
+      "horizon": {
+        "placementReporting": {
+          "title": "Product placement i reporting",
+          "body": "Informe de quines marques i productes apareixen, en quines escenes i durant quanta estona. Requereix acordar abans el catàleg de marques a vigilar."
         },
-        "clientDemos": {
-          "title": "Demos amb client",
-          "body": "Mode presentació, panell de costos i dades d'exemple llestos per ensenyar sense dependre de credencials."
+        "live": {
+          "title": "Directe",
+          "body": "El pipeline està dissenyat per a VOD. Portar-lo al directe exigeix anàlisi incremental i una finestra de latència acordada: avui no està disponible."
         }
       }
     },
     "capabilities": {
-      "title": "Capacitats",
-      "heading": "Tot allò que ja funciona, amb enllaç directe per comprovar-ho",
-      "verifiableBadge": "Demo tècnica verificable",
-      "ctaOpenStudio": "Obre l'estudi",
-      "ctaViewInStudio": "Veure a l'estudi",
-      "features": {
+      "label": "Capacitats del pilot",
+      "heading": "Una base tècnica preparada per validar i escalar",
+      "description": "El que existeix avui, agrupat per on actua. El que es pot comprovar des de fora porta enllaç.",
+      "groups": {
+        "analysis": {
+          "title": "Anàlisi"
+        },
+        "catalog": {
+          "title": "Catàleg"
+        },
+        "operation": {
+          "title": "Operació"
+        }
+      },
+      "items": {
         "video": {
-          "body": "Vídeo pujat, de YouTube o captura de pantalla, amb anàlisi continu i overlay de deteccions sobre el reproductor."
+          "title": "Anàlisi de vídeo",
+          "body": "Vídeo pujat, enllaç de YouTube o captura de pantalla, amb les deteccions dibuixades sobre el frame."
         },
         "image": {
-          "body": "Puja una imatge i obtén els objectes detectats amb els seus retalls, llestos per cercar."
+          "title": "Anàlisi d'imatge",
+          "body": "N'hi ha prou amb una imatge per obtenir els objectes detectats i els seus retalls."
         },
-        "connectors": {
-          "title": "Connectors de catàleg",
-          "body": "Registre modular de fonts de moda amb estat real: implementat, sense verificar, o pendent d'acord comercial.",
-          "cta": "Veure connectors"
+        "detection": {
+          "title": "Detecció per categoria",
+          "body": "Vuit categories: roba, calçat, rellotges i joieria, bosses, electrònica, vehicles, mobles i decoració."
+        },
+        "timestamp": {
+          "title": "Timestamp editorial",
+          "body": "Cada objecte queda ancorat a la seva escena i al seu frame d'origen."
+        },
+        "normalized": {
+          "title": "Catàleg normalitzat",
+          "body": "Esquema únic de producte amb marca i categoria normalitzades, històric de preus i deduplicació."
         },
         "embeddings": {
           "title": "Embeddings visuals",
-          "body": "CLIP local o proveïdor hash determinista per a demo. Reindexat complet des de l'admin quan canvia el model.",
-          "cta": "Veure ajustos",
-          "badge": "CLIP opcional"
+          "body": "Representacions visuals per comparar objectes detectats amb productes del catàleg."
         },
-        "catalog": {
-          "title": "Catàleg normalitzat",
-          "body": "Esquema únic de producte amb marca i categoria normalitzades, historial de preus, dedup multinivell i traçabilitat de font.",
-          "cta": "Explorar catàleg"
+        "matching": {
+          "title": "Matching en cascada",
+          "body": "Comparació per etapes, de la més barata a la més costosa, amb memòria cau a cada nivell."
+        },
+        "connectors": {
+          "title": "Connectors de fonts",
+          "body": "Registre modular de fonts amb el seu estat real: verificada, sense verificar o pendent d'acord."
+        },
+        "jobs": {
+          "title": "Jobs d'anàlisi",
+          "body": "Cua amb reintents, cancel·lació i estat consultable per treball."
         },
         "cost": {
-          "title": "Cost i pressupost",
-          "body": "Comptadors de crides per proveïdor, límit de cost per vídeo i memòria cau per no repetir cerques de pagament."
+          "title": "Control de costos",
+          "body": "Comptadors per proveïdor, límit de despesa per contingut i memòria cau per no repetir crides pagades."
+        },
+        "observability": {
+          "title": "Observabilitat",
+          "body": "Registre per etapa: què s'ha demanat, què ho ha resolt i què s'ha servit des de la memòria cau."
+        },
+        "exceptions": {
+          "title": "Cua d'excepció",
+          "body": "El que no supera el llindar s'acumula per a revisió humana, amb la seva evidència."
         }
       },
       "complianceNote": {
         "lead": "Ingesta amb regles.",
-        "body": "robots.txt comprovat abans de cada petició, <code>Crawl-delay</code> respectat, User-Agent identificable amb contacte i cap evasió anti-bot. Les fonts que exigeixen acord de partner o afiliació no s'ingereixen fins a tenir-lo."
+        "body": "<code>robots.txt</code> comprovat abans de cada petició, límit de peticions per domini, User-Agent identificable i cap tècnica d'evasió anti-bot."
       }
     },
-    "cta": {
-      "title": "Comença ara",
-      "action": "Prova-ho ara",
-      "heading": "Prova-ho amb el teu propi vídeo",
-      "description": "Tria quines categories cercar, ajusta la intensitat de l'anàlisi i mira com apareixen les coincidències frame a frame. Sense registre.",
-      "operationsPanel": "Panell d'operacions"
+    "security": {
+      "label": "Seguretat",
+      "heading": "Dissenyat per operar de manera segura",
+      "description": "Decisions preses en el sistema actual, no una llista d'intencions.",
+      "note": "No es declara cap certificació de compliment perquè avui no n'existeix cap. El xifratge en trànsit i la retenció configurable estan implementats; una auditoria formal de seguretat i l'adaptació al marc de compliment del client formen part del pilot, no del que ja s'ha aconseguit.",
+      "items": {
+        "authorizedData": {
+          "title": "Dades autoritzades",
+          "body": "Es processa el contingut i el catàleg que el client autoritza, res més."
+        },
+        "separation": {
+          "title": "Anàlisi i publicació separades",
+          "body": "El que s'analitza no es publica fins que passa el llindar i les regles."
+        },
+        "secrets": {
+          "title": "Secrets només al servidor",
+          "body": "Cap credencial de proveïdor arriba al navegador."
+        },
+        "audit": {
+          "title": "Registre i auditoria",
+          "body": "Traça per etapa de què s'ha demanat, què s'ha resolt i què s'ha publicat."
+        },
+        "roles": {
+          "title": "Accés per rols",
+          "body": "El panell d'operacions està darrere d'autenticació i es pot desactivar del tot."
+        },
+        "degradation": {
+          "title": "Degradació silenciosa",
+          "body": "Si un proveïdor falla no es mostra un resultat dubtós: no es mostra res."
+        },
+        "killSwitch": {
+          "title": "Kill switch",
+          "body": "La ingesta i el panell s'apaguen per configuració, sense desplegar."
+        },
+        "retention": {
+          "title": "Retenció configurable",
+          "body": "Frames i retalls tenen política de conservació ajustable."
+        }
+      }
+    },
+    "finalCta": {
+      "heading": "Comprova Pause2Shop amb una escena real",
+      "description": "Puja una imatge o un vídeo curt i observa com es detecten, es classifiquen i es connecten els productes amb el catàleg.",
+      "primary": "Obrir l'estudi",
+      "secondary": "Veure la demo guiada",
+      "note": "No cal configurar res per a la primera prova."
     },
     "sourceMarquee": {
       "label": "Fonts connectades",
-      "registryLabel": "Registre de fonts de moda",
+      "registryLabel": "Registre de fonts de catàleg",
       "totalLabel": "fonts",
       "verifiedLabel": "verificades amb fixtures",
       "partnerLabel": "requereixen acord",
-      "footnote": "Llistat del registre de connectors del servei de catàleg. Aparèixer aquí indica que la font està registrada amb el seu estat real d'implementació i compliment — <emphasis>no implica relació comercial ni permís concedit</emphasis>."
-    },
-    "stats": {
-      "productsIndexed": "{count, plural, one{# producte indexat} other{# productes indexats}}",
-      "catalogProducts": "Productes en catàleg",
-      "visualEmbeddingCoverage": "Amb embedding visual",
-      "detectableCategories": "Categories detectables"
-    },
-    "heroVisual": {
-      "windowStatus": "estudi · anàlisi continu · 00:42",
-      "liveBadge": "en directe",
-      "boxes": {
-        "jacket": "Jaqueta de lli",
-        "bag": "Bossa shopper",
-        "sneaker": "Sabatilla blanca"
-      },
-      "detectionSummary": "3 objectes · 1 persona · dedup actiu",
-      "matchesTitle": "Coincidències",
-      "matchesSource": "catàleg + Lens",
-      "match1": {
-        "title": "Jaqueta de lli relaxed",
-        "store": "Catàleg · Zara"
-      },
-      "match2": {
-        "title": "Bossa shopper de pell",
-        "store": "Catàleg · Mango"
-      },
-      "match3": {
-        "title": "Sabatilla low white",
-        "store": "Google Lens"
-      },
-      "latencyLabel": "Latència mitjana",
-      "latencyValue": "1,4 s / frame"
-    },
-    "studioSection": {
-      "label": "L'estudi",
-      "heading": "Analitza un vídeo o una imatge ara",
-      "description": "Tria categories i intensitat, carrega el contingut i observa les deteccions i coincidències en temps real.",
-      "openFullscreen": "Obre en pantalla completa",
-      "loading": "Carregant l'estudi d'anàlisi…"
+      "footnote": "Llistat del registre de connectors del servei de catàleg. Aparèixer aquí indica que la font està <emphasis>registrada al roadmap d'ingesta</emphasis>, no que sigui un client ni un partner comercial."
     },
     "footer": {
-      "tagline": "Pausa el vídeo, troba el producte.",
-      "description": "Detecció visual de productes en vídeo i imatge, amb coincidència contra catàleg propi i cerca visual inversa. Els resultats provenen de fonts reals: no s'inventen marques, preus ni enllaços.",
+      "description": "Detecció de productes en vídeo i imatge, amb coincidència contra catàleg propi i traçabilitat per escena i timestamp.",
       "product": {
         "title": "Producte",
         "studio": "Estudi d'anàlisi",
         "catalog": "Catàleg detectat",
         "demo": "Demo de vídeo"
       },
-      "operations": {
-        "title": "Operacions",
-        "admin": "Panell d'administració",
-        "connectors": "Connectors",
-        "jobs": "Jobs d'ingesta",
-        "logs": "Monitoratge"
+      "resources": {
+        "title": "Recursos",
+        "architecture": "Arquitectura tècnica",
+        "howItWorks": "Com funciona",
+        "capabilities": "Capacitats"
       },
-      "copyright": "© {year} {appName}. Demo tècnica.",
-      "complianceNote": "Ingesta de catàleg amb robots.txt respectat, límit de freqüència per domini i sense evasió anti-bot."
+      "legal": {
+        "title": "Legal",
+        "privacy": "Privacitat",
+        "terms": "Termes",
+        "contact": "Contacte"
+      },
+      "status": {
+        "ok": "Servei de catàleg operatiu",
+        "degraded": "Servei de catàleg degradat"
+      },
+      "copyright": "© {year} {appName}",
+      "complianceNote": "Ingesta de catàleg amb robots.txt respectat, límit per domini i sense evasió anti-bot."
     }
   },
   "studio": {
@@ -490,6 +780,36 @@
       "intensityLabel": "Intensitat de l'anàlisi",
       "personCentricNote": "Mode centrat en persones: s'analitzen les peces i complements que porten o sostenen les persones, i s'ignora el fons de l'escena."
     },
+    "matchingSource": {
+      "title": "Font de coincidències",
+      "subtitle": "Tria on cercar els productes que coincideixen amb els objectes detectats.",
+      "recommended": "Recomanat",
+      "unavailable": "No disponible",
+      "externalNotConfigured": "Configura el proveïdor extern per utilitzar aquesta opció.",
+      "catalogEmpty": "El catàleg encara no conté productes indexats.",
+      "modes": {
+        "catalogOnly": {
+          "label": "Catàleg propi",
+          "description": "Cerca únicament entre els productes importats i indexats a Pause2Shop.",
+          "benefits": "Més control · menys cost · resultats verificats"
+        },
+        "externalOnly": {
+          "label": "Cerca externa",
+          "description": "Cerca productes mitjançant l'API o el proveïdor extern configurat.",
+          "benefits": "Més cobertura · productes fora del catàleg"
+        },
+        "catalogFirst": {
+          "label": "Primer el catàleg",
+          "description": "Cerca primer al catàleg i utilitza l'API només quan no hi ha cap coincidència prou fiable.",
+          "benefits": "Equilibri entre precisió i cost"
+        },
+        "hybrid": {
+          "label": "Compara les fonts",
+          "description": "Consulta catàleg i API, combina els candidats i mostra la millor coincidència.",
+          "benefits": "Cobertura màxima · comparació costat a costat"
+        }
+      }
+    },
     "loadingAnalysis": {
       "ariaLabel": "Analitzant frame",
       "heading": "Analitzant el frame…",
@@ -590,7 +910,26 @@
     "queued": "En cua",
     "done": "Completat",
     "failed": "Fallit",
-    "noItemsDetected": "No s'han detectat productes"
+    "noItemsDetected": "No s'han detectat productes",
+    "matchSource": {
+      "catalog": "Catàleg",
+      "external": "API externa",
+      "type": {
+        "exact": "Exacta",
+        "probable": "Probable",
+        "similar": "Similar"
+      },
+      "fallbackNotice": "No s'ha trobat amb prou confiança al catàleg. Resultat obtingut mitjançant cerca externa.",
+      "searchingCatalog": "Cercant al catàleg…",
+      "searchingExternal": "Cercant mitjançant l'API…",
+      "noCatalogMatch": "Sense coincidència suficient al catàleg.",
+      "candidatesFound": "{count, plural, one{# candidat trobat} other{# candidats trobats}}",
+      "emptyCatalog": "El catàleg encara no conté productes indexats. Sincronitza una font o canvia a cerca externa.",
+      "externalUnavailable": "La cerca externa no està configurada. Afegeix les credencials del proveïdor o utilitza el catàleg.",
+      "noMatch": "No s'ha trobat cap coincidència prou fiable.",
+      "fromCatalog": "Resultat del catàleg propi",
+      "fromExternal": "Resultat de cerca externa"
+    }
   },
   "catalog": {
     "products": "Productes",
@@ -954,6 +1293,25 @@
         "dedupThresholdLabel": "Llindar de dedup per embedding",
         "jobsWorkersLabel": "Workers de jobs"
       },
+      "productMatching": {
+        "title": "Matching de productes",
+        "description": "D'on surten els productes comprables després de detectar un objecte, i amb quina exigència s'accepta cada font.",
+        "defaultModeLabel": "Mode per defecte",
+        "catalogThresholdLabel": "Llindar del catàleg",
+        "externalThresholdLabel": "Llindar de la cerca externa",
+        "hybridThresholdLabel": "Llindar en comparar fonts",
+        "providerLabel": "Proveïdor extern",
+        "providerMissing": "Sense configurar",
+        "indexedLabel": "Productes indexats",
+        "statusLabel": "Estat",
+        "catalogBadge": "Catàleg",
+        "externalBadge": "API externa",
+        "testConnection": "Prova la connexió",
+        "testing": "Provant…",
+        "testOkDetail": "La cerca externa respon correctament.",
+        "testFailed": "No s'ha pogut comprovar la connexió.",
+        "lastTestLabel": "Última prova"
+      },
       "compliance": {
         "title": "Límits d'ingesta i compliment",
         "description": "Els valors per defecte són deliberadament conservadors: és millor trigar més que molestar una botiga.",
@@ -1162,6 +1520,8 @@
       "sectionsNav": "Seccions de l'admin",
       "closeNav": "Tanca la navegació",
       "openNav": "Obre la navegació",
+      "collapseNav": "Redueix la navegació",
+      "expandNav": "Amplia la navegació",
       "backToProduct": "Torna al producte",
       "nav": {
         "overview": "Resum",
@@ -1460,6 +1820,154 @@
           "label": "Porta-retalls (enganxar imatge)",
           "okDetail": "Enganxar amb Ctrl+V disponible.",
           "warningDetail": "API del porta-retalls limitada; fes servir arrossegar i deixar anar."
+        }
+      }
+    }
+  },
+  "architecture": {
+    "meta": {
+      "title": "Arquitectura tècnica",
+      "description": "El pipeline complet de Pause2Shop: captura de frames, detecció, deduplicació, matching contra catàleg i publicació sota llindar."
+    },
+    "label": "Arquitectura",
+    "heading": "Com funciona per dins",
+    "intro": "Aquesta pàgina és el detall tècnic que la landing deixa fora a propòsit. Descriu el pipeline tal com està implementat avui, amb els noms reals de cada etapa, i separa al final el que funciona del que depèn d'una integració o d'un acord.",
+    "stages": {
+      "capture": {
+        "title": "Captura de frames",
+        "body": "Del vídeo —pujat, enllaç de YouTube o captura de pantalla— se n'extreuen frames candidats. No s'analitzen tots: es busca el frame que aporta informació nova, perquè el cost creixi amb el contingut i no amb la durada.",
+        "details": {
+          "d1": "requestVideoFrameCallback (rVFC) per llegir fotogrames sincronitzats amb el reproductor, en lloc de mostrejar a cegues per temporitzador.",
+          "d2": "Diferència entre escenes (scene diff) per detectar el tall i quedar-se amb un frame representatiu per pla.",
+          "d3": "Hash perceptual per frame: si el hash es repeteix, el frame no torna a passar pel model.",
+          "d4": "Interval mínim entre anàlisis, configurable, com a límit superior de crides per minut de vídeo."
+        }
+      },
+      "detect": {
+        "title": "Detecció d'objectes",
+        "body": "Un model de visió retorna, per frame, la llista d'objectes amb la seva caixa, categoria, color dominant i relació amb la persona en escena. La relació importa perquè canvia la prioritat: el que algú porta posat pesa més que el que hi ha al fons.",
+        "details": {
+          "d1": "Caixes normalitzades (bounding boxes) en coordenades relatives al frame, perquè l'overlay sigui independent de la resolució.",
+          "d2": "Relació worn / held / background, que ordena la cua de cerca.",
+          "d3": "Filtre per categoria abans de gastar una crida: si la categoria no està activa, l'objecte no es busca.",
+          "d4": "Llindar mínim de detecció independent del llindar de publicació."
+        }
+      },
+      "dedupe": {
+        "title": "Tracking i deduplicació",
+        "body": "Els objectes conserven identitat entre frames i es fusionen globalment en acabar l'anàlisi. Sense aquesta etapa, una peça visible en vint plans generaria vint cerques i vint entrades de catàleg.",
+        "details": {
+          "d1": "Identificadors de seguiment (trackIds) que sobreviuen entre frames consecutius.",
+          "d2": "Supressió de solapaments (NMS) sobre les caixes del mateix frame.",
+          "d3": "Selecció del millor retall per objecte: el més gran i nítid de tota la seva traça.",
+          "d4": "Fusió global per similitud visual en tancar el treball, no només entre frames veïns."
+        }
+      },
+      "match": {
+        "title": "Matching contra catàleg",
+        "body": "Cada retall es busca primer al catàleg propi, en cascada de menor a major cost. Només s'arriba a l'etapa cara si les barates no ho resolen, i cada nivell té la seva memòria cau.",
+        "details": {
+          "d1": "Cascada: hash exacte → hash perceptual → embedding visual → cerca per text.",
+          "d2": "Veïns més propers sobre pgvector per a l'etapa d'embeddings.",
+          "d3": "Resolució de variants: talla i color s'agrupen sota el mateix producte pare.",
+          "d4": "Cada resultat guarda l'etapa que l'ha resolt (matchStage) i el seu origen, per poder auditar-lo després."
+        }
+      },
+      "publish": {
+        "title": "Llindar i publicació",
+        "body": "El resultat del matching no es publica directament. Passa pel llindar acordat i per les regles del client, i d'aquí surt cap a un de tres llocs: publicat, cua de revisió, o descartat.",
+        "details": {
+          "d1": "Llindar de publicació configurable per catàleg i per contingut.",
+          "d2": "Banda de revisió per sota del llindar: el que es queda a prop va a una persona, no a les escombraries.",
+          "d3": "Regles per marca i llistes de permesos i bloquejats, aplicades després del score.",
+          "d4": "Traça completa per resultat: escena, frame, etapa, score i decisió."
+        }
+      }
+    },
+    "status": {
+      "title": "Estat real de la implementació",
+      "works": {
+        "term": "Funciona avui",
+        "body": "Captura de frames, detecció per categoria, tracking i deduplicació, matching en cascada contra catàleg propi, control de cost per treball i cua de revisió. És el que es pot comprovar a l'estudi."
+      },
+      "pilot": {
+        "term": "Es calibra al pilot",
+        "body": "Els valors de llindar, la cobertura real del catàleg i les mètriques de precisió depenen del contingut i del catàleg de cada client. Es mesuren sobre un conjunt d'escenes acordat, no es donen per suposats."
+      },
+      "requiresIntegration": {
+        "term": "Requereix integració",
+        "body": "El consum des d'un reproductor o d'una experiència companion es fa per API i necessita feina a la banda del client. L'anàlisi en directe no està disponible: el pipeline està dissenyat per a contingut sota demanda."
+      }
+    },
+    "cta": {
+      "studio": "Provar-ho a l'estudi",
+      "back": "Tornar a l'inici"
+    }
+  },
+  "legal": {
+    "common": {
+      "label": "Legal",
+      "lastUpdated": "Última revisió: juliol de 2026",
+      "draftNotice": "Aquest document descriu amb exactitud el comportament tècnic del sistema, però està pendent de revisió legal. No inclou dades de l'entitat responsable ni clàusules contractuals: es completaran abans de qualsevol ús comercial.",
+      "back": "Tornar a l'inici"
+    },
+    "privacy": {
+      "heading": "Privacitat",
+      "intro": "Quines dades toca Pause2Shop, on i durant quant de temps. La versió curta: no hi ha comptes d'usuari, no es construeix cap perfil i el contingut que s'analitza es processa per produir coincidències, no per entrenar res.",
+      "sections": {
+        "whatWeProcess": {
+          "title": "Què es processa",
+          "body": "El contingut que s'envia a analitzar —una imatge o un vídeo— i el catàleg de productes configurat. De l'anàlisi en surten frames, retalls dels objectes detectats i les coincidències proposades, amb el seu score i la seva procedència."
+        },
+        "noAccounts": {
+          "title": "Sense comptes ni perfils",
+          "body": "L'aplicació pública no té registre, ni inici de sessió, ni galetes de seguiment publicitari. L'única preferència que es desa al navegador és l'idioma escollit, per no tornar a preguntar-lo. No es construeix cap perfil del visitant."
+        },
+        "content": {
+          "title": "Contingut que envies",
+          "body": "El vídeo o la imatge s'utilitzen per executar l'anàlisi i retornar el resultat. No es comparteixen amb tercers més enllà dels proveïdors d'anàlisi necessaris per produir-lo, i no s'utilitzen per entrenar models propis."
+        },
+        "providers": {
+          "title": "Proveïdors",
+          "body": "L'anàlisi visual es basa en proveïdors externs de models, als quals s'envien els frames o retalls necessaris per resoldre una consulta. Les credencials d'aquests proveïdors viuen només al servidor i mai arriben al navegador. La llista concreta de proveïdors d'un desplegament s'acorda amb el client."
+        },
+        "retention": {
+          "title": "Conservació",
+          "body": "Frames i retalls tenen una política de conservació configurable per desplegament: existeixen mentre són útils per al treball d'anàlisi i la seva revisió. El catàleg de productes i les coincidències publicades persisteixen perquè són el resultat del servei."
+        },
+        "security": {
+          "title": "Seguretat",
+          "body": "Tràfic xifrat en trànsit, secrets únicament al servidor, i el panell d'operacions darrere d'autenticació amb possibilitat de desactivar-lo del tot. No es declara cap certificació de compliment: avui no n'existeix cap."
+        }
+      }
+    },
+    "terms": {
+      "heading": "Termes d'ús",
+      "intro": "Condicions d'ús d'aquesta demostració pública. Pause2Shop és avui un pilot tècnic: aquests termes ho reflecteixen en lloc de descriure un servei comercial que encara no està contractat.",
+      "sections": {
+        "scope": {
+          "title": "Abast",
+          "body": "Aquests termes cobreixen l'ús de l'aplicació pública: la pàgina de presentació, l'estudi d'anàlisi, el catàleg visible i la demo guiada. No cobreixen cap acord de servei, que es regeix pel seu propi contracte."
+        },
+        "pilotNature": {
+          "title": "Naturalesa de pilot",
+          "body": "El que s'ofereix aquí és una demostració de capacitats tècniques. Els resultats de l'anàlisi són orientatius, la disponibilitat no està garantida i les funcions poden canviar sense avís mentre el pilot estigui obert."
+        },
+        "acceptableUse": {
+          "title": "Ús acceptable",
+          "body": "No s'ha d'utilitzar el servei per analitzar contingut sobre el qual no es tinguin drets, per intentar identificar persones, ni per fer proves de càrrega o d'intrusió sense autorització prèvia per escrit."
+        },
+        "content": {
+          "title": "Contingut i drets",
+          "body": "Qui envia contingut declara tenir dret a fer-ho. Els productes, marques i noms comercials que puguin aparèixer als resultats pertanyen als seus titulars; aparèixer al registre de fonts de catàleg no implica cap relació comercial ni patrocini."
+        },
+        "availability": {
+          "title": "Disponibilitat",
+          "body": "És un entorn de proves: hi pot haver interrupcions, límits d'ús i funcions desactivades. Si un proveïdor extern falla, el sistema prefereix no mostrar resultat abans que mostrar-ne un de dubtós."
+        },
+        "changes": {
+          "title": "Canvis",
+          "body": "Aquests termes es poden actualitzar a mesura que el producte avança. La data de l'última revisió apareix al principi del document."
         }
       }
     }

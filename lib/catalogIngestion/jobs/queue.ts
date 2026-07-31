@@ -159,6 +159,22 @@ export class JobQueue {
       await this.store.saveJob(job);
     };
 
+    // `job.cancelRequested` solo se refrescaba dentro de `persist()`, y el
+    // handler únicamente llama a `persist` en ciertos puntos (p.ej. al pasar
+    // de descubrir a rastrear) — durante todo el descubrimiento de una fuente
+    // con muchos sitemaps, `shouldCancel()` leía siempre el valor inicial
+    // (`false`) por mucho que la API ya hubiera marcado `cancelRequested` en
+    // la BD. Este sondeo independiente es lo que hace que "Cancelar" surta
+    // efecto sin depender de en qué etapa del pipeline esté el job.
+    const cancelPoll = setInterval(() => {
+      this.store
+        .getJob(jobId)
+        .then((fresh) => {
+          if (fresh?.cancelRequested) job.cancelRequested = true;
+        })
+        .catch(() => undefined);
+    }, 2000);
+
     try {
       const result = await runJob(this.store, job, persist, () => job.cancelRequested || this.shuttingDown);
       job.progress = result.progress;
@@ -177,6 +193,8 @@ export class JobQueue {
         message: err instanceof Error ? err.message : String(err),
         at: new Date().toISOString(),
       });
+    } finally {
+      clearInterval(cancelPoll);
     }
     job.finishedAt = new Date().toISOString();
     job.durationMs = Date.now() - started;

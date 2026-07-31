@@ -644,13 +644,18 @@ test("Sync: el checkpoint evita re-descubrir el catálogo al reanudar", async ()
 
 test("Sync: cancelar deja el job reanudable, no roto", async () => {
   const connector = testConnector();
-  let processed = 0;
+  let checks = 0;
+  // `shouldCancel` ahora también se consulta durante el descubrimiento (no
+  // solo por ficha scrapeada) para que "Cancelar" no tarde lo que quede de
+  // sitemap por recorrer. Este fixture hace 1 petición de descubrimiento
+  // (el sitemap plano) antes de entrar al bucle de scraping: se deja pasar
+  // esa comprobación y la primera ficha, y se cancela en la segunda.
   const summary = await connector.syncProducts({
     store,
     mode: "full",
     limit: 5,
     downloadImages: false,
-    shouldCancel: () => processed++ >= 1,
+    shouldCancel: () => checks++ >= 2,
   });
   assert.equal(summary.completed, false);
   assert.ok(summary.stoppedReason?.includes("cancel"));

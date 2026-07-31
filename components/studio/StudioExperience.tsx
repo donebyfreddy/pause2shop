@@ -11,6 +11,7 @@ import AnalysisConfigSelector from "@/components/AnalysisConfigSelector";
 import ImageAnalyzer from "@/components/ImageAnalyzer";
 import ProductResultsPanel from "@/components/ProductResultsPanel";
 import CostPanel from "@/components/CostPanel";
+import { useAnalysisSettings } from "@/hooks/useAnalysisSettings";
 import { useFrameAnalysis } from "@/hooks/useFrameAnalysis";
 import { useObjectMatching, clientFingerprint } from "@/hooks/useObjectMatching";
 import {
@@ -31,9 +32,8 @@ import type {
   HistoryEntry,
   Preferences,
   ProductLink,
-  VideoAnalysisConfig,
 } from "@/lib/types";
-import { defaultAnalysisConfig, isCategoryAllowed } from "@/lib/analysis/categories";
+import { isCategoryAllowed } from "@/lib/analysis/categories";
 import type { FrameMeta } from "@/lib/api/types";
 import { IS_PRESENTATION } from "@/lib/presentation";
 import { formatTimestamp, itemKey } from "@/lib/utils";
@@ -115,12 +115,13 @@ export default function StudioExperience({
   const trackerRef = useRef(createTrackerState());
   const [trackedObjects, setTrackedObjects] = useState(0);
   // Configuración elegida ANTES de analizar; se propaga al backend en cada
-  // petición vía un ref siempre fresco.
-  const [analysisConfig, setAnalysisConfig] = useState<VideoAnalysisConfig>(defaultAnalysisConfig);
-  const analysisConfigRef = useRef(analysisConfig);
-  useEffect(() => {
-    analysisConfigRef.current = analysisConfig;
-  }, [analysisConfig]);
+  // petición vía un ref siempre fresco. Persiste en localStorage: la fuente de
+  // coincidencias elegida sobrevive al cambio imagen↔vídeo y a navegar a /demo.
+  const {
+    settings: analysisConfig,
+    setSettings: setAnalysisConfig,
+    settingsRef: analysisConfigRef,
+  } = useAnalysisSettings();
 
   const analysisHook = useFrameAnalysis();
   const matching = useObjectMatching();
@@ -196,6 +197,9 @@ export default function StudioExperience({
       matching.enqueue(result.analysis.items, dataUrl, {
         videoKey: meta.videoKey,
         itemIdByFingerprint,
+        // La fuente de coincidencias elegida decide qué resolvedor corre en el
+        // backend para CADA objeto, también en el frame pausado.
+        matchingMode: cfg.matchingMode,
       });
 
       setHistory(
@@ -274,6 +278,8 @@ export default function StudioExperience({
             cached: entry.cached,
             totalMs: entry.totalMs,
             detail: entry.detail,
+            matchingMode: entry.matchingMode,
+            externalFallbackUsed: entry.externalFallbackUsed,
           },
         };
       }),

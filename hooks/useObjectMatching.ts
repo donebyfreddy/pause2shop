@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { cropFromDataUrl } from "@/lib/crop";
 import { deservesAutoSearch } from "@/lib/priority";
 import { cropQualityScore } from "@/lib/video/tracker";
-import type { DetectedItem } from "@/lib/types";
+import type { DetectedItem, ProductMatchingMode } from "@/lib/types";
 import type { VisualMatch } from "@/lib/visualSearch/types";
 
 /**
@@ -55,6 +55,10 @@ export type MatchingEntry = {
   cached: boolean;
   detail?: string;
   totalMs?: number;
+  /** Fuente con la que el backend resolvió este objeto. */
+  matchingMode?: ProductMatchingMode;
+  /** El catálogo no bastó y se recurrió a la búsqueda externa. */
+  externalFallbackUsed?: boolean;
 };
 
 /**
@@ -91,7 +95,12 @@ export function clientFingerprint(item: {
   ].join("|");
 }
 
-type EnqueueMeta = { videoKey?: string; itemIdByFingerprint?: Map<string, string> };
+type EnqueueMeta = {
+  videoKey?: string;
+  itemIdByFingerprint?: Map<string, string>;
+  /** Fuente de coincidencias elegida por el usuario para este análisis. */
+  matchingMode?: ProductMatchingMode;
+};
 
 type PendingBetterCrop = {
   item: DetectedItem;
@@ -238,6 +247,7 @@ export function useObjectMatching() {
               item,
               videoKey: meta.videoKey,
               itemId: meta.itemIdByFingerprint?.get(fp),
+              matchingMode: meta.matchingMode,
             }),
           });
           const data = (await res.json()) as {
@@ -251,6 +261,8 @@ export function useObjectMatching() {
             detail?: string;
             timings?: { totalMs?: number };
             error?: string;
+            matchingMode?: ProductMatchingMode;
+            matching?: { externalFallbackUsed?: boolean };
           };
           if (!data.ok) {
             finishAttempt(fp, "provider_error");
@@ -271,6 +283,8 @@ export function useObjectMatching() {
             cached: Boolean(data.cached),
             detail: data.detail,
             totalMs: data.timings?.totalMs,
+            matchingMode: data.matchingMode,
+            externalFallbackUsed: Boolean(data.matching?.externalFallbackUsed),
           });
         } catch (err) {
           const timeout =

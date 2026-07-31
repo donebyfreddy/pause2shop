@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
-import { getMatchingConfig, isMatchingMode } from "@/lib/matching/config";
+import { getMatchingConfig } from "@/lib/matching/config";
+import { normalizeMatchingMode } from "@/lib/matching/types";
 import type { MatchingMode, ProductMatchingResult } from "@/lib/matching/types";
 import { parseConfig } from "@/lib/analysis/categories";
 import {
@@ -148,9 +149,9 @@ export async function createAnalysisJob(
   if (!valid.ok) return valid;
 
   // Modo de matching: override del cliente (selector de la demo) → env.
-  const mode: MatchingMode = isMatchingMode(input.matchingMode)
-    ? input.matchingMode
-    : getMatchingConfig(deps.env ?? process.env).mode;
+  const mode: MatchingMode =
+    normalizeMatchingMode(input.matchingMode) ??
+    getMatchingConfig(deps.env ?? process.env).mode;
 
   const now = Date.now();
   const job: AnalysisJobRecord = {
@@ -656,8 +657,8 @@ export async function finalizeAnalysisJob(
     // llamada es la única; con 0 el producto se resuelve solo contra catálogo.
     const mode: MatchingMode =
       config.maxExternalSearchesPerProduct <= 0 &&
-      job.matchingMode !== "catalog-only"
-        ? "catalog-only"
+      job.matchingMode !== "catalog_only"
+        ? "catalog_only"
         : job.matchingMode;
     try {
       const result = await deps.matchProduct({

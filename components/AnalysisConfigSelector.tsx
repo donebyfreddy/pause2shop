@@ -22,6 +22,7 @@ import type { LucideIcon } from "lucide-react";
 import type {
   AnalysisCategory,
   AnalysisIntensity,
+  ProductMatchingMode,
   VideoAnalysisConfig,
 } from "@/lib/types";
 import {
@@ -29,6 +30,8 @@ import {
   CATEGORY_LABELS_ES,
   deriveAnalysisConfig,
 } from "@/lib/analysis/categories";
+import MatchingSourceSelector from "@/components/MatchingSourceSelector";
+import { useMatchingCapabilities } from "@/hooks/useMatchingCapabilities";
 import { Callout, SectionLabel } from "@/components/ui";
 import { cn } from "@/lib/ui/cn";
 
@@ -74,11 +77,18 @@ type Props = {
 
 export default function AnalysisConfigSelector({ config, onChange, locked }: Props) {
   const t = useTranslations("studio.configSelector");
+  const capabilities = useMatchingCapabilities();
   const selected = useMemo(() => new Set(config.categories), [config.categories]);
   const allSelected = selected.has("all");
 
   function setCategories(next: AnalysisCategory[]) {
-    onChange(deriveAnalysisConfig(next, config.analysisIntensity));
+    // La fuente de coincidencias se conserva al tocar categorías: es una
+    // decisión independiente y perderla en cada clic sería desconcertante.
+    onChange(
+      deriveAnalysisConfig(next, config.analysisIntensity, {
+        matchingMode: config.matchingMode,
+      })
+    );
   }
 
   function toggleCategory(cat: AnalysisCategory) {
@@ -98,7 +108,20 @@ export default function AnalysisConfigSelector({ config, onChange, locked }: Pro
 
   function setIntensity(intensity: AnalysisIntensity) {
     if (locked) return;
-    onChange(deriveAnalysisConfig(config.categories, intensity));
+    onChange(
+      deriveAnalysisConfig(config.categories, intensity, {
+        matchingMode: config.matchingMode,
+      })
+    );
+  }
+
+  function setMatchingMode(matchingMode: ProductMatchingMode) {
+    if (locked) return;
+    onChange(
+      deriveAnalysisConfig(config.categories, config.analysisIntensity, {
+        matchingMode,
+      })
+    );
   }
 
   const activeCount = allSelected ? ALL_CATEGORIES.length : selected.size;
@@ -204,6 +227,16 @@ export default function AnalysisConfigSelector({ config, onChange, locked }: Pro
           })}
         </div>
       </div>
+
+      {/* Fuente de coincidencias: vive AQUÍ para que toda superficie que use
+          este bloque (estudio de imagen, estudio de vídeo, frame pausado y
+          demo) tenga exactamente el mismo selector, sin copias del JSX. */}
+      <MatchingSourceSelector
+        value={config.matchingMode}
+        onChange={setMatchingMode}
+        locked={locked}
+        capabilities={capabilities}
+      />
 
       {/* El modo person-centric es DERIVADO: se muestra para que no sorprenda. */}
       {config.personCentric && (

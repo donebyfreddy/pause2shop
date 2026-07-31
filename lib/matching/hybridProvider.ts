@@ -79,6 +79,54 @@ export async function saveExternalResult(
     : `No se pudo guardar el resultado externo (${res.error.code}).`;
 }
 
+/**
+ * Clave de identidad de un producto entre fuentes distintas: la URL canónica
+ * (sin query de tracking) y, si no hay, marca+título normalizados.
+ */
+export function productIdentityKey(m: NormalizedProductMatch): string {
+  const url = m.productUrl?.trim();
+  if (url) {
+    try {
+      const u = new URL(url);
+      return `url:${u.hostname.replace(/^www\./, "")}${u.pathname.replace(/\/$/, "")}`;
+    } catch {
+      // URL no parseable: cae al criterio textual.
+    }
+  }
+  const brand = (m.brand ?? "").trim().toLowerCase();
+  const title = m.title.trim().toLowerCase().replace(/\s+/g, " ");
+  return `txt:${brand}|${title}`;
+}
+
+/**
+ * Deduplica el ranking combinado conservando, para cada producto, la aparición
+ * de MAYOR score. En empate gana el catálogo: es la fuente sobre la que
+ * tenemos control y datos verificados. La procedencia nunca se mezcla — el
+ * match superviviente conserva su propio `source`.
+ */
+export function dedupeAcrossSources(
+  all: NormalizedProductMatch[]
+): NormalizedProductMatch[] {
+  const best = new Map<string, NormalizedProductMatch>();
+  for (const m of all) {
+    const key = productIdentityKey(m);
+    const prev = best.get(key);
+    if (!prev) {
+      best.set(key, m);
+      continue;
+    }
+    const better =
+      m.scores.finalScore > prev.scores.finalScore ||
+      (m.scores.finalScore === prev.scores.finalScore &&
+        m.source === "catalog" &&
+        prev.source === "external");
+    if (better) best.set(key, m);
+  }
+  return [...best.values()].sort(
+    (a, b) => b.scores.finalScore - a.scores.finalScore
+  );
+}
+
 type CompositeDeps = {
   catalog: ProductMatchingProvider;
   external: ProductMatchingProvider;
@@ -100,13 +148,26 @@ export class CatalogFirstMatchingProvider implements ProductMatchingProvider {
     const catalogResult = await catalog.search(input);
 
     if (catalogResult.matchLabel === "CATALOG_MATCH") {
-      return catalogResult;
+      // Coste cero: el catálogo resolvió, no se llama al proveedor externo.
+      return {
+        ...catalogResult,
+        matchingMode: "catalog_first",
+        catalogAttempted: true,
+        externalAttempted: false,
+        externalFallbackUsed: false,
+      };
     }
 
     if (!config.catalogExternalFallback) {
       // Sin fallback permitido: se devuelve lo que dio el catálogo (SIMILAR
       // o NO_MATCH) — decisión explícita del operador.
-      return catalogResult;
+      return {
+        ...catalogResult,
+        matchingMode: "catalog_first",
+        catalogAttempted: true,
+        externalAttempted: false,
+        externalFallbackUsed: false,
+      };
     }
 
     const externalResult = await external.search(input);
@@ -122,6 +183,10 @@ export class CatalogFirstMatchingProvider implements ProductMatchingProvider {
         fallbackUsed: true,
         warnings: warnings.length ? warnings : undefined,
         timings: { ...catalogResult.timings, ...externalResult.timings },
+        matchingMode: "catalog_first",
+        catalogAttempted: true,
+        externalAttempted: true,
+        externalFallbackUsed: true,
       };
     }
 
@@ -135,6 +200,14 @@ export class CatalogFirstMatchingProvider implements ProductMatchingProvider {
       fallbackUsed: true,
       timings: { ...catalogResult.timings, ...externalResult.timings },
       warnings: warnings.length ? warnings : undefined,
+      matchingMode: "catalog_first",
+      catalogAttempted: true,
+      externalAttempted: true,
+      externalFallbackUsed: true,
+      unresolvedReason:
+        externalResult.matchLabel === "NO_MATCH"
+          ? "No se encontró una coincidencia suficientemente fiable."
+          : undefined,
     };
   }
 }
@@ -164,14 +237,21 @@ export class HybridMatchingProvider implements ProductMatchingProvider {
       ? noMatchResult({ timings: {} })
       : await external.search(input);
 
-    const matches: NormalizedProductMatch[] = [
+    const matches = dedupeAcrossSources([
       ...catalogResult.matches,
       ...externalResult.matches,
-    ].sort((a, b) => b.scores.finalScore - a.scores.finalScore);
+    ]);
 
+    // El catálogo NO se favorece automáticamente ni se desfavorece: gana quien
+    // tenga mejor score. Pero cuando el catálogo alcanza SU umbral, su match es
+    // el fiable (es un producto nuestro, verificado e indexado).
     let matchLabel: MatchLabel = "NO_MATCH";
     if (catalogResult.matchLabel === "CATALOG_MATCH") matchLabel = "CATALOG_MATCH";
-    else if (externalResult.matchLabel === "EXTERNAL_MATCH") matchLabel = "EXTERNAL_MATCH";
+    else if (
+      externalResult.matchLabel === "EXTERNAL_MATCH" &&
+      (matches[0]?.scores.finalScore ?? 0) >= config.hybridMatchMinScore
+    )
+      matchLabel = "EXTERNAL_MATCH";
     else if (matches.length > 0) matchLabel = "SIMILAR";
 
     const providers = [
@@ -204,6 +284,15 @@ export class HybridMatchingProvider implements ProductMatchingProvider {
       cached: catalogResult.cached && (identityByHash || externalResult.cached),
       timings: { ...catalogResult.timings, ...externalResult.timings },
       warnings: warnings.length ? warnings : undefined,
+      matchingMode: "hybrid",
+      catalogAttempted: true,
+      externalAttempted: !identityByHash,
+      // En comparar, el externo NO es un fallback: se consulta por diseño.
+      externalFallbackUsed: false,
+      unresolvedReason:
+        matchLabel === "NO_MATCH"
+          ? "Ni el catálogo ni la búsqueda externa devolvieron candidatos."
+          : undefined,
     };
   }
 }

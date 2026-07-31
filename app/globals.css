@@ -24,11 +24,30 @@
   --color-line: #1e2130;
   --color-line-strong: #2c3043;
 
-  /* --- texto -------------------------------------------------------- */
+  /* --- texto --------------------------------------------------------
+   *
+   * Escala de cuatro niveles, RECALIBRADA para contraste AA.
+   *
+   * Los valores anteriores (`#6b6f80` y `#494d5c`) daban 4,06:1 y 2,41:1 sobre
+   * el lienzo: por debajo del 4,5:1 que exige AA para texto normal. Y no eran
+   * decorativos — se usaban para descripciones de tarjeta, notas al pie y
+   * etiquetas de 10-11 px, es decir, para texto que hay que poder leer.
+   *
+   * Al subirlos hay que tener cuidado de no aplastar la jerarquía: si
+   * `ink-faint` llega a AA por el camino corto, acaba siendo casi idéntico a
+   * `ink-subtle` y la escala pierde un nivel. Por eso se ha reespaciado
+   * completa, manteniendo el matiz frío y una separación visible entre pasos.
+   *
+   * Ratios sobre `canvas` / peor fondo (`surface-3`):
+   *   ink        18,24 / 14,98
+   *   ink-muted   9,56 /  7,85
+   *   ink-subtle  7,21 /  5,92
+   *   ink-faint   5,83 /  4,79   ← el peor caso de todo el sistema
+   */
   --color-ink: #f2f3f7;
-  --color-ink-muted: #a2a5b4;
-  --color-ink-subtle: #6b6f80;
-  --color-ink-faint: #494d5c;
+  --color-ink-muted: #aeb2c0;
+  --color-ink-subtle: #949aad;
+  --color-ink-faint: #85899c;
 
   /* --- marca -------------------------------------------------------- */
   --color-brand: #6d5efc;
@@ -255,6 +274,50 @@ body {
   );
   background-size: 200% 100%;
   animation: var(--animate-shimmer);
+}
+
+/* --- red de seguridad de las animaciones de aparición ------------------
+ *
+ * `components/motion` marca con `data-reveal` todo envoltorio que arranca en
+ * `opacity: 0` y espera un `IntersectionObserver`. El problema: la librería de
+ * movimiento serializa ese estado inicial como estilo EN LÍNEA durante el
+ * render de servidor. Si el observer nunca llega a dispararse —JavaScript
+ * deshabilitado o fallido, impresión, herramientas de lectura—, ese
+ * `opacity: 0` se queda para siempre y media landing desaparece.
+ *
+ * Aquí se neutraliza en los tres casos en los que no debe haber animación de
+ * entrada. `!important` en hoja de estilos SÍ gana a un estilo en línea sin
+ * `!important`, que es justo lo que necesitamos para desactivar por CSS algo que
+ * pinta JavaScript.
+ *
+ * El `<noscript>` equivalente vive en `app/layout.tsx`, porque una hoja de
+ * estilos no puede detectar por sí sola la ausencia de JavaScript.
+ *
+ * (Nota: `opacity: 0` NO oculta el contenido a un lector de pantalla —sigue en
+ * el árbol de accesibilidad—, así que ese caso ya estaba cubierto.)
+ */
+@media print {
+  [data-reveal] {
+    opacity: 1 !important;
+    transform: none !important;
+  }
+}
+
+/**
+ * Movimiento reducido: las apariciones son INMEDIATAS, no lentas.
+ *
+ * Esto es la pieza que hace que el requisito "el contenido no depende de una
+ * animación" se cumpla de verdad para quien pide movimiento reducido: la
+ * librería de movimiento anima por JavaScript, así que la regla de más abajo que
+ * pone las duraciones a 0,001 ms (y que solo afecta a animaciones CSS) no la
+ * detiene. Con esto, el contenido está visible desde el primer paint y no hace
+ * falta que el observer llegue a dispararse.
+ */
+@media (prefers-reduced-motion: reduce) {
+  [data-reveal] {
+    opacity: 1 !important;
+    transform: none !important;
+  }
 }
 
 /* --- accesibilidad: respetar prefers-reduced-motion ------------------- */

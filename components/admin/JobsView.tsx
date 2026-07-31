@@ -11,6 +11,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
+import { useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
 import {
   Badge,
@@ -59,7 +60,11 @@ export function JobsView() {
   const toast = useToast();
   const [status, setStatus] = useState<StatusFilter>("all");
   const [source, setSource] = useState("all");
-  const [expanded, setExpanded] = useState<string | null>(null);
+  // Al lanzar un sync desde Conectores se navega aquí con `?open=<jobId>`
+  // para abrir el detalle del job directamente — sin esto, el operador tiene
+  // que buscarlo a mano en la lista tras crearlo.
+  const searchParams = useSearchParams();
+  const [expanded, setExpanded] = useState<string | null>(() => searchParams.get("open"));
   const [busy, setBusy] = useState<string | null>(null);
 
   const STATUS_FILTERS = useMemo(

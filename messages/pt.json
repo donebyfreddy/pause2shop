@@ -21,7 +21,13 @@
     "openMenu": "Abrir menu",
     "closeMenu": "Fechar menu",
     "mainNav": "Navegação principal",
-    "mobileNav": "Navegação móvel"
+    "mobileNav": "Navegação móvel",
+    "product": "Produto",
+    "howItWorks": "Como funciona",
+    "demo": "Demo",
+    "integration": "Integração",
+    "useCases": "Casos de uso",
+    "skipToContent": "Saltar para o conteúdo"
   },
   "actions": {
     "tryNow": "Experimenta agora",
@@ -94,199 +100,483 @@
     }
   },
   "landing": {
+    "meta": {
+      "title": "Transforme cada cena numa oportunidade de compra",
+      "description": "O Pause2Shop deteta os produtos visíveis em cada cena do seu conteúdo, cruza-os com o seu catálogo e devolve correspondências fiáveis por cena e timestamp. Integra-se por API: não substitui o seu reprodutor."
+    },
     "hero": {
-      "badge": "Deteção visual de produto em vídeo, em tempo real",
-      "title": "Pausa o vídeo.",
-      "subtitle": "Encontra o produto.",
-      "description": "O Pause2Shop analisa vídeo e imagem, deteta cada peça de roupa, calçado ou acessório e cruza-o com um catálogo de moda próprio e pesquisa visual inversa. Com proveniência e confiança em cada resultado.",
-      "ctaPrimary": "Experimenta agora",
-      "ctaSecondary": "Ver catálogo",
-      "ctaTertiary": "Ver demonstração"
+      "eyebrow": "Visual commerce para vídeo e VOD",
+      "titleLine1": "Transforme cada cena",
+      "titleLine2": "numa oportunidade de compra.",
+      "description": "O Pause2Shop deteta os produtos visíveis em cada cena, cruza-os com o catálogo e devolve correspondências fiáveis por conteúdo, cena e timestamp.",
+      "ctaPrimary": "Testar com um vídeo",
+      "ctaSecondary": "Ver demo interativa",
+      "ctaTertiary": "Explorar catálogo"
+    },
+    "heroDemo": {
+      "windowLabel": "análise de cena · {timecode}",
+      "demoBadge": "Cena de demonstração",
+      "play": "Reproduzir demo",
+      "pause": "Pausar demo",
+      "thresholdLabel": "Limiar de publicação",
+      "thresholdValue": "≥ {value}%",
+      "thresholdNote": "Abaixo do limiar a correspondência não é publicada: passa a revisão ou é retida."
+    },
+    "demo": {
+      "matchesTitle": "Correspondências",
+      "source": "catálogo próprio",
+      "atTimecode": "cena {timecode}",
+      "noPrice": "—",
+      "scoreShort": "{score}% match",
+      "viewProduct": "Ver produto",
+      "detectionSummary": "{objects} objetos detetados · deduplicação ativa",
+      "selectObject": "{label}, {confidence}% de confiança, {relationship}. Selecionar para ver a sua correspondência.",
+      "objects": {
+        "coat": "Casaco comprido",
+        "bag": "Mala shopper",
+        "boot": "Botim",
+        "armchair": "Poltrona",
+        "lamp": "Candeeiro de pé",
+        "cushion": "Almofada",
+        "watch": "Relógio",
+        "sneaker": "Sapatilha",
+        "headphones": "Auscultadores"
+      },
+      "relationship": {
+        "worn": "vestido",
+        "held": "na mão",
+        "background": "ao fundo"
+      },
+      "matches": {
+        "coat": {
+          "title": "Casaco comprido de lã"
+        },
+        "bag": {
+          "title": "Mala shopper em pele"
+        },
+        "boot": {
+          "title": "Botim de cano baixo"
+        },
+        "armchair": {
+          "title": "Poltrona forrada em bouclé"
+        },
+        "lamp": {
+          "title": "Candeeiro de pé com abajur têxtil"
+        },
+        "cushion": {
+          "title": "Almofada de linho"
+        },
+        "watch": {
+          "title": "Relógio de aço com bracelete de pele"
+        },
+        "sneaker": {
+          "title": "Sapatilha de pele branca"
+        },
+        "headphones": {
+          "title": "Auscultadores de arco"
+        }
+      },
+      "categories": {
+        "clothing": "Roupa",
+        "footwear": "Calçado",
+        "watches_jewelry": "Relógios e joalharia",
+        "bags_accessories": "Malas e acessórios",
+        "electronics": "Eletrónica",
+        "vehicles": "Veículos",
+        "furniture_home": "Mobiliário e casa",
+        "decoration": "Decoração"
+      },
+      "scenes": {
+        "street": "Exterior, plano médio",
+        "living": "Sala, plano geral",
+        "studio": "Estúdio, plano aproximado"
+      },
+      "status": {
+        "published": "Publicado",
+        "review": "Em revisão",
+        "withheld": "Não é mostrado"
+      },
+      "statusHint": {
+        "review": "Pendente de revisão",
+        "withheld": "Abaixo do limiar"
+      }
+    },
+    "interactiveDemo": {
+      "label": "Demo interativa",
+      "heading": "Veja como uma cena se transforma em catálogo",
+      "description": "Toque num objeto do frame ou numa correspondência do painel: os dois lados ficam sincronizados. Mude de cena para ver como o catálogo é recalculado noutro ponto do vídeo.",
+      "analyzing": "A analisar frame…",
+      "timelineLabel": "Cenas do vídeo",
+      "hint": "Toque num objeto do frame ou num cartão para ver o detalhe.",
+      "emptyTitle": "Sem objetos nesta cena",
+      "emptyBody": "A análise não encontrou produtos acima do mínimo de deteção. Preferimos não propor nada a propor algo duvidoso.",
+      "disclaimer": "Cena e correspondências de demonstração, com dados locais. O estúdio executa este mesmo fluxo sobre o seu conteúdo.",
+      "detail": {
+        "object": "Objeto",
+        "score": "Confiança",
+        "timestamp": "Timestamp",
+        "category": "Categoria",
+        "status": "Estado"
+      }
+    },
+    "trust": {
+      "metricsLabel": "Métricas do ambiente de teste",
+      "metricsNote": "Números lidos em direto do ambiente de teste, não de uma implementação em produção. Se o serviço de catálogo não responder mostra-se «—», nunca um valor de enchimento.",
+      "capabilities": {
+        "vod": "VOD e a pedido",
+        "closedCatalog": "Catálogo fechado",
+        "visualMatching": "Matching visual",
+        "timestamp": "Timestamp editorial",
+        "threshold": "Limiar configurável",
+        "exceptionQueue": "Fila de exceção"
+      },
+      "stats": {
+        "sources": "Fontes no registo",
+        "products": "Produtos em catálogo",
+        "embeddingCoverage": "Com embedding visual",
+        "categories": "Categorias detetáveis"
+      }
     },
     "howItWorks": {
-      "title": "Como funciona",
-      "step1": {
-        "title": "Pausa",
-        "description": "Para o vídeo no momento exato."
-      },
-      "step2": {
-        "title": "Deteta",
-        "description": "A IA localiza os produtos visíveis no fotograma."
-      },
-      "step3": {
-        "title": "Encontra",
-        "description": "Correspondência com catálogo e pesquisa visual inversa."
-      },
-      "heading": "Cinco passos entre um frame e um produto que se pode comprar",
-      "description": "O pipeline completo é executado por objeto detetado, com orçamento de chamadas e cache em cada etapa.",
+      "label": "Como funciona",
+      "heading": "Do master ao catálogo, em quatro passos",
+      "description": "O mesmo frame percorre o pipeline completo. Cada passo tem o seu próprio controlo de custo e a sua própria cache.",
+      "architectureCta": "Ver arquitetura técnica",
       "steps": {
-        "capture": {
-          "title": "Captura de frames",
-          "body": "Do vídeo (carregado, YouTube ou ecrã) extraem-se frames candidatos por FPS e deteção de mudança de cena. Os frames quase idênticos são descartados por hash percetual: não pagam deteção.",
-          "meta": "rVFC · scene diff · hash percetual"
+        "analyze": {
+          "title": "Analisamos o conteúdo",
+          "body": "Percorre-se o vídeo e escolhem-se os frames que trazem informação nova —as mudanças de cena, não todos os fotogramas—. O resultado é uma linha temporal de momentos analisáveis."
         },
         "detect": {
-          "title": "Deteção multimodal",
-          "body": "Um modelo de visão localiza cada objeto com caixa, categoria, cor e relação com a pessoa (vestido, sustentado, em fundo). Só são analisadas as categorias que tenhas escolhido.",
-          "meta": "bounding boxes · relationship · confiança"
-        },
-        "dedupe": {
-          "title": "Tracking e deduplicação",
-          "body": "Os objetos mantêm a sua identidade entre frames e são fundidos globalmente: o mesmo casaco que reaparece dez vezes é um único produto, com o seu melhor recorte selecionado.",
-          "meta": "trackIds · NMS · melhor crop"
+          "title": "Detetamos os produtos",
+          "body": "Um modelo de visão localiza cada objeto com a sua caixa, a sua categoria e a sua relação com a pessoa em cena. Os objetos mantêm a sua identidade entre frames, pelo que uma peça que reaparece não é contada duas vezes."
         },
         "match": {
-          "title": "Correspondência com catálogo",
-          "body": "Cada recorte é procurado primeiro no catálogo próprio em cascata: hash exato → hash percetual → embedding visual. Se não houver correspondência suficiente, recorre-se à pesquisa visual inversa.",
-          "meta": "catalog-first · pgvector · CLIP"
+          "title": "Procuramos no catálogo",
+          "body": "Cada recorte é comparado com o seu catálogo através de representações visuais. Saem candidatos ordenados por semelhança, com as suas variantes de tamanho e cor."
         },
-        "result": {
-          "title": "Resultado com proveniência",
-          "body": "Cada resultado chega com score, etapa que o resolveu e origem (catálogo ou fornecedor externo). Nada é publicado abaixo do limiar de confiança configurado.",
-          "meta": "score · matchStage · origin"
+        "publish": {
+          "title": "Publicamos apenas o que é fiável",
+          "body": "Cada candidato passa pelo limiar acordado e pelas suas regras. O que supera o critério é publicado, o duvidoso vai para uma fila de revisão e o resto não é mostrado."
+        }
+      },
+      "chips": {
+        "frames": "frames",
+        "sceneChange": "mudança de cena",
+        "timeline": "linha temporal",
+        "objects": "objetos",
+        "crops": "recortes",
+        "tracking": "tracking",
+        "dedupe": "deduplicação",
+        "embeddings": "embeddings",
+        "candidates": "candidatos",
+        "ranking": "ranking",
+        "variants": "variantes",
+        "threshold": "limiar",
+        "rules": "regras",
+        "exception": "exceção",
+        "traceability": "rastreabilidade"
+      },
+      "lanes": {
+        "published": "Publica-se",
+        "review": "Para revisão",
+        "withheld": "Não é mostrado",
+        "note": "Distribuição com um limiar de {threshold}%"
+      }
+    },
+    "integration": {
+      "label": "Integração",
+      "headingLine1": "Uma camada de inteligência visual,",
+      "headingLine2": "não um reprodutor novo.",
+      "description": "O Pause2Shop coloca-se entre o seu conteúdo e a sua experiência de compra. Não toca no sinal, não substitui o player e não bloqueia a reprodução.",
+      "layerLabel": "Pause2Shop",
+      "layerNote": "A análise é executada em diferido; a consulta responde a partir da cache.",
+      "input": {
+        "title": "Conteúdo, master ou VOD",
+        "body": "A sua biblioteca tal como está hoje. Processa-se uma cópia: o master não é modificado."
+      },
+      "output": {
+        "title": "Player, companion ou compra",
+        "body": "O seu reprodutor e a sua experiência atual, consultando a API quando lhes convém."
+      },
+      "layer": {
+        "processing": {
+          "title": "Processamento",
+          "body": "Análise de cenas, deteção e recortes. Trabalho pesado, fora do caminho do pedido."
+        },
+        "catalog": {
+          "title": "Catálogo por cena",
+          "body": "Produtos associados a cena e timestamp, com o seu score e a sua proveniência."
+        },
+        "api": {
+          "title": "API de consulta",
+          "body": "Resposta em cache por cena. Apenas leitura do que já foi publicado."
+        }
+      },
+      "flow": {
+        "ingest": "ingestão",
+        "query": "consulta à API"
+      },
+      "guarantees": {
+        "signal": "Não altera o sinal nem o master: o processamento trabalha sobre uma cópia.",
+        "playback": "Não bloqueia a reprodução: se a consulta falhar, o player continua igual.",
+        "noMatch": "Se não houver correspondência fiável não se mostra nada, nunca um resultado de enchimento.",
+        "api": "Integração por API REST: não é necessário um SDK dentro do reprodutor.",
+        "traceability": "Cada resultado guarda de que cena, que frame e que etapa saiu.",
+        "latency": "A consulta é servida a partir da cache por cena; a análise pesada corre em separado."
+      }
+    },
+    "confidence": {
+      "label": "Precisão e controlo editorial",
+      "heading": "Na dúvida, não se publica.",
+      "description": "O sistema dá prioridade à precisão visível: só mostra correspondências que superam o critério acordado consigo. Mova o limiar e veja como muda a distribuição.",
+      "slider": {
+        "label": "Limiar de publicação",
+        "note": "Distribuição das {total} correspondências da demo com o limiar atual. O que fica até 20 pontos abaixo vai para revisão; o resto é retido."
+      },
+      "outcome": {
+        "published": "Publicam-se",
+        "review": "Para revisão",
+        "withheld": "Retêm-se"
+      },
+      "zones": {
+        "high": {
+          "title": "Confiança alta",
+          "body": "Supera o limiar. Publica-se de forma automática ou pré-aprovada, segundo as suas regras.",
+          "rule": "score ≥ limiar"
+        },
+        "medium": {
+          "title": "Confiança média",
+          "body": "Fica perto mas não é suficiente. Entra na fila de exceção para que uma pessoa decida.",
+          "rule": "limiar − 20 ≤ score < limiar"
+        },
+        "low": {
+          "title": "Confiança baixa",
+          "body": "Não é mostrado: nem ao espectador nem na API. A ausência é preferível ao erro.",
+          "rule": "score < limiar − 20"
+        }
+      },
+      "controls": {
+        "title": "O que pode controlar",
+        "score": "Limiar de publicação configurável por catálogo e por conteúdo.",
+        "brandRules": "Regras por marca: o que pode ser publicado e com que prioridade.",
+        "allowlist": "Listas de permitidos e bloqueados por produto e por categoria.",
+        "audit": "Registo de quem aprovou o quê e quando.",
+        "feedback": "Correções feitas na revisão, que alimentam o ajuste do limiar."
+      },
+      "quality": {
+        "title": "Como se mede",
+        "note": "Não publicamos valores para estas métricas porque dependem do catálogo e do conteúdo de cada cliente. São medidas durante o piloto, sobre um conjunto de cenas acordado, e revistas em conjunto.",
+        "recall": {
+          "term": "Recall de deteção",
+          "definition": "Dos produtos realmente visíveis em cena, quantos o sistema deteta."
+        },
+        "precision": {
+          "term": "Precisão do matching",
+          "definition": "Das correspondências propostas, quantas são o produto correto."
+        },
+        "coverage": {
+          "term": "Cobertura de catálogo",
+          "definition": "Que parte do que foi detetado tem um equivalente real no seu catálogo."
+        },
+        "published": {
+          "term": "Precisão publicada",
+          "definition": "Precisão medida apenas sobre o que superou o limiar: o número que o espectador vê."
         }
       }
     },
     "useCases": {
-      "title": "Casos de uso",
-      "heading": "Pensado para catálogos de vídeo, não para uma foto isolada",
+      "label": "Casos de uso",
+      "heading": "Do vídeo completo ao catálogo de produtos",
+      "description": "O mesmo pipeline serve um catálogo de VOD, uma experiência de descoberta e um relatório de product placement. Cada caso indica o seu estado real.",
+      "stage": {
+        "works": "Funciona",
+        "pilot": "Piloto",
+        "future": "Evolução"
+      },
       "primary": {
-        "title": "VOD e vídeo a pedido",
-        "body": "Transforma um catálogo de vídeo num catálogo de produto. Analisa-se o vídeo completo, deduplica-se o que reaparece e entrega-se a lista de produtos com o respetivo timestamp de aparição.",
-        "point1": "Vídeos até 2 minutos por job (configurável)",
-        "point2": "Timestamp e frame de origem por produto",
-        "point3": "Orçamento de chamadas e custo por vídeo"
+        "title": "VOD e conteúdo a pedido",
+        "body": "Transforma uma biblioteca de vídeo num catálogo navegável por cena. Processa-se o conteúdo completo, deduplicam-se os objetos que reaparecem e entrega-se a lista de produtos com o seu timestamp de aparição.",
+        "point1": "Catálogo por cena e timestamp, pronto para consultar por API",
+        "point2": "Deduplicação entre cenas: um objeto recorrente não se repete",
+        "point3": "Orçamento de análise e custo por conteúdo, visíveis antes de lançar"
       },
       "secondary": {
-        "discovery": {
-          "title": "Descoberta de produto",
-          "body": "O utilizador vê algo no ecrã e quer saber o que é. Uma imagem basta para iniciar a pesquisa."
+        "pauseDiscovery": {
+          "title": "Descoberta ao pausar",
+          "body": "O espectador pausa e vê o que está no ecrã. A consulta resolve-se contra o que já foi publicado para essa cena."
         },
-        "catalogMatch": {
-          "title": "Correspondência com catálogo",
-          "body": "Cruza deteções com o teu próprio catálogo antes de saíres para a Internet: mais precisão e custo menor."
+        "ownCatalog": {
+          "title": "Matching contra catálogo próprio",
+          "body": "As correspondências saem do seu catálogo antes de olhar para fora: mais precisão, menos custo e controlo do que aparece."
         },
-        "visualShopping": {
-          "title": "Shopping visual",
-          "body": "Resultados que se podem comprar, com preço, disponibilidade e ligação direta à ficha da loja."
+        "controlledDemo": {
+          "title": "Demo comercial controlada",
+          "body": "Cenas e resultados preparados para mostrar numa reunião sem depender de credenciais externas nem da rede."
+        }
+      },
+      "horizon": {
+        "placementReporting": {
+          "title": "Product placement e reporting",
+          "body": "Relatório de que marcas e produtos aparecem, em que cenas e durante quanto tempo. Exige acordar previamente o catálogo de marcas a vigiar."
         },
-        "clientDemos": {
-          "title": "Demonstrações com cliente",
-          "body": "Modo de apresentação, painel de custos e dados de exemplo prontos para mostrar sem depender de credenciais."
+        "live": {
+          "title": "Direto",
+          "body": "O pipeline foi concebido para VOD. Levá-lo ao direto exige análise incremental e uma janela de latência acordada: hoje não está disponível."
         }
       }
     },
     "capabilities": {
-      "title": "Capacidades",
-      "heading": "Tudo o que já funciona, com ligação direta para verificar",
-      "verifiableBadge": "Demonstração técnica verificável",
-      "ctaOpenStudio": "Abrir estúdio",
-      "ctaViewInStudio": "Ver no estúdio",
-      "features": {
+      "label": "Capacidades do piloto",
+      "heading": "Uma base técnica preparada para validar e escalar",
+      "description": "O que existe hoje, agrupado por onde atua. O que se pode comprovar de fora tem ligação.",
+      "groups": {
+        "analysis": {
+          "title": "Análise"
+        },
+        "catalog": {
+          "title": "Catálogo"
+        },
+        "operation": {
+          "title": "Operação"
+        }
+      },
+      "items": {
         "video": {
-          "body": "Vídeo carregado, YouTube ou captura de ecrã, com análise contínua e overlay de deteções sobre o leitor."
+          "title": "Análise de vídeo",
+          "body": "Vídeo carregado, ligação do YouTube ou captura de ecrã, com as deteções desenhadas sobre o frame."
         },
         "image": {
-          "body": "Carrega uma imagem e obtém os objetos detetados com os respetivos recortes, prontos para pesquisar."
+          "title": "Análise de imagem",
+          "body": "Uma imagem basta para obter os objetos detetados e os seus recortes."
         },
-        "connectors": {
-          "title": "Conectores de catálogo",
-          "body": "Registo modular de fontes de moda com estado real: implementado, não verificado, ou pendente de acordo comercial.",
-          "cta": "Ver conectores"
+        "detection": {
+          "title": "Deteção por categoria",
+          "body": "Oito categorias: roupa, calçado, relógios e joalharia, malas, eletrónica, veículos, mobiliário e decoração."
+        },
+        "timestamp": {
+          "title": "Timestamp editorial",
+          "body": "Cada objeto fica ancorado à sua cena e ao seu frame de origem."
+        },
+        "normalized": {
+          "title": "Catálogo normalizado",
+          "body": "Esquema único de produto com marca e categoria normalizadas, histórico de preços e deduplicação."
         },
         "embeddings": {
           "title": "Embeddings visuais",
-          "body": "CLIP local ou fornecedor hash determinístico para demonstração. Reindexação completa a partir do admin quando o modelo muda.",
-          "cta": "Ver definições",
-          "badge": "CLIP opcional"
+          "body": "Representações visuais para comparar objetos detetados com produtos do catálogo."
         },
-        "catalog": {
-          "title": "Catálogo normalizado",
-          "body": "Esquema único de produto com marca e categoria normalizadas, histórico de preços, dedup multinível e rastreabilidade da fonte.",
-          "cta": "Explorar catálogo"
+        "matching": {
+          "title": "Matching em cascata",
+          "body": "Comparação por etapas, da mais barata à mais custosa, com cache em cada nível."
+        },
+        "connectors": {
+          "title": "Conectores de fontes",
+          "body": "Registo modular de fontes com o seu estado real: verificada, não verificada ou pendente de acordo."
+        },
+        "jobs": {
+          "title": "Jobs de análise",
+          "body": "Fila com retentativas, cancelamento e estado consultável por trabalho."
         },
         "cost": {
-          "title": "Custo e orçamento",
-          "body": "Contadores de chamadas por fornecedor, limite de custo por vídeo e cache para não repetir pesquisas pagas."
+          "title": "Controlo de custos",
+          "body": "Contadores por fornecedor, limite de gasto por conteúdo e cache para não repetir chamadas pagas."
+        },
+        "observability": {
+          "title": "Observabilidade",
+          "body": "Registo por etapa: o que foi pedido, o que o resolveu e o que foi servido a partir da cache."
+        },
+        "exceptions": {
+          "title": "Fila de exceção",
+          "body": "O que não supera o limiar acumula-se para revisão humana, com a sua evidência."
         }
       },
       "complianceNote": {
         "lead": "Ingestão com regras.",
-        "body": "robots.txt verificado antes de cada pedido, <code>Crawl-delay</code> respeitado, User-Agent identificável com contacto e zero evasão anti-bot. As fontes que exigem acordo de parceiro ou afiliação não são ingeridas até o terem."
+        "body": "<code>robots.txt</code> verificado antes de cada pedido, limite de pedidos por domínio, User-Agent identificável e nenhuma técnica de evasão anti-bot."
       }
     },
-    "cta": {
-      "title": "Começa agora",
-      "action": "Experimenta agora",
-      "heading": "Experimenta com o teu próprio vídeo",
-      "description": "Escolhe que categorias procurar, ajusta a intensidade da análise e vê como aparecem as correspondências frame a frame. Sem registo.",
-      "operationsPanel": "Painel de operações"
+    "security": {
+      "label": "Segurança",
+      "heading": "Concebido para operar de forma segura",
+      "description": "Decisões tomadas no sistema atual, não uma lista de intenções.",
+      "note": "Não se declara nenhuma certificação de conformidade porque hoje não existe nenhuma. A cifragem em trânsito e a retenção configurável estão implementadas; uma auditoria formal de segurança e a adaptação ao quadro de conformidade do cliente fazem parte do piloto, não do que já foi alcançado.",
+      "items": {
+        "authorizedData": {
+          "title": "Dados autorizados",
+          "body": "Processa-se o conteúdo e o catálogo que o cliente autoriza, nada mais."
+        },
+        "separation": {
+          "title": "Análise e publicação separadas",
+          "body": "O que é analisado não se publica até passar o limiar e as regras."
+        },
+        "secrets": {
+          "title": "Segredos apenas no servidor",
+          "body": "Nenhuma credencial de fornecedor chega ao navegador."
+        },
+        "audit": {
+          "title": "Registo e auditoria",
+          "body": "Rasto por etapa do que foi pedido, do que foi resolvido e do que foi publicado."
+        },
+        "roles": {
+          "title": "Acesso por perfis",
+          "body": "O painel de operações está atrás de autenticação e pode ser desativado por completo."
+        },
+        "degradation": {
+          "title": "Degradação silenciosa",
+          "body": "Se um fornecedor falhar não se mostra um resultado duvidoso: não se mostra nada."
+        },
+        "killSwitch": {
+          "title": "Kill switch",
+          "body": "A ingestão e o painel desligam-se por configuração, sem novo deploy."
+        },
+        "retention": {
+          "title": "Retenção configurável",
+          "body": "Frames e recortes têm política de conservação ajustável."
+        }
+      }
+    },
+    "finalCta": {
+      "heading": "Comprove o Pause2Shop com uma cena real",
+      "description": "Carregue uma imagem ou um vídeo curto e observe como os produtos são detetados, classificados e ligados ao catálogo.",
+      "primary": "Abrir o estúdio",
+      "secondary": "Ver demo guiada",
+      "note": "Não é necessário configurar nada para o primeiro teste."
     },
     "sourceMarquee": {
       "label": "Fontes ligadas",
-      "registryLabel": "Registo de fontes de moda",
+      "registryLabel": "Registo de fontes de catálogo",
       "totalLabel": "fontes",
       "verifiedLabel": "verificadas com fixtures",
       "partnerLabel": "requerem acordo",
-      "footnote": "Listagem do registo de conectores do serviço de catálogo. Aparecer aqui indica que a fonte está registada com o seu estado real de implementação e conformidade — <emphasis>não implica relação comercial nem permissão concedida</emphasis>."
-    },
-    "stats": {
-      "productsIndexed": "{count, plural, one{# produto indexado} other{# produtos indexados}}",
-      "catalogProducts": "Produtos no catálogo",
-      "visualEmbeddingCoverage": "Com embedding visual",
-      "detectableCategories": "Categorias detetáveis"
-    },
-    "heroVisual": {
-      "windowStatus": "estúdio · análise contínua · 00:42",
-      "liveBadge": "em direto",
-      "boxes": {
-        "jacket": "Casaco de linho",
-        "bag": "Mala shopper",
-        "sneaker": "Sapatilha branca"
-      },
-      "detectionSummary": "3 objetos · 1 pessoa · dedup ativo",
-      "matchesTitle": "Correspondências",
-      "matchesSource": "catálogo + Lens",
-      "match1": {
-        "title": "Casaco de linho relaxed",
-        "store": "Catálogo · Zara"
-      },
-      "match2": {
-        "title": "Mala shopper de pele",
-        "store": "Catálogo · Mango"
-      },
-      "match3": {
-        "title": "Sapatilha low white",
-        "store": "Google Lens"
-      },
-      "latencyLabel": "Latência média",
-      "latencyValue": "1,4 s / frame"
-    },
-    "studioSection": {
-      "label": "O estúdio",
-      "heading": "Analisa um vídeo ou uma imagem agora",
-      "description": "Escolhe categorias e intensidade, carrega o conteúdo e observa as deteções e correspondências em tempo real.",
-      "openFullscreen": "Abrir em ecrã completo",
-      "loading": "A carregar o estúdio de análise…"
+      "footnote": "Listagem do registo de conectores do serviço de catálogo. Aparecer aqui indica que a fonte está <emphasis>registada no roadmap de ingestão</emphasis>, não que seja um cliente nem um partner comercial."
     },
     "footer": {
-      "tagline": "Pausa o vídeo, encontra o produto.",
-      "description": "Deteção visual de produtos em vídeo e imagem, com correspondência num catálogo próprio e pesquisa visual inversa. Os resultados provêm de fontes reais: não se inventam marcas, preços nem ligações.",
+      "description": "Deteção de produtos em vídeo e imagem, com correspondência contra catálogo próprio e rastreabilidade por cena e timestamp.",
       "product": {
         "title": "Produto",
         "studio": "Estúdio de análise",
         "catalog": "Catálogo detetado",
-        "demo": "Demonstração de vídeo"
+        "demo": "Demo de vídeo"
       },
-      "operations": {
-        "title": "Operações",
-        "admin": "Painel de administração",
-        "connectors": "Conectores",
-        "jobs": "Jobs de ingestão",
-        "logs": "Monitorização"
+      "resources": {
+        "title": "Recursos",
+        "architecture": "Arquitetura técnica",
+        "howItWorks": "Como funciona",
+        "capabilities": "Capacidades"
       },
-      "copyright": "© {year} {appName}. Demonstração técnica.",
-      "complianceNote": "Ingestão de catálogo com robots.txt respeitado, rate limit por domínio e sem evasão anti-bot."
+      "legal": {
+        "title": "Legal",
+        "privacy": "Privacidade",
+        "terms": "Termos",
+        "contact": "Contacto"
+      },
+      "status": {
+        "ok": "Serviço de catálogo operacional",
+        "degraded": "Serviço de catálogo degradado"
+      },
+      "copyright": "© {year} {appName}",
+      "complianceNote": "Ingestão de catálogo com robots.txt respeitado, limite por domínio e sem evasão anti-bot."
     }
   },
   "studio": {
@@ -490,6 +780,36 @@
       "intensityLabel": "Intensidade da análise",
       "personCentricNote": "Modo centrado em pessoas: são analisadas as peças de roupa e acessórios que as pessoas trazem ou sustentam, e o fundo da cena é ignorado."
     },
+    "matchingSource": {
+      "title": "Fonte das correspondências",
+      "subtitle": "Escolhe onde procurar os produtos que correspondem aos objetos detetados.",
+      "recommended": "Recomendado",
+      "unavailable": "Indisponível",
+      "externalNotConfigured": "Configura o fornecedor externo para utilizar esta opção.",
+      "catalogEmpty": "O catálogo ainda não contém produtos indexados.",
+      "modes": {
+        "catalogOnly": {
+          "label": "Catálogo próprio",
+          "description": "Procura apenas entre os produtos importados e indexados no Pause2Shop.",
+          "benefits": "Maior controlo · menor custo · resultados verificados"
+        },
+        "externalOnly": {
+          "label": "Pesquisa externa",
+          "description": "Procura produtos através da API ou do fornecedor externo configurado.",
+          "benefits": "Maior cobertura · produtos fora do catálogo"
+        },
+        "catalogFirst": {
+          "label": "Catálogo primeiro",
+          "description": "Procura primeiro no catálogo e utiliza a API apenas quando não existe uma correspondência suficientemente fiável.",
+          "benefits": "Equilíbrio entre precisão e custo"
+        },
+        "hybrid": {
+          "label": "Comparar fontes",
+          "description": "Consulta catálogo e API, combina os candidatos e mostra a melhor correspondência.",
+          "benefits": "Cobertura máxima · comparação lado a lado"
+        }
+      }
+    },
     "loadingAnalysis": {
       "ariaLabel": "A analisar frame",
       "heading": "A analisar o frame…",
@@ -590,7 +910,26 @@
     "queued": "Em fila",
     "done": "Concluído",
     "failed": "Falhou",
-    "noItemsDetected": "Não foram detetados produtos"
+    "noItemsDetected": "Não foram detetados produtos",
+    "matchSource": {
+      "catalog": "Catálogo",
+      "external": "API externa",
+      "type": {
+        "exact": "Exata",
+        "probable": "Provável",
+        "similar": "Semelhante"
+      },
+      "fallbackNotice": "Não encontrado com confiança suficiente no catálogo. Resultado obtido através de pesquisa externa.",
+      "searchingCatalog": "A procurar no catálogo…",
+      "searchingExternal": "A procurar através da API…",
+      "noCatalogMatch": "Sem correspondência suficiente no catálogo.",
+      "candidatesFound": "{count, plural, one{# candidato encontrado} other{# candidatos encontrados}}",
+      "emptyCatalog": "O catálogo ainda não contém produtos indexados. Sincroniza uma fonte ou muda para pesquisa externa.",
+      "externalUnavailable": "A pesquisa externa não está configurada. Adiciona as credenciais do fornecedor ou utiliza o catálogo.",
+      "noMatch": "Não foi encontrada uma correspondência suficientemente fiável.",
+      "fromCatalog": "Resultado do catálogo próprio",
+      "fromExternal": "Resultado de pesquisa externa"
+    }
   },
   "catalog": {
     "products": "Produtos",
@@ -954,6 +1293,25 @@
         "dedupThresholdLabel": "Limiar de dedup por embedding",
         "jobsWorkersLabel": "Workers de jobs"
       },
+      "productMatching": {
+        "title": "Matching de produtos",
+        "description": "De onde saem os produtos compráveis depois de detetar um objeto, e com que exigência se aceita cada fonte.",
+        "defaultModeLabel": "Modo predefinido",
+        "catalogThresholdLabel": "Limiar do catálogo",
+        "externalThresholdLabel": "Limiar da pesquisa externa",
+        "hybridThresholdLabel": "Limiar ao comparar fontes",
+        "providerLabel": "Fornecedor externo",
+        "providerMissing": "Não configurado",
+        "indexedLabel": "Produtos indexados",
+        "statusLabel": "Estado",
+        "catalogBadge": "Catálogo",
+        "externalBadge": "API externa",
+        "testConnection": "Testar ligação",
+        "testing": "A testar…",
+        "testOkDetail": "A pesquisa externa responde corretamente.",
+        "testFailed": "Não foi possível verificar a ligação.",
+        "lastTestLabel": "Último teste"
+      },
       "compliance": {
         "title": "Limites de ingestão e conformidade",
         "description": "Os valores por defeito são deliberadamente conservadores: é melhor demorar mais do que incomodar uma loja.",
@@ -1162,6 +1520,8 @@
       "sectionsNav": "Secções do admin",
       "closeNav": "Fechar navegação",
       "openNav": "Abrir navegação",
+      "collapseNav": "Recolher navegação",
+      "expandNav": "Expandir navegação",
       "backToProduct": "Voltar ao produto",
       "nav": {
         "overview": "Resumo",
@@ -1460,6 +1820,154 @@
           "label": "Área de transferência (colar imagem)",
           "okDetail": "Colar com Ctrl+V disponível.",
           "warningDetail": "API de área de transferência limitada; usa arrastar e largar."
+        }
+      }
+    }
+  },
+  "architecture": {
+    "meta": {
+      "title": "Arquitetura técnica",
+      "description": "O pipeline completo do Pause2Shop: captura de frames, deteção, deduplicação, matching contra catálogo e publicação sob limiar."
+    },
+    "label": "Arquitetura",
+    "heading": "Como funciona por dentro",
+    "intro": "Esta página é o detalhe técnico que a landing deixa de fora de propósito. Descreve o pipeline tal como está implementado hoje, com os nomes reais de cada etapa, e separa no final o que funciona do que depende de uma integração ou de um acordo.",
+    "stages": {
+      "capture": {
+        "title": "Captura de frames",
+        "body": "Do vídeo —carregado, ligação do YouTube ou captura de ecrã— extraem-se frames candidatos. Não se analisam todos: procura-se o frame que traz informação nova, para que o custo cresça com o conteúdo e não com a duração.",
+        "details": {
+          "d1": "requestVideoFrameCallback (rVFC) para ler fotogramas sincronizados com o reprodutor, em vez de amostrar às cegas por temporizador.",
+          "d2": "Diferença entre cenas (scene diff) para detetar o corte e ficar com um frame representativo por plano.",
+          "d3": "Hash perceptual por frame: se o hash se repetir, o frame não volta a passar pelo modelo.",
+          "d4": "Intervalo mínimo entre análises, configurável, como limite superior de chamadas por minuto de vídeo."
+        }
+      },
+      "detect": {
+        "title": "Deteção de objetos",
+        "body": "Um modelo de visão devolve, por frame, a lista de objetos com a sua caixa, categoria, cor dominante e relação com a pessoa em cena. A relação importa porque altera a prioridade: o que alguém traz vestido pesa mais do que o que está ao fundo.",
+        "details": {
+          "d1": "Caixas normalizadas (bounding boxes) em coordenadas relativas ao frame, para que o overlay seja independente da resolução.",
+          "d2": "Relação worn / held / background, que ordena a fila de busca.",
+          "d3": "Filtro por categoria antes de gastar uma chamada: se a categoria não estiver ativa, o objeto não é procurado.",
+          "d4": "Limiar mínimo de deteção independente do limiar de publicação."
+        }
+      },
+      "dedupe": {
+        "title": "Tracking e deduplicação",
+        "body": "Os objetos mantêm identidade entre frames e fundem-se globalmente no final da análise. Sem esta etapa, uma peça visível em vinte planos geraria vinte buscas e vinte entradas de catálogo.",
+        "details": {
+          "d1": "Identificadores de seguimento (trackIds) que sobrevivem entre frames consecutivos.",
+          "d2": "Supressão de sobreposições (NMS) sobre as caixas do mesmo frame.",
+          "d3": "Seleção do melhor recorte por objeto: o maior e mais nítido de todo o seu rasto.",
+          "d4": "Fusão global por semelhança visual ao fechar o trabalho, não apenas entre frames vizinhos."
+        }
+      },
+      "match": {
+        "title": "Matching contra catálogo",
+        "body": "Cada recorte é procurado primeiro no catálogo próprio, em cascata de menor para maior custo. Só se chega à etapa cara se as baratas não resolverem, e cada nível tem a sua cache.",
+        "details": {
+          "d1": "Cascata: hash exato → hash perceptual → embedding visual → busca por texto.",
+          "d2": "Vizinhos mais próximos sobre pgvector para a etapa de embeddings.",
+          "d3": "Resolução de variantes: tamanho e cor agrupam-se sob o mesmo produto pai.",
+          "d4": "Cada resultado guarda a etapa que o resolveu (matchStage) e a sua origem, para poder ser auditado depois."
+        }
+      },
+      "publish": {
+        "title": "Limiar e publicação",
+        "body": "O resultado do matching não é publicado diretamente. Passa pelo limiar acordado e pelas regras do cliente, e daí sai para um de três sítios: publicado, fila de revisão, ou descartado.",
+        "details": {
+          "d1": "Limiar de publicação configurável por catálogo e por conteúdo.",
+          "d2": "Banda de revisão abaixo do limiar: o que fica perto vai para uma pessoa, não para o lixo.",
+          "d3": "Regras por marca e listas de permitidos e bloqueados, aplicadas depois do score.",
+          "d4": "Rasto completo por resultado: cena, frame, etapa, score e decisão."
+        }
+      }
+    },
+    "status": {
+      "title": "Estado real da implementação",
+      "works": {
+        "term": "Funciona hoje",
+        "body": "Captura de frames, deteção por categoria, tracking e deduplicação, matching em cascata contra catálogo próprio, controlo de custo por trabalho e fila de revisão. É o que se pode comprovar no estúdio."
+      },
+      "pilot": {
+        "term": "Calibra-se no piloto",
+        "body": "Os valores de limiar, a cobertura real do catálogo e as métricas de precisão dependem do conteúdo e do catálogo de cada cliente. São medidos sobre um conjunto de cenas acordado, não são dados por certos."
+      },
+      "requiresIntegration": {
+        "term": "Requer integração",
+        "body": "O consumo a partir de um reprodutor ou de uma experiência companion faz-se por API e necessita de trabalho do lado do cliente. A análise em direto não está disponível: o pipeline foi concebido para conteúdo a pedido."
+      }
+    },
+    "cta": {
+      "studio": "Testá-lo no estúdio",
+      "back": "Voltar ao início"
+    }
+  },
+  "legal": {
+    "common": {
+      "label": "Legal",
+      "lastUpdated": "Última revisão: julho de 2026",
+      "draftNotice": "Este documento descreve com exatidão o comportamento técnico do sistema, mas está pendente de revisão jurídica. Não inclui dados da entidade responsável nem cláusulas contratuais: serão completados antes de qualquer uso comercial.",
+      "back": "Voltar ao início"
+    },
+    "privacy": {
+      "heading": "Privacidade",
+      "intro": "Que dados o Pause2Shop toca, onde e durante quanto tempo. A versão curta: não há contas de utilizador, não se constrói nenhum perfil e o conteúdo analisado é processado para produzir correspondências, não para treinar nada.",
+      "sections": {
+        "whatWeProcess": {
+          "title": "O que se processa",
+          "body": "O conteúdo enviado para análise —uma imagem ou um vídeo— e o catálogo de produtos configurado. Da análise saem frames, recortes dos objetos detetados e as correspondências propostas, com o seu score e a sua proveniência."
+        },
+        "noAccounts": {
+          "title": "Sem contas nem perfis",
+          "body": "A aplicação pública não tem registo, nem início de sessão, nem cookies de rastreio publicitário. A única preferência guardada no navegador é o idioma escolhido, para não voltar a perguntá-lo. Não se constrói nenhum perfil do visitante."
+        },
+        "content": {
+          "title": "Conteúdo que envia",
+          "body": "O vídeo ou a imagem são usados para executar a análise e devolver o resultado. Não são partilhados com terceiros além dos fornecedores de análise necessários para a produzir, e não são utilizados para treinar modelos próprios."
+        },
+        "providers": {
+          "title": "Fornecedores",
+          "body": "A análise visual apoia-se em fornecedores externos de modelos, aos quais são enviados os frames ou recortes necessários para resolver uma consulta. As credenciais desses fornecedores vivem apenas no servidor e nunca chegam ao navegador. A lista concreta de fornecedores de uma implementação é acordada com o cliente."
+        },
+        "retention": {
+          "title": "Conservação",
+          "body": "Frames e recortes têm uma política de conservação configurável por implementação: existem enquanto são úteis para o trabalho de análise e a sua revisão. O catálogo de produtos e as correspondências publicadas persistem porque são o resultado do serviço."
+        },
+        "security": {
+          "title": "Segurança",
+          "body": "Tráfego cifrado em trânsito, segredos unicamente no servidor, e o painel de operações atrás de autenticação com possibilidade de o desativar por completo. Não se declara nenhuma certificação de conformidade: hoje não existe nenhuma."
+        }
+      }
+    },
+    "terms": {
+      "heading": "Termos de utilização",
+      "intro": "Condições de utilização desta demonstração pública. O Pause2Shop é hoje um piloto técnico: estes termos refletem-no em vez de descreverem um serviço comercial que ainda não está contratado.",
+      "sections": {
+        "scope": {
+          "title": "Âmbito",
+          "body": "Estes termos cobrem a utilização da aplicação pública: a página de apresentação, o estúdio de análise, o catálogo visível e a demo guiada. Não cobrem nenhum acordo de serviço, que se rege pelo seu próprio contrato."
+        },
+        "pilotNature": {
+          "title": "Natureza de piloto",
+          "body": "O que aqui se oferece é uma demonstração de capacidades técnicas. Os resultados da análise são orientativos, a disponibilidade não está garantida e as funcionalidades podem mudar sem aviso enquanto o piloto estiver aberto."
+        },
+        "acceptableUse": {
+          "title": "Utilização aceitável",
+          "body": "Não se deve usar o serviço para analisar conteúdo sobre o qual não se tenham direitos, para tentar identificar pessoas, nem para realizar testes de carga ou de intrusão sem autorização prévia por escrito."
+        },
+        "content": {
+          "title": "Conteúdo e direitos",
+          "body": "Quem envia conteúdo declara ter direito a fazê-lo. Os produtos, marcas e nomes comerciais que possam aparecer nos resultados pertencem aos seus titulares; aparecer no registo de fontes de catálogo não implica nenhuma relação comercial nem patrocínio."
+        },
+        "availability": {
+          "title": "Disponibilidade",
+          "body": "É um ambiente de teste: pode haver interrupções, limites de utilização e funcionalidades desativadas. Se um fornecedor externo falhar, o sistema prefere não mostrar resultado a mostrar um duvidoso."
+        },
+        "changes": {
+          "title": "Alterações",
+          "body": "Estes termos podem ser atualizados à medida que o produto avança. A data da última revisão aparece no início do documento."
         }
       }
     }

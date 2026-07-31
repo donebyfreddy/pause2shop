@@ -17,6 +17,7 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
+import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import {
   Badge,
@@ -76,6 +77,7 @@ export function ConnectorsView() {
   const tActions = useTranslations("actions");
   const tToast = useTranslations("toast.connectors");
   const toast = useToast();
+  const router = useRouter();
 
   const GROUP_OPTIONS = useMemo(
     () => [
@@ -171,7 +173,10 @@ export function ConnectorsView() {
 
   const launchSync = async (id: string, mode: "full" | "incremental") => {
     setBusy(`${id}:sync`);
-    const res = await adminPost<{ jobId: string }>("jobs/sync", { source: id, mode, limit: 25 });
+    // Sin `limit`: el servidor decide con SCRAPER_MAX_PRODUCTS_PER_SOURCE
+    // (0 = sin límite funcional, siempre por lotes). Un límite bajo fijo aquí
+    // era exactamente el "límite oculto" que impedía un full sync real.
+    const res = await adminPost<{ jobId: string }>("jobs/sync", { source: id, mode });
     setBusy(null);
     if (!res.ok) {
       toast.error(tToast("syncFailed"), res.error.message);
@@ -180,10 +185,14 @@ export function ConnectorsView() {
     toast.success(
       t("toast.syncQueued", {
         mode: mode === "full" ? t("syncMode.full") : t("syncMode.incremental"),
+        source: id,
       }),
       t("toast.syncQueuedDetail", { jobId: res.data.jobId.slice(0, 8) })
     );
-    reload();
+    // Abre el detalle del job recién creado en vez de dejar que el operador lo
+    // busque a mano en la lista: es la diferencia entre "parece que no ha
+    // pasado nada" y ver "En cola" en el momento.
+    router.push(`/admin/jobs?open=${res.data.jobId}`);
   };
 
   const summary = data?.summary;

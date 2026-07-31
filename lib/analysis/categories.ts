@@ -2,8 +2,13 @@ import type {
   AnalysisCategory,
   AnalysisIntensity,
   DetectedItem,
+  ProductMatchingMode,
   VideoAnalysisConfig,
 } from "@/lib/types";
+import {
+  DEFAULT_MATCHING_MODE,
+  normalizeMatchingMode,
+} from "@/lib/matching/types";
 
 /**
  * Capa de categorías del análisis. Pura (sin I/O): se usa idéntica en backend y
@@ -150,17 +155,29 @@ const WEARABLE_CATEGORIES: AnalysisCategory[] = [
 export function deriveAnalysisConfig(
   categories: AnalysisCategory[],
   analysisIntensity: AnalysisIntensity,
-  overrides?: Partial<Pick<VideoAnalysisConfig, "personCentric" | "reverseImageSearch">>,
+  overrides?: Partial<
+    Pick<
+      VideoAnalysisConfig,
+      "personCentric" | "reverseImageSearch" | "matchingMode"
+    >
+  >,
 ): VideoAnalysisConfig {
   const cats = categories.length ? categories : ["all" as AnalysisCategory];
   const onlyWearable =
     !cats.includes("all") &&
     cats.every((c) => WEARABLE_CATEGORIES.includes(c));
+  const matchingMode = overrides?.matchingMode ?? DEFAULT_MODE;
   return {
     categories: cats,
     analysisIntensity,
     personCentric: overrides?.personCentric ?? onlyWearable,
-    reverseImageSearch: overrides?.reverseImageSearch ?? true,
+    // En catalog_only no hay búsqueda externa que autorizar: el flag queda a
+    // false para que ningún camino intente gastar una llamada de pago.
+    reverseImageSearch:
+      matchingMode === "catalog_only"
+        ? false
+        : overrides?.reverseImageSearch ?? true,
+    matchingMode,
   };
 }
 
@@ -229,6 +246,17 @@ const DEFAULT_INTENSITY: AnalysisIntensity = ((): AnalysisIntensity => {
     : "standard";
 })();
 
+/**
+ * Fuente de coincidencias por defecto. `NEXT_PUBLIC_PRODUCT_MATCHING_MODE`
+ * permite que un despliegue arranque en otro modo; sin ella, catalog_first
+ * (el recomendado). La elección del usuario SIEMPRE gana sobre esto.
+ */
+const DEFAULT_MODE: ProductMatchingMode =
+  normalizeMatchingMode(process.env.NEXT_PUBLIC_PRODUCT_MATCHING_MODE) ??
+  DEFAULT_MATCHING_MODE;
+
+export const DEFAULT_ANALYSIS_MATCHING_MODE = DEFAULT_MODE;
+
 export function defaultAnalysisConfig(): VideoAnalysisConfig {
   return deriveAnalysisConfig(DEFAULT_CATEGORIES, DEFAULT_INTENSITY);
 }
@@ -239,12 +267,14 @@ export function serializeConfig(config: VideoAnalysisConfig): {
   analysisIntensity: AnalysisIntensity;
   personCentric: boolean;
   reverseImageSearch: boolean;
+  matchingMode: ProductMatchingMode;
 } {
   return {
     categories: config.categories,
     analysisIntensity: config.analysisIntensity,
     personCentric: config.personCentric,
     reverseImageSearch: config.reverseImageSearch,
+    matchingMode: config.matchingMode,
   };
 }
 
@@ -275,6 +305,8 @@ export function parseConfig(raw: unknown): VideoAnalysisConfig {
         typeof o.reverseImageSearch === "boolean"
           ? o.reverseImageSearch
           : undefined,
+      // Un modo desconocido NO rompe el análisis: cae al default.
+      matchingMode: normalizeMatchingMode(o.matchingMode) ?? undefined,
     },
   );
 }

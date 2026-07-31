@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { useFormatter, useTranslations } from "next-intl";
+import { Database, Globe } from "lucide-react";
 import type { DetectedItem, ProductLink } from "@/lib/types";
 import type { VisualMatch } from "@/lib/visualSearch/types";
 import { cn } from "@/lib/utils";
@@ -70,6 +71,31 @@ const MATCH_LABEL_KEY = {
 } as const satisfies Record<VisualMatch["match_type"], string>;
 
 /**
+ * Badge de PROCEDENCIA: de dónde salió el producto. Es información que el
+ * usuario necesita para juzgar el resultado — un match del catálogo propio
+ * está verificado e indexado; uno externo viene de un motor de terceros — y
+ * nunca deben confundirse.
+ */
+function SourceBadge({ source }: { readonly source: VisualMatch["best_match_source"] }) {
+  const t = useTranslations("analysis.matchSource");
+  const isCatalog = source === "catalog";
+  return (
+    <span
+      title={isCatalog ? t("fromCatalog") : t("fromExternal")}
+      className={cn(
+        "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold",
+        isCatalog
+          ? "border-brand/40 bg-brand/12 text-brand-bright"
+          : "border-line-strong bg-white/[0.04] text-ink-muted"
+      )}
+    >
+      {isCatalog ? <Database className="size-2.5" aria-hidden /> : <Globe className="size-2.5" aria-hidden />}
+      {isCatalog ? t("catalog") : t("external")}
+    </span>
+  );
+}
+
+/**
  * Match del Visual Matching Engine: producto real encontrado por reverse
  * image search / shopping, con tiendas y precios reales.
  */
@@ -101,6 +127,7 @@ function VisualMatchBlock({
             {t(MATCH_LABEL_KEY[match.match_type])}
           </span>
           <MatchConfidenceBadge value={match.match_confidence} />
+          <SourceBadge source={match.best_match_source} />
         </span>
         {match.brand && (
           <span className="text-[11px] font-semibold text-ink">{match.brand}</span>
@@ -280,6 +307,23 @@ function MatchingStatusLine({ status }: { status?: DetectedItem["matchingStatus"
   );
 }
 
+/**
+ * Explica, sin jerga, por qué este resultado no salió del catálogo propio.
+ * Solo aparece cuando REALMENTE hubo fallback: si el catálogo resolvió, o si
+ * el modo era external_only (donde no se esperaba catálogo), no se dice nada.
+ */
+function FallbackNotice({ item }: { readonly item: DetectedItem }) {
+  const t = useTranslations("analysis.matchSource");
+  const debug = item.matching_debug;
+  if (!debug?.externalFallbackUsed) return null;
+  if (!item.visual_match) return null;
+  return (
+    <p className="mb-3 rounded-lg border border-warning/25 bg-warning/[0.07] px-3 py-2 text-[11px] leading-snug text-warning">
+      {t("fallbackNotice")}
+    </p>
+  );
+}
+
 /** Evidencia que justifica la marca mostrada (nunca se afirma sin evidencia). */
 function useBrandEvidence(item: DetectedItem): string | null {
   const t = useTranslations("studio.productCard");
@@ -394,6 +438,8 @@ export default function ProductCard({
         )}
       </div>
 
+      {/* Va ANTES del match: explica de dónde salió el producto que sigue. */}
+      <FallbackNotice item={item} />
       {item.visual_match ? (
         <VisualMatchBlock item={item} match={item.visual_match} onLinkClick={onLinkClick} />
       ) : (

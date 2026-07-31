@@ -124,7 +124,7 @@ export type ScraperStatus = {
     navigationTimeoutMs: number;
     maxRetries: number;
     batchSize: number;
-    maxProductsPerJob: number;
+    maxProductsPerSource: number;
   };
   persistence: {
     catalogBackend: "postgres" | "file";

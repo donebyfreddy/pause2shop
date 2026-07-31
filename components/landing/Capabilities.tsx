@@ -2,141 +2,154 @@
 
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { motion } from "motion/react";
-import {
-  ArrowUpRight,
-  Binary,
-  Database,
-  Gauge,
-  Image as ImageIcon,
-  Plug,
-  ShieldCheck,
-  Video,
-} from "lucide-react";
+import { ArrowUpRight, Gauge, Layers, ScanSearch, ShieldCheck } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { Badge, Reveal, RevealGroup, RevealItem } from "@/components/ui";
+import { SectionLabel } from "@/components/ui";
+import { FadeIn, StaggerGroup, StaggerItem } from "@/components/motion";
 
 /**
- * Bloques de capacidad = prueba de producto. Cada tarjeta enlaza a la pantalla
- * real donde se puede comprobar, y las que no están completas lo dicen: es una
- * demo técnica, no un folleto.
+ * Capacidades del piloto.
+ *
+ * Tres correcciones respecto a la versión auditada:
+ *
+ *  1. **El titular deja de ser defensivo.** "Todo lo que ya funciona, con enlace
+ *     directo para comprobarlo" invitaba a desconfiar. Ahora se enuncia como lo
+ *     que es: la base técnica de un piloto.
+ *  2. **Fuera "CLIP local o proveedor hash determinista para demo".** Admitir en
+ *     la landing comercial que el motor de embeddings puede ser un sustituto de
+ *     demostración no aporta nada y resta mucho. Se describe la capacidad
+ *     —representaciones visuales para comparar— que es cierta en cualquier caso.
+ *  3. **Los enlaces dejan de ir al admin.** Cuatro de seis bloques llevaban a
+ *     `/admin/*`: la prueba que se ofrecía al visitante era el panel de
+ *     operaciones. Ahora solo se enlaza a superficies públicas (`/studio`,
+ *     `/catalog`, `/arquitectura`), y las capacidades que solo se ven desde
+ *     dentro simplemente no llevan enlace.
+ *
+ * Composición: no son diez tarjetas. Es una hoja de especificaciones en tres
+ * columnas — otra forma más de romper la repetición de la página.
+ *
+ * Los textos de las capacidades viven planos en `landing.capabilities.items.*`
+ * y no anidados bajo su grupo. Es un requisito del tipado de `next-intl`:
+ * `t(\`groups.${grupo}.items.${item}.title\`)` produce el producto cartesiano de
+ * grupos × items —con combinaciones que no existen— y no compila. Con las claves
+ * planas, el tipo resultante es la lista exacta de las doce capacidades. El
+ * agrupamiento visual lo decide `GROUPS`, aquí abajo.
  */
 
-const FEATURE_META = [
-  { key: "video", icon: Video, href: "/studio", titleKey: "actions.analyzeVideo" as const },
-  { key: "image", icon: ImageIcon, href: "/studio", titleKey: "actions.analyzeImage" as const },
-  { key: "connectors", icon: Plug, href: "/admin/connectors" },
-  { key: "embeddings", icon: Binary, href: "/admin/settings" },
-  { key: "catalog", icon: Database, href: "/admin/catalog" },
-  { key: "cost", icon: Gauge, href: "/studio" },
+const GROUPS = [
+  {
+    key: "analysis",
+    icon: ScanSearch,
+    items: [
+      { key: "video", href: "/studio" },
+      { key: "image", href: "/studio" },
+      { key: "detection", href: null },
+      { key: "timestamp", href: null },
+    ],
+  },
+  {
+    key: "catalog",
+    icon: Layers,
+    items: [
+      { key: "normalized", href: "/catalog" },
+      { key: "embeddings", href: null },
+      { key: "matching", href: "/arquitectura" },
+      { key: "connectors", href: null },
+    ],
+  },
+  {
+    key: "operation",
+    icon: Gauge,
+    items: [
+      { key: "jobs", href: null },
+      { key: "cost", href: null },
+      { key: "observability", href: null },
+      { key: "exceptions", href: null },
+    ],
+  },
 ] as const;
 
 function ComplianceCode({ children }: Readonly<{ children: ReactNode }>) {
-  return <code className="font-mono text-[11px]">{children}</code>;
+  return <code className="font-mono text-[11px] text-ink-muted">{children}</code>;
 }
 
 export function Capabilities() {
   const t = useTranslations("landing.capabilities");
-  const tRoot = useTranslations();
-
-  const ctaFor = (meta: (typeof FEATURE_META)[number]) => {
-    switch (meta.key) {
-      case "video":
-      case "image":
-        return t("ctaOpenStudio");
-      case "cost":
-        return t("ctaViewInStudio");
-      case "connectors":
-        return t("features.connectors.cta");
-      case "embeddings":
-        return t("features.embeddings.cta");
-      case "catalog":
-        return t("features.catalog.cta");
-    }
-  };
-
-  const features = FEATURE_META.map((meta) => ({
-    key: meta.key,
-    icon: meta.icon,
-    href: meta.href,
-    title: "titleKey" in meta ? tRoot(meta.titleKey) : t(`features.${meta.key}.title`),
-    body: t(`features.${meta.key}.body`),
-    cta: ctaFor(meta),
-    badge:
-      meta.key === "embeddings"
-        ? { text: t("features.embeddings.badge"), tone: "muted" as const }
-        : null,
-  }));
 
   return (
-    <section className="relative py-24 sm:py-28">
-      {/* separador luminoso */}
+    <section id="capacidades" className="relative scroll-mt-20 py-16 sm:py-24">
       <div
         aria-hidden
         className="absolute inset-x-0 top-0 h-px bg-linear-to-r from-transparent via-line-strong to-transparent"
       />
 
       <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
-        <Reveal className="flex flex-wrap items-end justify-between gap-6">
-          <div className="max-w-2xl">
-            <p className="text-[10px] font-semibold tracking-[0.16em] text-accent uppercase">
-              {t("title")}
-            </p>
-            <h2 className="display mt-3 text-3xl text-ink sm:text-4xl">{t("heading")}</h2>
-          </div>
-          <Badge tone="brand" size="md" dot>
-            {t("verifiableBadge")}
-          </Badge>
-        </Reveal>
+        <FadeIn className="max-w-2xl">
+          <SectionLabel className="text-accent">{t("label")}</SectionLabel>
+          <h2 className="display mt-3 text-3xl text-ink sm:text-4xl">{t("heading")}</h2>
+          <p className="mt-4 max-w-xl text-[15px] leading-relaxed text-ink-muted">
+            {t("description")}
+          </p>
+        </FadeIn>
 
-        <RevealGroup className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {features.map((feature) => (
-            <RevealItem key={feature.key}>
-              <motion.div
-                whileHover={{ y: -4 }}
-                transition={{ type: "spring", stiffness: 320, damping: 26 }}
-                className="h-full"
-              >
-                <Link
-                  href={feature.href}
-                  className="panel group flex h-full flex-col p-5 transition-colors hover:border-brand/40"
-                >
-                  <div className="flex items-start justify-between">
-                    <span className="grid size-10 place-items-center rounded-xl border border-line bg-white/[0.03] transition-colors group-hover:border-brand/40 group-hover:bg-brand/10">
-                      <feature.icon
-                        className="size-4 text-ink-muted transition-colors group-hover:text-brand-bright"
-                        aria-hidden
-                      />
-                    </span>
-                    {feature.badge && (
-                      <Badge tone={feature.badge.tone}>{feature.badge.text}</Badge>
-                    )}
-                  </div>
-                  <h3 className="mt-4 text-sm font-semibold text-ink">{feature.title}</h3>
-                  <p className="mt-1.5 flex-1 text-xs leading-relaxed text-ink-subtle">
-                    {feature.body}
-                  </p>
-                  <span className="mt-4 inline-flex items-center gap-1 text-[11px] font-medium text-ink-muted transition-colors group-hover:text-brand-bright">
-                    {feature.cta}
-                    <ArrowUpRight className="size-3 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+        <StaggerGroup className="mt-12 grid gap-x-10 gap-y-10 lg:grid-cols-3">
+          {GROUPS.map((group) => {
+            const Icon = group.icon;
+            return (
+              <StaggerItem key={group.key}>
+                <div className="flex items-center gap-2.5 border-b border-line pb-3">
+                  <span className="grid size-8 place-items-center rounded-lg border border-brand/30 bg-brand/10">
+                    <Icon className="size-3.5 text-brand-bright" aria-hidden />
                   </span>
-                </Link>
-              </motion.div>
-            </RevealItem>
-          ))}
-        </RevealGroup>
+                  <h3 className="text-[13px] font-semibold tracking-wide text-ink uppercase">
+                    {t(`groups.${group.key}.title`)}
+                  </h3>
+                </div>
 
-        <Reveal delay={0.1} className="mt-6">
-          <div className="panel flex flex-wrap items-center gap-x-6 gap-y-3 px-5 py-4">
+                <dl className="mt-4 space-y-4">
+                  {group.items.map((item) => {
+                    const title = t(`items.${item.key}.title`);
+                    const body = t(`items.${item.key}.body`);
+
+                    return (
+                      <div key={item.key}>
+                        <dt className="text-[13px] font-medium text-ink">
+                          {item.href ? (
+                            <Link
+                              href={item.href}
+                              className="group inline-flex items-center gap-1 transition-colors hover:text-brand-bright"
+                            >
+                              {title}
+                              <ArrowUpRight
+                                className="size-3 text-ink-faint transition-all group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-hover:text-brand-bright"
+                                aria-hidden
+                              />
+                            </Link>
+                          ) : (
+                            title
+                          )}
+                        </dt>
+                        <dd className="mt-1 text-xs leading-relaxed text-ink-subtle">{body}</dd>
+                      </div>
+                    );
+                  })}
+                </dl>
+              </StaggerItem>
+            );
+          })}
+        </StaggerGroup>
+
+        <FadeIn delay={0.1} className="mt-12">
+          <div className="panel flex flex-wrap items-center gap-x-5 gap-y-3 px-5 py-4">
             <ShieldCheck className="size-4 shrink-0 text-success" aria-hidden />
-            <p className="text-xs leading-relaxed text-ink-muted">
+            <p className="min-w-0 flex-1 text-xs leading-relaxed text-ink-muted">
               <span className="font-medium text-ink">{t("complianceNote.lead")}</span>{" "}
               {t.rich("complianceNote.body", {
                 code: (chunks) => <ComplianceCode>{chunks}</ComplianceCode>,
               })}
             </p>
           </div>
-        </Reveal>
+        </FadeIn>
       </div>
     </section>
   );

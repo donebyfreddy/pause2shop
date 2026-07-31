@@ -1,6 +1,11 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { getMatchingConfig, isMatchingMode } from "../lib/matching/config";
+import {
+  catalogThresholdFor,
+  getMatchingConfig,
+  isMatchingMode,
+} from "../lib/matching/config";
+import { normalizeMatchingMode } from "../lib/matching/types";
 
 // Config de matching: modos, defaults y saneado de valores raros. Sin red.
 
@@ -8,23 +13,73 @@ function env(vars: Record<string, string>): NodeJS.ProcessEnv {
   return vars as NodeJS.ProcessEnv;
 }
 
-test("sin PRODUCT_MATCHING_MODE el default es external-only (no cambia el comportamiento actual)", () => {
+test("sin PRODUCT_MATCHING_MODE el default es catalog_first (el modo recomendado)", () => {
   const cfg = getMatchingConfig(env({}));
-  assert.equal(cfg.mode, "external-only");
+  assert.equal(cfg.mode, "catalog_first");
 });
 
-test("un modo desconocido cae a external-only en vez de romper", () => {
-  assert.equal(getMatchingConfig(env({ PRODUCT_MATCHING_MODE: "catalogo" })).mode, "external-only");
-  assert.equal(getMatchingConfig(env({ PRODUCT_MATCHING_MODE: "" })).mode, "external-only");
+test("un modo desconocido cae a catalog_first en vez de romper", () => {
+  assert.equal(getMatchingConfig(env({ PRODUCT_MATCHING_MODE: "catalogo" })).mode, "catalog_first");
+  assert.equal(getMatchingConfig(env({ PRODUCT_MATCHING_MODE: "" })).mode, "catalog_first");
 });
 
 test("los cuatro modos válidos se respetan", () => {
-  for (const mode of ["catalog-only", "catalog-first", "external-only", "hybrid"] as const) {
+  for (const mode of ["catalog_only", "catalog_first", "external_only", "hybrid"] as const) {
     assert.equal(getMatchingConfig(env({ PRODUCT_MATCHING_MODE: mode })).mode, mode);
     assert.equal(isMatchingMode(mode), true);
   }
   assert.equal(isMatchingMode("catalog"), false);
   assert.equal(isMatchingMode(null), false);
+});
+
+// Compatibilidad: hay despliegues con PRODUCT_MATCHING_MODE=catalog-first y
+// filas en Postgres con "catalog-only". Deben seguir resolviéndose.
+test("el formato legado con guion medio se normaliza al canónico", () => {
+  const legacy = {
+    "catalog-only": "catalog_only",
+    "catalog-first": "catalog_first",
+    "external-only": "external_only",
+  } as const;
+  for (const [old, canonical] of Object.entries(legacy)) {
+    assert.equal(getMatchingConfig(env({ PRODUCT_MATCHING_MODE: old })).mode, canonical);
+    assert.equal(normalizeMatchingMode(old), canonical);
+  }
+  assert.equal(normalizeMatchingMode("  CATALOG_FIRST  "), "catalog_first");
+  assert.equal(normalizeMatchingMode("nope"), null);
+});
+
+test("umbrales por fuente: cada una tiene el suyo y son configurables", () => {
+  const d = getMatchingConfig(env({}));
+  assert.equal(d.catalogMatchMinScore, 0.82);
+  assert.equal(d.externalMatchMinScore, 0.75);
+  assert.equal(d.hybridMatchMinScore, 0.8);
+
+  const custom = getMatchingConfig(
+    env({
+      CATALOG_MATCH_THRESHOLD: "0.9",
+      EXTERNAL_MATCH_THRESHOLD: "0.6",
+      HYBRID_MATCH_THRESHOLD: "0.7",
+    })
+  );
+  assert.equal(custom.catalogMatchMinScore, 0.9);
+  assert.equal(custom.externalMatchMinScore, 0.6);
+  assert.equal(custom.hybridMatchMinScore, 0.7);
+
+  // El nombre antiguo se sigue leyendo si no está el nuevo.
+  assert.equal(
+    getMatchingConfig(env({ CATALOG_MATCH_MIN_SCORE: "0.55" })).catalogMatchMinScore,
+    0.55
+  );
+});
+
+test("umbral por categoría: afina una categoría sin tocar el umbral global", () => {
+  const cfg = getMatchingConfig(
+    env({ CATALOG_MATCH_THRESHOLD: "0.8", CATALOG_MATCH_THRESHOLD_FOOTWEAR: "0.95" })
+  );
+  assert.equal(catalogThresholdFor(cfg, "footwear"), 0.95);
+  assert.equal(catalogThresholdFor(cfg, "FootWear"), 0.95);
+  assert.equal(catalogThresholdFor(cfg, "clothing"), 0.8);
+  assert.equal(catalogThresholdFor(cfg, null), 0.8);
 });
 
 test("defaults numéricos y booleanos del catálogo", () => {

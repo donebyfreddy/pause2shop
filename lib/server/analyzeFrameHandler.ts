@@ -27,6 +27,15 @@ import {
 } from "@/lib/analysis/categories";
 import { trackVisionCall, trackProductCalls } from "@/lib/server/costTracker";
 import { enrichAnalysisWithVisualMatches } from "@/lib/visualSearch/engine";
+import {
+  allowsExternal,
+  mergeUsage,
+  resolveFrameAgainstCatalog,
+  usageSummary,
+  usesCatalog,
+  type CatalogPassResult,
+} from "@/lib/matching/resolveFrame";
+import { emptyUsage, type MatchingMode, type MatchingUsage } from "@/lib/matching/types";
 import type { EnrichedItem } from "@/lib/visualSearch/types";
 import { toAnalysisFailure } from "@/lib/errors";
 
@@ -170,6 +179,78 @@ function filterMock(
         isRelationshipAllowed(it.relationship, config)
     ),
   };
+}
+
+/**
+ * Aplica la FUENTE DE COINCIDENCIAS elegida a un análisis ya detectado.
+ *
+ * Es el punto donde cada modo cambia de verdad lo que pasa en el backend:
+ *  - `catalog_only` no llega nunca a llamar al proveedor externo;
+ *  - `catalog_first` solo lo llama por lo que el catálogo no resolvió;
+ *  - `external_only` mantiene el pipeline de siempre, sin tocar el catálogo;
+ *  - `hybrid` consulta ambos y deja que el mejor candidato gane.
+ */
+async function resolveProducts(
+  imageDataUrl: string,
+  analysis: FrameAnalysis,
+  mode: MatchingMode
+): Promise<{
+  analysis: FrameAnalysis;
+  frameImageUrl: string | null;
+  usage: MatchingUsage;
+}> {
+  let usage = emptyUsage();
+  usage.detections = analysis.items.length;
+  let current = analysis;
+  let frameImageUrl: string | null = null;
+
+  let catalogPass: CatalogPassResult | null = null;
+  if (usesCatalog(mode) && current.items.length > 0) {
+    try {
+      catalogPass = await resolveFrameAgainstCatalog(imageDataUrl, current.items);
+      current = { ...current, items: catalogPass.items };
+      usage = mergeUsage(usage, catalogPass.usage);
+    } catch (err) {
+      // Catálogo caído: no bloquea. Los modos que permiten externo siguen y
+      // el usuario recibe resultados en lugar de un error.
+      console.warn(
+        "[analyze-frame] catálogo no disponible:",
+        err instanceof Error ? err.message : err
+      );
+    }
+  }
+
+  // En catalog_first, un frame resuelto entero por el catálogo NO gasta ni una
+  // llamada de pago: ese es exactamente el objetivo del modo.
+  const pending = catalogPass ? catalogPass.unresolved.length : current.items.length;
+  const callExternal =
+    allowsExternal(mode) &&
+    (mode === "external_only" || mode === "hybrid" || pending > 0);
+
+  if (callExternal) {
+    const tExternal = Date.now();
+    const { items, outcome } = await enrichAnalysisWithVisualMatches(
+      imageDataUrl,
+      current
+    );
+    current = { ...current, items };
+    frameImageUrl = outcome?.frameImageUrl ?? null;
+    usage.externalCalls += outcome?.enginesUsed?.length ?? 0;
+    usage.timings.externalMs = Date.now() - tExternal;
+    if (catalogPass && catalogPass.unresolved.length > 0) usage.fallbacks += 1;
+  } else {
+    usage.timings.externalMs = 0;
+  }
+
+  usage.resolvedInternally = current.items.filter(
+    (it) => it.visual_match?.best_match_source === "catalog"
+  ).length;
+  usage.resolvedExternally = current.items.filter(
+    (it) => it.visual_match && it.visual_match.best_match_source !== "catalog"
+  ).length;
+  usage.unresolved = current.items.filter((it) => !it.visual_match).length;
+
+  return { analysis: current, frameImageUrl, usage };
 }
 
 /**
@@ -490,19 +571,29 @@ export async function handleAnalyzeFrame(
   }
   timings.detectionMs = Date.now() - tStart;
 
-  // 2) Visual Matching Engine: reverse image search (Google Lens) + shopping
-  // real (SerpAPI/DataForSEO) con caché por hash. Best-effort: si no hay
-  // motores configurados o fallan, los items conservan sus deep-links.
+  // 2) Resolución de productos según la FUENTE DE COINCIDENCIAS elegida.
+  //
+  //    catalog_only   → solo el índice propio; jamás se llama al externo.
+  //    catalog_first  → catálogo y, solo si queda algo sin resolver, externo.
+  //    external_only  → el pipeline de reverse image search de siempre.
+  //    hybrid         → ambos; el catálogo ya resuelto no se vuelve a buscar.
+  //
+  // Best-effort en todos los casos: si una fuente falla, la otra sigue y el
+  // análisis nunca se pierde entero por culpa de un proveedor.
   let frameImageUrl: string | null = null;
+  let usage = emptyUsage();
   if (!mock) {
     const tEnrich = Date.now();
-    const { items, outcome } = await enrichAnalysisWithVisualMatches(
-      imageDataUrl,
-      analysis
-    );
-    analysis = { ...analysis, items };
-    frameImageUrl = outcome?.frameImageUrl ?? null;
+    const resolved = await resolveProducts(imageDataUrl, analysis, config.matchingMode);
+    analysis = resolved.analysis;
+    frameImageUrl = resolved.frameImageUrl;
+    usage = resolved.usage;
     timings.enrichMs = Date.now() - tEnrich;
+    // Control de coste visible en logs: cuántas búsquedas hizo cada fuente.
+    console.info(
+      "[analyze-frame] matching:",
+      usageSummary(config.matchingMode, usage)
+    );
   }
 
   // 3) Persistencia en catálogo (resiliente).

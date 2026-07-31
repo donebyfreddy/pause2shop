@@ -1,9 +1,10 @@
 "use client";
 
 import { NextIntlClientProvider } from "next-intl";
+import { MotionConfig } from "motion/react";
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { DEFAULT_LOCALE, isRtl, type Locale } from "@/i18n/locales";
-import { FORMATS } from "@/i18n/formats";
+import { FORMATS, TIME_ZONE } from "@/i18n/formats";
 import { persistLocale } from "@/lib/localePersistence";
 import { readByDotPath } from "@/lib/messagesFallback";
 
@@ -102,10 +103,21 @@ export function LocaleProvider({
 
   return (
     <LocaleSwitchContext.Provider value={api}>
+      {/* `reducedMotion="user"` delega en la librería el respeto a
+          `prefers-reduced-motion`: desactiva las animaciones de transformación
+          cuando el sistema lo pide, SIN que los componentes tengan que cambiar
+          lo que renderizan. Antes cada componente hacía `if (reduce) return
+          <div>…`, y eso rompía la hidratación: el servidor no conoce la
+          preferencia, así que renderizaba una rama distinta a la del cliente. */}
+      <MotionConfig reducedMotion="user">
       <NextIntlClientProvider
         locale={locale}
         messages={messages}
         formats={FORMATS}
+        // Misma zona que en servidor (`i18n/request.ts`). Si aquí se omite, el
+        // cliente formatea con la zona del navegador y el markup de cualquier
+        // fecha deja de coincidir con el del servidor al hidratar.
+        timeZone={TIME_ZONE}
         onError={(error) => {
           if (error.code !== "MISSING_MESSAGE") {
             // eslint-disable-next-line no-console
@@ -130,6 +142,7 @@ export function LocaleProvider({
       >
         {children}
       </NextIntlClientProvider>
+      </MotionConfig>
     </LocaleSwitchContext.Provider>
   );
 }

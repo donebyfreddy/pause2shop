@@ -21,7 +21,13 @@
     "openMenu": "打开菜单",
     "closeMenu": "关闭菜单",
     "mainNav": "主导航",
-    "mobileNav": "移动端导航"
+    "mobileNav": "移动端导航",
+    "product": "产品",
+    "howItWorks": "工作原理",
+    "demo": "演示",
+    "integration": "集成",
+    "useCases": "应用场景",
+    "skipToContent": "跳至正文"
   },
   "actions": {
     "tryNow": "立即试用",
@@ -94,199 +100,483 @@
     }
   },
   "landing": {
+    "meta": {
+      "title": "让每个画面都成为一次购买机会",
+      "description": "Pause2Shop 检测你的内容中每个画面里可见的商品，与你的商品目录比对，按场景和时间码返回可靠的匹配结果。通过 API 集成：不替换你的播放器。"
+    },
     "hero": {
-      "badge": "视频中的实时视觉商品检测",
-      "title": "暂停视频。",
-      "subtitle": "找到商品。",
-      "description": "Pause2Shop 分析视频与图片，检测每一件服装、鞋履或配饰，并与自有时尚商品库及反向视觉搜索进行匹配。每个结果都附带来源和置信度。",
-      "ctaPrimary": "立即试用",
-      "ctaSecondary": "查看商品库",
-      "ctaTertiary": "查看演示"
+      "eyebrow": "面向视频与 VOD 的视觉商务",
+      "titleLine1": "让每个画面",
+      "titleLine2": "都成为一次购买机会",
+      "description": "Pause2Shop 检测每个画面中可见的商品，与商品目录比对，按内容、场景和时间码返回可靠的匹配结果。",
+      "ctaPrimary": "用视频试一试",
+      "ctaSecondary": "查看交互演示",
+      "ctaTertiary": "浏览商品目录"
+    },
+    "heroDemo": {
+      "windowLabel": "场景分析 · {timecode}",
+      "demoBadge": "演示场景",
+      "play": "播放演示",
+      "pause": "暂停演示",
+      "thresholdLabel": "发布阈值",
+      "thresholdValue": "≥ {value}%",
+      "thresholdNote": "低于阈值的匹配不会发布：转入复核，或保留不展示。"
+    },
+    "demo": {
+      "matchesTitle": "匹配结果",
+      "source": "自有目录",
+      "atTimecode": "场景 {timecode}",
+      "noPrice": "—",
+      "scoreShort": "{score}% 匹配",
+      "viewProduct": "查看商品",
+      "detectionSummary": "检测到 {objects} 个对象 · 去重已启用",
+      "selectObject": "{label}，置信度 {confidence}%，{relationship}。选择以查看其匹配结果。",
+      "objects": {
+        "coat": "长款外套",
+        "bag": "托特包",
+        "boot": "短靴",
+        "armchair": "扶手椅",
+        "lamp": "落地灯",
+        "cushion": "靠垫",
+        "watch": "手表",
+        "sneaker": "运动鞋",
+        "headphones": "耳机"
+      },
+      "relationship": {
+        "worn": "穿戴中",
+        "held": "手持",
+        "background": "在背景中"
+      },
+      "matches": {
+        "coat": {
+          "title": "羊毛长款外套"
+        },
+        "bag": {
+          "title": "皮革托特包"
+        },
+        "boot": {
+          "title": "低筒短靴"
+        },
+        "armchair": {
+          "title": "布克雷面料软包扶手椅"
+        },
+        "lamp": {
+          "title": "布艺灯罩落地灯"
+        },
+        "cushion": {
+          "title": "亚麻靠垫"
+        },
+        "watch": {
+          "title": "钢制表壳皮革表带手表"
+        },
+        "sneaker": {
+          "title": "白色皮革运动鞋"
+        },
+        "headphones": {
+          "title": "头戴式耳机"
+        }
+      },
+      "categories": {
+        "clothing": "服装",
+        "footwear": "鞋履",
+        "watches_jewelry": "手表与珠宝",
+        "bags_accessories": "箱包与配饰",
+        "electronics": "电子产品",
+        "vehicles": "车辆",
+        "furniture_home": "家具与家居",
+        "decoration": "装饰"
+      },
+      "scenes": {
+        "street": "室外，中景",
+        "living": "客厅，全景",
+        "studio": "摄影棚，近景"
+      },
+      "status": {
+        "published": "已发布",
+        "review": "待复核",
+        "withheld": "不展示"
+      },
+      "statusHint": {
+        "review": "等待人工复核",
+        "withheld": "低于阈值"
+      }
+    },
+    "interactiveDemo": {
+      "label": "交互演示",
+      "heading": "看一个场景如何变成商品目录",
+      "description": "点击画面中的对象或面板里的某条匹配结果：两侧会保持同步。切换场景，看看在视频的另一处目录如何重新计算。",
+      "analyzing": "正在分析画面…",
+      "timelineLabel": "视频场景",
+      "hint": "点击画面中的对象或某张卡片查看详情。",
+      "emptyTitle": "本场景没有检测到对象",
+      "emptyBody": "分析未发现高于检测下限的商品。与其给出可疑的结果，不如什么都不给。",
+      "disclaimer": "演示用的场景与匹配结果，使用本地数据。工作台在你的内容上执行的正是同一套流程。",
+      "detail": {
+        "object": "对象",
+        "score": "置信度",
+        "timestamp": "时间码",
+        "category": "类别",
+        "status": "状态"
+      }
+    },
+    "trust": {
+      "metricsLabel": "测试环境指标",
+      "metricsNote": "数据实时读取自测试环境，而非生产部署。如果目录服务无响应，显示「—」，绝不显示填充值。",
+      "capabilities": {
+        "vod": "VOD 点播",
+        "closedCatalog": "封闭目录",
+        "visualMatching": "视觉匹配",
+        "timestamp": "编辑时间码",
+        "threshold": "可配置阈值",
+        "exceptionQueue": "例外队列"
+      },
+      "stats": {
+        "sources": "注册表中的来源",
+        "products": "目录中的商品",
+        "embeddingCoverage": "已有视觉 embedding",
+        "categories": "可检测的类别"
+      }
     },
     "howItWorks": {
-      "title": "工作原理",
-      "step1": {
-        "title": "暂停",
-        "description": "在准确的瞬间暂停视频。"
-      },
-      "step2": {
-        "title": "检测",
-        "description": "AI 定位画面中出现的商品。"
-      },
-      "step3": {
-        "title": "找到",
-        "description": "与商品库匹配并进行反向视觉搜索。"
-      },
-      "heading": "从一帧画面到可购买商品，五个步骤",
-      "description": "完整流水线按每个检测到的对象执行,每个阶段都有调用预算和缓存。",
+      "label": "工作原理",
+      "heading": "从母版到目录，四个步骤",
+      "description": "同一个画面走完整个流程。每一步都有各自的成本控制和缓存。",
+      "architectureCta": "查看技术架构",
       "steps": {
-        "capture": {
-          "title": "帧捕获",
-          "body": "从视频（上传、YouTube 或屏幕录制）中按帧率和场景变化检测提取候选帧。几乎相同的帧会被感知哈希过滤掉，不会触发检测。",
-          "meta": "rVFC · 场景差异检测 · 感知哈希"
+        "analyze": {
+          "title": "分析内容",
+          "body": "遍历视频，挑出能带来新信息的画面——场景切换处，而不是每一帧。结果是一条可分析时刻的时间线。"
         },
         "detect": {
-          "title": "多模态检测",
-          "body": "视觉模型为每个对象定位边界框、类别、颜色以及与人物的关系（穿戴、手持、背景）。只分析你选定的类别。",
-          "meta": "边界框 · 关系 · 置信度"
-        },
-        "dedupe": {
-          "title": "追踪与去重",
-          "body": "对象在多帧之间保持身份标识并进行全局融合：同一件反复出现十次的夹克会被识别为同一商品，并选出最佳截图。",
-          "meta": "trackId · NMS · 最佳截图"
+          "title": "检测商品",
+          "body": "视觉模型定位每个对象，给出它的检测框、类别以及与画面中人物的关系。对象在帧之间保持同一身份，因此再次出现的一件衣物不会被计算两次。"
         },
         "match": {
-          "title": "与商品库匹配",
-          "body": "每个截图先按级联方式在自有商品库中搜索：精确哈希 → 感知哈希 → 视觉嵌入。如果没有足够可靠的匹配，则转向反向视觉搜索。",
-          "meta": "商品库优先 · pgvector · CLIP"
+          "title": "在目录中检索",
+          "body": "每个裁剪图通过视觉表征与你的目录比对。输出按相似度排序的候选商品，并附带尺码和颜色变体。"
         },
-        "result": {
-          "title": "带来源的结果",
-          "body": "每个结果都附带得分、解决匹配的阶段以及来源（商品库或外部提供方）。低于配置置信度阈值的结果不会被发布。",
-          "meta": "得分 · 匹配阶段 · 来源"
+        "publish": {
+          "title": "只发布可靠的结果",
+          "body": "每个候选都要经过约定的阈值和你的规则。达标的会发布，可疑的进入复核队列，其余不展示。"
+        }
+      },
+      "chips": {
+        "frames": "帧",
+        "sceneChange": "场景切换",
+        "timeline": "时间线",
+        "objects": "对象",
+        "crops": "裁剪图",
+        "tracking": "追踪",
+        "dedupe": "去重",
+        "embeddings": "embeddings",
+        "candidates": "候选",
+        "ranking": "排序",
+        "variants": "变体",
+        "threshold": "阈值",
+        "rules": "规则",
+        "exception": "例外",
+        "traceability": "可追溯"
+      },
+      "lanes": {
+        "published": "发布",
+        "review": "转复核",
+        "withheld": "不展示",
+        "note": "按 {threshold}% 阈值的分布"
+      }
+    },
+    "integration": {
+      "label": "集成",
+      "headingLine1": "一层视觉智能能力，",
+      "headingLine2": "而不是一个新播放器。",
+      "description": "Pause2Shop 位于你的内容与购物体验之间。它不触碰信号，不替换播放器，也不阻塞播放。",
+      "layerLabel": "Pause2Shop",
+      "layerNote": "分析离线执行；查询从缓存返回。",
+      "input": {
+        "title": "内容、母版或 VOD",
+        "body": "你现有的内容库，原样接入。处理的是副本：母版不会被修改。"
+      },
+      "output": {
+        "title": "播放器、伴随应用或购买",
+        "body": "你现有的播放器和体验，在需要时调用 API。"
+      },
+      "layer": {
+        "processing": {
+          "title": "处理",
+          "body": "场景分析、检测与裁剪。重活，放在请求路径之外。"
+        },
+        "catalog": {
+          "title": "按场景的目录",
+          "body": "与场景和时间码关联的商品，附带其 score 和来源。"
+        },
+        "api": {
+          "title": "查询 API",
+          "body": "按场景缓存的响应。只读已发布的内容。"
+        }
+      },
+      "flow": {
+        "ingest": "采集",
+        "query": "API 查询"
+      },
+      "guarantees": {
+        "signal": "不改动信号或母版：处理只针对副本。",
+        "playback": "不阻塞播放：查询失败时，播放器照常运行。",
+        "noMatch": "没有可靠匹配时不展示任何内容，绝不给填充结果。",
+        "api": "通过 REST API 集成：播放器内不需要 SDK。",
+        "traceability": "每个结果都记录它来自哪个场景、哪一帧、哪个阶段。",
+        "latency": "查询由按场景的缓存提供；重量级分析另行处理。"
+      }
+    },
+    "confidence": {
+      "label": "精确度与编辑控制",
+      "heading": "拿不准，就不发布。",
+      "description": "系统优先保证可见结果的准确性：只展示达到与你约定标准的匹配。移动阈值，看看分布如何变化。",
+      "slider": {
+        "label": "发布阈值",
+        "note": "按当前阈值对演示中 {total} 条匹配的分布。低于阈值 20 分以内的转入复核；其余保留不展示。"
+      },
+      "outcome": {
+        "published": "发布",
+        "review": "转复核",
+        "withheld": "保留"
+      },
+      "zones": {
+        "high": {
+          "title": "置信度高",
+          "body": "超过阈值。根据你的规则自动发布或预批准发布。",
+          "rule": "score ≥ 阈值"
+        },
+        "medium": {
+          "title": "置信度中",
+          "body": "接近但不够。进入例外队列，由人来决定。",
+          "rule": "阈值 − 20 ≤ score < 阈值"
+        },
+        "low": {
+          "title": "置信度低",
+          "body": "不展示：既不给观众，也不进 API。缺失优于错误。",
+          "rule": "score < 阈值 − 20"
+        }
+      },
+      "controls": {
+        "title": "你可以控制的部分",
+        "score": "发布阈值可按目录和内容分别配置。",
+        "brandRules": "按品牌的规则：什么可以发布，以及以什么优先级。",
+        "allowlist": "按商品和类别的允许列表与屏蔽列表。",
+        "audit": "记录谁在何时批准了什么。",
+        "feedback": "复核中的修正会反馈到阈值的调整。"
+      },
+      "quality": {
+        "title": "如何衡量",
+        "note": "我们不公布这些指标的数值，因为它们取决于每位客户的目录和内容。它们在试点期间、在约定的场景集合上测量，并与你一起复盘。",
+        "recall": {
+          "term": "检测召回率",
+          "definition": "在场景中实际可见的商品里，系统检测出了多少。"
+        },
+        "precision": {
+          "term": "匹配准确率",
+          "definition": "在提出的匹配结果里，有多少是正确的商品。"
+        },
+        "coverage": {
+          "term": "目录覆盖率",
+          "definition": "检测到的内容里，有多大比例在你的目录中有真实对应的商品。"
+        },
+        "published": {
+          "term": "已发布准确率",
+          "definition": "仅针对超过阈值的结果测得的准确率：观众看到的那个数字。"
         }
       }
     },
     "useCases": {
-      "title": "应用场景",
-      "heading": "为视频商品库而生,而不是一张孤立的照片",
+      "label": "应用场景",
+      "heading": "从完整视频到商品目录",
+      "description": "同一套流程既服务 VOD 目录，也服务发现体验和商品植入报告。每个场景都标注其真实状态。",
+      "stage": {
+        "works": "已可用",
+        "pilot": "试点",
+        "future": "演进中"
+      },
       "primary": {
-        "title": "VOD 与点播视频",
-        "body": "把视频商品库转化为商品清单。系统分析整段视频，对反复出现的对象去重，并给出每个商品出现的时间戳。",
-        "point1": "每个任务最多支持 2 分钟视频（可配置）",
-        "point2": "每个商品都有对应的时间戳和来源帧",
-        "point3": "按视频计算的调用预算和成本"
+        "title": "VOD 与点播内容",
+        "body": "把视频库变成可按场景浏览的商品目录。完整处理内容，对重复出现的对象去重，并交付带出现时间码的商品列表。",
+        "point1": "按场景和时间码的目录，可直接通过 API 查询",
+        "point2": "跨场景去重：反复出现的对象不会重复列出",
+        "point3": "分析预算与单内容成本，启动前即可查看"
       },
       "secondary": {
-        "discovery": {
-          "title": "商品发现",
-          "body": "用户在屏幕上看到某个东西，想知道它是什么。一张图片就足以启动搜索。"
+        "pauseDiscovery": {
+          "title": "暂停即发现",
+          "body": "观众暂停，看到画面里有什么。查询针对该场景已发布的内容作答。"
         },
-        "catalogMatch": {
-          "title": "商品库匹配",
-          "body": "在联网搜索之前，先将检测结果与你自己的商品库进行比对：更高的精度，更低的成本。"
+        "ownCatalog": {
+          "title": "与自有目录匹配",
+          "body": "匹配先从你的目录里产生，再看外部：更准确、成本更低，也更能控制出现的内容。"
         },
-        "visualShopping": {
-          "title": "视觉购物",
-          "body": "可直接购买的结果，附带价格、库存状态及直达店铺页面的链接。"
+        "controlledDemo": {
+          "title": "可控的商务演示",
+          "body": "为会议准备好的场景和结果，不依赖外部凭证，也不依赖网络。"
+        }
+      },
+      "horizon": {
+        "placementReporting": {
+          "title": "商品植入与报告",
+          "body": "报告哪些品牌和商品出现、出现在哪些场景、持续多长时间。需要事先约定要监测的品牌目录。"
         },
-        "clientDemos": {
-          "title": "客户演示",
-          "body": "演示模式、成本面板与示例数据，不依赖真实凭据即可展示。"
+        "live": {
+          "title": "直播",
+          "body": "该流程是为 VOD 设计的。用于直播需要增量分析和约定的延迟窗口：目前尚不可用。"
         }
       }
     },
     "capabilities": {
-      "title": "能力",
-      "heading": "已经可用的一切,附带可直接验证的链接",
-      "verifiableBadge": "可验证的技术演示",
-      "ctaOpenStudio": "打开工作台",
-      "ctaViewInStudio": "在工作台中查看",
-      "features": {
-        "video": {
-          "body": "支持上传视频、YouTube 或屏幕录制，持续分析并在播放器上叠加检测框。"
-        },
-        "image": {
-          "body": "上传一张图片，获取检测到的对象及其截图，可直接用于搜索。"
-        },
-        "connectors": {
-          "title": "商品库连接器",
-          "body": "模块化的时尚货源注册表，状态真实可信：已实现、未验证，或待商务合作确认。",
-          "cta": "查看连接器"
-        },
-        "embeddings": {
-          "title": "视觉嵌入",
-          "body": "本地 CLIP 或用于演示的确定性哈希提供方。更换模型后可在管理后台一键全量重建索引。",
-          "cta": "查看设置",
-          "badge": "CLIP 可选"
+      "label": "试点能力",
+      "heading": "为验证与扩展准备好的技术基础",
+      "description": "今天已经存在的能力，按作用位置分组。可以从外部验证的部分附有链接。",
+      "groups": {
+        "analysis": {
+          "title": "分析"
         },
         "catalog": {
-          "title": "标准化商品库",
-          "body": "统一的商品结构，品牌与类别经过标准化，含历史价格、多层级去重与来源可追溯性。",
-          "cta": "浏览商品库"
+          "title": "目录"
+        },
+        "operation": {
+          "title": "运维"
+        }
+      },
+      "items": {
+        "video": {
+          "title": "视频分析",
+          "body": "上传的视频、YouTube 链接或屏幕捕获，检测结果直接绘制在画面上。"
+        },
+        "image": {
+          "title": "图像分析",
+          "body": "一张图像即可得到检测出的对象及其裁剪图。"
+        },
+        "detection": {
+          "title": "按类别检测",
+          "body": "八个类别：服装、鞋履、手表与珠宝、箱包、电子产品、车辆、家具和装饰。"
+        },
+        "timestamp": {
+          "title": "编辑时间码",
+          "body": "每个对象都锚定到它所属的场景和来源帧。"
+        },
+        "normalized": {
+          "title": "规范化目录",
+          "body": "统一的商品结构，品牌和类别经过规范化，并有价格历史和去重。"
+        },
+        "embeddings": {
+          "title": "视觉 embeddings",
+          "body": "用于把检测到的对象与目录中的商品进行比较的视觉表征。"
+        },
+        "matching": {
+          "title": "级联匹配",
+          "body": "分阶段比较，从最便宜到最昂贵，每一级都有缓存。"
+        },
+        "connectors": {
+          "title": "数据源连接器",
+          "body": "模块化的来源注册表，标注真实状态：已验证、未验证或待达成协议。"
+        },
+        "jobs": {
+          "title": "分析任务",
+          "body": "带重试、取消，以及按任务查询状态的队列。"
         },
         "cost": {
-          "title": "成本与预算",
-          "body": "按提供方统计调用次数，设置每个视频的成本上限，并使用缓存避免重复付费搜索。"
+          "title": "成本控制",
+          "body": "按供应商的计数器、单内容支出上限，以及避免重复付费调用的缓存。"
+        },
+        "observability": {
+          "title": "可观测性",
+          "body": "按阶段记录：请求了什么、由什么解决、哪些由缓存提供。"
+        },
+        "exceptions": {
+          "title": "例外队列",
+          "body": "未达到阈值的结果会连同其证据一起积累，等待人工复核。"
         }
       },
       "complianceNote": {
         "lead": "有规则的采集。",
-        "body": "每次请求前检查 robots.txt，遵守 <code>Crawl-delay</code>，使用带联系方式的可识别 User-Agent，且不做任何反爬规避。要求合作伙伴协议或联盟关系的货源，在获得授权前不会被采集。"
+        "body": "每次请求前检查 <code>robots.txt</code>，按域名限制请求速率，使用可识别的 User-Agent，不使用任何反爬规避手段。"
       }
     },
-    "cta": {
-      "title": "立即开始",
-      "action": "立即试用",
-      "heading": "用你自己的视频试一试",
-      "description": "选择要查找的类别，调整分析强度，看着匹配结果逐帧出现。无需注册。",
-      "operationsPanel": "运营面板"
+    "security": {
+      "label": "安全",
+      "heading": "为安全运行而设计",
+      "description": "这些是当前系统中已经做出的决定，不是一份意向清单。",
+      "note": "我们不声明任何合规认证，因为目前一项也没有。传输加密和可配置的保留策略已经实现；正式的安全审计以及适配客户的合规框架属于试点范围，不属于已完成的部分。",
+      "items": {
+        "authorizedData": {
+          "title": "已授权的数据",
+          "body": "只处理客户授权的内容和目录，别无其他。"
+        },
+        "separation": {
+          "title": "分析与发布分离",
+          "body": "分析出的结果在通过阈值和规则之前不会发布。"
+        },
+        "secrets": {
+          "title": "密钥仅在服务端",
+          "body": "任何供应商凭证都不会到达浏览器。"
+        },
+        "audit": {
+          "title": "记录与审计",
+          "body": "按阶段追踪请求了什么、解决了什么、发布了什么。"
+        },
+        "roles": {
+          "title": "基于角色的访问",
+          "body": "运维面板置于认证之后，也可以完全关闭。"
+        },
+        "degradation": {
+          "title": "静默降级",
+          "body": "某个供应商失败时不会展示可疑结果：什么都不展示。"
+        },
+        "killSwitch": {
+          "title": "一键停用开关",
+          "body": "采集和面板可通过配置关闭，无需重新部署。"
+        },
+        "retention": {
+          "title": "可配置的保留策略",
+          "body": "帧和裁剪图有可调整的保留策略。"
+        }
+      }
+    },
+    "finalCta": {
+      "heading": "用一个真实场景验证 Pause2Shop",
+      "description": "上传一张图片或一段短视频，观察商品如何被检测、分类，并与目录建立关联。",
+      "primary": "打开工作台",
+      "secondary": "查看引导演示",
+      "note": "第一次试用无需任何配置。"
     },
     "sourceMarquee": {
-      "label": "已接入的货源",
-      "registryLabel": "时尚货源注册表",
-      "totalLabel": "个货源",
-      "verifiedLabel": "已通过测试样例验证",
-      "partnerLabel": "需要合作协议",
-      "footnote": "来自商品库服务连接器注册表的清单。出现在此处仅表示该货源已注册,并标注了其真实的实现与合规状态——<emphasis>不代表存在商业关系或已获得授权</emphasis>。"
-    },
-    "stats": {
-      "productsIndexed": "{count, plural, one{已索引 # 件商品} other{已索引 # 件商品}}",
-      "catalogProducts": "商品库中的商品",
-      "visualEmbeddingCoverage": "已生成视觉嵌入",
-      "detectableCategories": "可检测的类别"
-    },
-    "heroVisual": {
-      "windowStatus": "工作台 · 持续分析 · 00:42",
-      "liveBadge": "实时",
-      "boxes": {
-        "jacket": "亚麻外套",
-        "bag": "购物手袋",
-        "sneaker": "白色运动鞋"
-      },
-      "detectionSummary": "3 个对象 · 1 个人物 · 去重已启用",
-      "matchesTitle": "匹配结果",
-      "matchesSource": "商品库 + Lens",
-      "match1": {
-        "title": "宽松版亚麻外套",
-        "store": "商品库 · Zara"
-      },
-      "match2": {
-        "title": "皮质购物手袋",
-        "store": "商品库 · Mango"
-      },
-      "match3": {
-        "title": "低帮白色运动鞋",
-        "store": "Google Lens"
-      },
-      "latencyLabel": "平均延迟",
-      "latencyValue": "1.4 秒/帧"
-    },
-    "studioSection": {
-      "label": "工作台",
-      "heading": "立即分析一段视频或一张图片",
-      "description": "选择类别和强度，上传内容，实时查看检测与匹配结果。",
-      "openFullscreen": "全屏打开",
-      "loading": "正在加载分析工作台…"
+      "label": "已接入的来源",
+      "registryLabel": "商品目录来源注册表",
+      "totalLabel": "个来源",
+      "verifiedLabel": "已用 fixtures 验证",
+      "partnerLabel": "需要达成协议",
+      "footnote": "来自目录服务连接器注册表的清单。出现在这里表示该来源已<emphasis>登记在采集路线图中</emphasis>，并不表示它是客户或商业合作伙伴。"
     },
     "footer": {
-      "tagline": "暂停视频，找到商品。",
-      "description": "对视频和图片中的商品进行视觉检测，与自有商品库匹配并进行反向视觉搜索。所有结果均来自真实货源：不会捏造品牌、价格或链接。",
+      "description": "在视频和图像中检测商品，与自有目录匹配，并按场景和时间码提供可追溯性。",
       "product": {
         "title": "产品",
         "studio": "分析工作台",
-        "catalog": "已检测商品库",
-        "demo": "演示视频"
+        "catalog": "检测到的商品目录",
+        "demo": "视频演示"
       },
-      "operations": {
-        "title": "运营",
-        "admin": "管理后台",
-        "connectors": "连接器",
-        "jobs": "采集任务",
-        "logs": "监控"
+      "resources": {
+        "title": "资源",
+        "architecture": "技术架构",
+        "howItWorks": "工作原理",
+        "capabilities": "功能能力"
       },
-      "copyright": "© {year} {appName}。技术演示。",
-      "complianceNote": "商品库采集遵守 robots.txt，按域名限速，不做任何反爬规避。"
+      "legal": {
+        "title": "法律",
+        "privacy": "隐私",
+        "terms": "条款",
+        "contact": "联系"
+      },
+      "status": {
+        "ok": "目录服务运行正常",
+        "degraded": "目录服务已降级"
+      },
+      "copyright": "© {year} {appName}",
+      "complianceNote": "目录采集遵守 robots.txt，按域名限速，不使用反爬规避手段。"
     }
   },
   "studio": {
@@ -490,6 +780,36 @@
       "intensityLabel": "分析强度",
       "personCentricNote": "以人物为中心的模式：只分析人物穿着或手持的服装及配饰，忽略场景背景。"
     },
+    "matchingSource": {
+      "title": "匹配来源",
+      "subtitle": "选择在哪里搜索与检测到的对象相匹配的商品。",
+      "recommended": "推荐",
+      "unavailable": "不可用",
+      "externalNotConfigured": "请先配置外部服务商，才能使用此选项。",
+      "catalogEmpty": "商品库中尚无已索引的商品。",
+      "modes": {
+        "catalogOnly": {
+          "label": "自有商品库",
+          "description": "仅在已导入并索引到 Pause2Shop 的商品中搜索。",
+          "benefits": "控制力更强 · 成本更低 · 结果经过验证"
+        },
+        "externalOnly": {
+          "label": "外部搜索",
+          "description": "通过已配置的外部 API 或服务商搜索商品。",
+          "benefits": "覆盖更广 · 包含商品库之外的商品"
+        },
+        "catalogFirst": {
+          "label": "商品库优先",
+          "description": "先在商品库中搜索，只有在没有足够可靠的匹配时才调用 API。",
+          "benefits": "在准确度与成本之间取得平衡"
+        },
+        "hybrid": {
+          "label": "对比来源",
+          "description": "同时查询商品库和 API，合并候选结果并展示最佳匹配。",
+          "benefits": "覆盖最广 · 并排对比"
+        }
+      }
+    },
     "loadingAnalysis": {
       "ariaLabel": "正在分析帧",
       "heading": "正在分析帧…",
@@ -590,7 +910,26 @@
     "queued": "排队中",
     "done": "已完成",
     "failed": "失败",
-    "noItemsDetected": "未检测到商品"
+    "noItemsDetected": "未检测到商品",
+    "matchSource": {
+      "catalog": "商品库",
+      "external": "外部 API",
+      "type": {
+        "exact": "精确",
+        "probable": "可能",
+        "similar": "相似"
+      },
+      "fallbackNotice": "在商品库中未找到足够可信的结果，该结果来自外部搜索。",
+      "searchingCatalog": "正在搜索商品库…",
+      "searchingExternal": "正在通过 API 搜索…",
+      "noCatalogMatch": "商品库中没有足够可靠的匹配结果。",
+      "candidatesFound": "{count, plural, other{找到 # 个候选结果}}",
+      "emptyCatalog": "商品库中尚无已索引的商品。请同步一个数据源，或改用外部搜索。",
+      "externalUnavailable": "尚未配置外部搜索。请添加服务商的凭据，或改用商品库。",
+      "noMatch": "未找到足够可靠的匹配结果。",
+      "fromCatalog": "来自自有商品库的结果",
+      "fromExternal": "来自外部搜索的结果"
+    }
   },
   "catalog": {
     "products": "商品",
@@ -954,6 +1293,25 @@
         "dedupThresholdLabel": "基于嵌入的去重阈值",
         "jobsWorkersLabel": "任务工作进程数"
       },
+      "productMatching": {
+        "title": "商品匹配",
+        "description": "检测到物体后，可购买商品从哪些来源产生，以及每个来源的接受标准有多严格。",
+        "defaultModeLabel": "默认模式",
+        "catalogThresholdLabel": "商品库阈值",
+        "externalThresholdLabel": "外部搜索阈值",
+        "hybridThresholdLabel": "对比来源时的阈值",
+        "providerLabel": "外部服务商",
+        "providerMissing": "未配置",
+        "indexedLabel": "已索引商品数",
+        "statusLabel": "状态",
+        "catalogBadge": "商品库",
+        "externalBadge": "外部 API",
+        "testConnection": "测试连接",
+        "testing": "正在测试…",
+        "testOkDetail": "外部搜索响应正常。",
+        "testFailed": "无法检查连接。",
+        "lastTestLabel": "最近一次测试"
+      },
       "compliance": {
         "title": "采集限制与合规",
         "description": "默认值刻意设置得较为保守：宁可花更多时间，也不打扰店铺。",
@@ -1162,6 +1520,8 @@
       "sectionsNav": "管理后台分区",
       "closeNav": "关闭导航",
       "openNav": "打开导航",
+      "collapseNav": "收起导航",
+      "expandNav": "展开导航",
       "backToProduct": "返回产品页",
       "nav": {
         "overview": "概览",
@@ -1460,6 +1820,154 @@
           "label": "剪贴板（粘贴图片）",
           "okDetail": "支持使用 Ctrl+V 粘贴。",
           "warningDetail": "剪贴板 API 受限；请使用拖放。"
+        }
+      }
+    }
+  },
+  "architecture": {
+    "meta": {
+      "title": "技术架构",
+      "description": "Pause2Shop 的完整流程：帧捕获、检测、去重、与目录匹配，以及阈值之下的发布控制。"
+    },
+    "label": "架构",
+    "heading": "内部是如何运作的",
+    "intro": "本页是落地页故意省略的技术细节。它描述目前已实现的流程，使用每个阶段的真实名称，并在最后把已经可用的部分与依赖某项集成或某项协议的部分区分开。",
+    "stages": {
+      "capture": {
+        "title": "帧捕获",
+        "body": "从视频——上传的、YouTube 链接或屏幕捕获——中提取候选帧。并非全部分析：目标是找出带来新信息的帧，让成本随内容增长，而不是随时长增长。",
+        "details": {
+          "d1": "使用 requestVideoFrameCallback (rVFC) 与播放器同步读取帧，而不是靠定时器盲目采样。",
+          "d2": "用场景间差异（scene diff）检测切换，每个镜头保留一个代表帧。",
+          "d3": "按帧计算感知哈希：如果哈希重复，该帧不再送入模型。",
+          "d4": "可配置的最小分析间隔，作为每分钟视频调用次数的上限。"
+        }
+      },
+      "detect": {
+        "title": "对象检测",
+        "body": "视觉模型按帧返回对象列表，包含检测框、类别、主色，以及与画面中人物的关系。这个关系很重要，因为它改变优先级：有人穿在身上的比背景里的权重更高。",
+        "details": {
+          "d1": "归一化的检测框（bounding boxes）使用相对于帧的坐标，使叠加层与分辨率无关。",
+          "d2": "worn / held / background 关系决定检索队列的顺序。",
+          "d3": "在花费一次调用之前先按类别过滤：如果该类别未启用，就不检索该对象。",
+          "d4": "检测的最低阈值与发布阈值相互独立。"
+        }
+      },
+      "dedupe": {
+        "title": "追踪与去重",
+        "body": "对象在帧之间保持身份，并在分析结束时进行全局合并。没有这一步，一件在二十个镜头中出现的衣物会产生二十次检索和二十条目录条目。",
+        "details": {
+          "d1": "跟踪标识（trackIds）在连续帧之间得以保留。",
+          "d2": "对同一帧内的检测框做重叠抑制（NMS）。",
+          "d3": "为每个对象选出最佳裁剪图：整条轨迹中最大、最清晰的那一张。",
+          "d4": "任务结束时按视觉相似度做全局合并，而不只是相邻帧之间。"
+        }
+      },
+      "match": {
+        "title": "与目录匹配",
+        "body": "每个裁剪图先在自有目录中检索，按成本从低到高级联进行。只有便宜的阶段无法解决时才进入昂贵阶段，而且每一级都有自己的缓存。",
+        "details": {
+          "d1": "级联：精确哈希 → 感知哈希 → 视觉 embedding → 文本检索。",
+          "d2": "embeddings 阶段使用基于 pgvector 的最近邻检索。",
+          "d3": "变体归并：尺码和颜色归到同一个父商品之下。",
+          "d4": "每个结果都记录解决它的阶段（matchStage）和来源，以便事后审计。"
+        }
+      },
+      "publish": {
+        "title": "阈值与发布",
+        "body": "匹配的结果不会直接发布。它要经过约定的阈值和客户的规则，然后进入三种去向之一：已发布、复核队列，或被丢弃。",
+        "details": {
+          "d1": "发布阈值可按目录和内容分别配置。",
+          "d2": "阈值下方的复核带：接近阈值的结果交给人，而不是丢掉。",
+          "d3": "按品牌的规则以及允许和屏蔽列表，在 score 之后应用。",
+          "d4": "每个结果都有完整轨迹：场景、帧、阶段、score 和决定。"
+        }
+      }
+    },
+    "status": {
+      "title": "实现的真实状态",
+      "works": {
+        "term": "今天已可用",
+        "body": "帧捕获、按类别检测、追踪与去重、与自有目录的级联匹配、按任务的成本控制，以及复核队列。这些都可以在工作台里验证。"
+      },
+      "pilot": {
+        "term": "在试点中校准",
+        "body": "阈值取值、目录的真实覆盖率和准确率指标取决于每位客户的内容和目录。它们在约定的场景集合上测量，而不是凭假设。"
+      },
+      "requiresIntegration": {
+        "term": "需要集成",
+        "body": "从播放器或伴随体验中消费结果需通过 API，并需要客户侧的工作。直播分析尚不可用：该流程是为点播内容设计的。"
+      }
+    },
+    "cta": {
+      "studio": "在工作台中试用",
+      "back": "返回首页"
+    }
+  },
+  "legal": {
+    "common": {
+      "label": "法律",
+      "lastUpdated": "最后修订：2026 年 7 月",
+      "draftNotice": "本文档准确描述了系统的技术行为，但尚待法律审阅。文中不含责任主体的信息，也不含合同条款：这些将在任何商业使用之前补齐。",
+      "back": "返回首页"
+    },
+    "privacy": {
+      "heading": "隐私",
+      "intro": "Pause2Shop 会接触哪些数据、在哪里、保留多久。简短版：没有用户账户，不构建任何画像，被分析的内容只用于产出匹配结果，不用于训练任何模型。",
+      "sections": {
+        "whatWeProcess": {
+          "title": "处理哪些数据",
+          "body": "提交分析的内容——一张图像或一段视频——以及所配置的商品目录。分析产出帧、检测到的对象裁剪图，以及提出的匹配结果，附带其 score 和来源。"
+        },
+        "noAccounts": {
+          "title": "没有账户，也没有画像",
+          "body": "公开应用没有注册、没有登录，也没有广告跟踪 cookie。浏览器中唯一保存的偏好是所选语言，以免再次询问。不会构建访问者的任何画像。"
+        },
+        "content": {
+          "title": "你提交的内容",
+          "body": "视频或图像用于执行分析并返回结果。除产出结果所必需的分析服务供应商之外，不与第三方共享，也不用于训练自有模型。"
+        },
+        "providers": {
+          "title": "供应商",
+          "body": "视觉分析依赖外部的模型供应商，会向其发送解决某次查询所需的帧或裁剪图。这些供应商的凭证只存在于服务端，绝不会到达浏览器。某次部署具体使用哪些供应商，与客户约定。"
+        },
+        "retention": {
+          "title": "保留",
+          "body": "帧和裁剪图的保留策略可按部署配置：它们只在对分析任务及其复核仍然有用时存在。商品目录和已发布的匹配结果会持续保存，因为它们就是服务的成果。"
+        },
+        "security": {
+          "title": "安全",
+          "body": "传输过程加密，密钥仅存在于服务端，运维面板置于认证之后并可完全停用。不声明任何合规认证：目前一项也没有。"
+        }
+      }
+    },
+    "terms": {
+      "heading": "使用条款",
+      "intro": "本公开演示的使用条件。Pause2Shop 目前是一个技术试点：这些条款如实反映这一点，而不是描述一项尚未签约的商业服务。",
+      "sections": {
+        "scope": {
+          "title": "适用范围",
+          "body": "本条款涵盖公开应用的使用：介绍页面、分析工作台、可见的商品目录和引导演示。不涵盖任何服务协议，后者由各自的合同约定。"
+        },
+        "pilotNature": {
+          "title": "试点性质",
+          "body": "此处提供的是技术能力的演示。分析结果仅供参考，可用性不作保证，试点期间功能可能随时变更而不另行通知。"
+        },
+        "acceptableUse": {
+          "title": "可接受的使用",
+          "body": "不得使用本服务分析你不拥有权利的内容，不得试图识别个人身份，也不得在未获事先书面授权的情况下进行压力测试或入侵测试。"
+        },
+        "content": {
+          "title": "内容与权利",
+          "body": "提交内容者声明其有权这样做。结果中可能出现的商品、品牌和商号归其各自的权利人所有；出现在目录来源注册表中并不意味着任何商业关系或赞助。"
+        },
+        "availability": {
+          "title": "可用性",
+          "body": "这是一个测试环境：可能出现中断、使用限制和被停用的功能。如果外部供应商失败，系统宁可不给出结果，也不展示可疑的结果。"
+        },
+        "changes": {
+          "title": "变更",
+          "body": "本条款可能随产品推进而更新。最后修订日期显示在文档开头。"
         }
       }
     }

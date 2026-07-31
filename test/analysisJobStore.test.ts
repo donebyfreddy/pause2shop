@@ -20,12 +20,13 @@ function jobRecord(id: string): AnalysisJobRecord {
       durationSeconds: 60,
       createdAt: 1,
     },
-    matchingMode: "external-only",
+    matchingMode: "external_only",
     analysisConfig: {
       categories: ["all"],
       analysisIntensity: "standard",
       personCentric: false,
       reverseImageSearch: true,
+      matchingMode: "external_only",
     },
     checkpoint: { processedUpToSeconds: -1, lastBatchAt: null },
     counters: {

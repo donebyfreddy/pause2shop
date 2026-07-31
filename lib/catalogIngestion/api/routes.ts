@@ -348,7 +348,7 @@ export function buildRouter(store: CatalogStore): Router {
         navigationTimeoutMs: config.navigationTimeoutMs,
         maxRetries: config.maxRetries,
         batchSize: config.batchSize,
-        maxProductsPerJob: config.maxProductsPerJob,
+        maxProductsPerSource: config.maxProductsPerSource,
       },
       persistence: {
         catalogBackend: store.backend,
@@ -447,17 +447,23 @@ export function buildRouter(store: CatalogStore): Router {
           : `el conector ${source} no tiene implementación activa (lifecycle: ${meta.lifecycle})`
       );
     }
+    // Un `limit` explícito en el body es la vía de pruebas ("Zara, 3
+    // productos"): se respeta tal cual, sin techo oculto. Si no se manda,
+    // NO se sustituye por un límite bajo aquí — se deja `undefined` para que
+    // `BaseConnector.syncProducts` use `SCRAPER_MAX_PRODUCTS_PER_SOURCE`
+    // (0 = sin límite funcional). El job sigue siendo seguro en Vercel porque
+    // se procesa por lotes (`batchSize`) y por presupuesto de tiempo, nunca de
+    // golpe: el límite de productos y el límite de trabajo por invocación son
+    // dos mecanismos distintos.
+    const explicitLimit =
+      typeof body?.limit === "number" && Number.isFinite(body.limit) && body.limit > 0
+        ? Math.floor(body.limit)
+        : undefined;
     const job = await queue.enqueue({
       type: mode === "full" ? "sync_full" : "sync_incremental",
       source,
       mode,
-      // A Vercel function is bounded in time. Jobs persist checkpoints and the
-      // UI can run/retry further batches; never let a request create an
-      // unbounded crawl.
-      limit:
-        typeof body?.limit === "number"
-          ? Math.max(1, Math.min(Math.floor(body.limit), 25))
-          : 25,
+      limit: explicitLimit,
     });
     sendJson(res, 202, { jobId: job.jobId });
   });

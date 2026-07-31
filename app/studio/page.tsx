@@ -1,17 +1,29 @@
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
-import { SiteHeader } from "@/components/shell/SiteHeader";
-import { SiteFooter } from "@/components/shell/SiteFooter";
+import { PublicHeader } from "@/components/shell/PublicHeader";
+import { PublicFooter } from "@/components/shell/PublicFooter";
 import StudioExperience from "@/components/studio/StudioExperience";
+import { absoluteUrl } from "@/lib/seo";
 
 /**
  * Estudio a pantalla completa. Misma herramienta que la sección `#studio` de la
  * landing, con su propia URL para enlaces directos y demos.
  */
 
+const CANONICAL = absoluteUrl("/studio");
+
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("studio.page");
-  return { title: t("title"), description: t("description") };
+  return {
+    title: t("title"),
+    description: t("description"),
+    alternates: { canonical: CANONICAL },
+    openGraph: {
+      title: t("title"),
+      description: t("description"),
+      url: CANONICAL,
+    },
+  };
 }
 
 const appName = process.env.NEXT_PUBLIC_APP_NAME || "Pause2Shop";
@@ -21,8 +33,8 @@ export default async function StudioPage() {
 
   return (
     <>
-      <SiteHeader />
-      <main className="flex-1">
+      <PublicHeader />
+      <main id="contenido" className="flex-1">
         <div className="mx-auto w-full max-w-[1600px] px-4 py-8 sm:px-6 lg:px-8">
           <header className="mb-6">
             <h1 className="display text-3xl text-ink sm:text-4xl">{t("title")}</h1>
@@ -33,7 +45,7 @@ export default async function StudioPage() {
           <StudioExperience variant="page" />
         </div>
       </main>
-      <SiteFooter appName={appName} />
+      <PublicFooter appName={appName} />
     </>
   );
 }

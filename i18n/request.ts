@@ -3,7 +3,7 @@ import { getRequestConfig } from "next-intl/server";
 import { detectLocale, parseAcceptLanguage } from "@/lib/detectLocale";
 import { LOCALE_COOKIE_NAME } from "@/lib/localePersistence";
 import type { Locale } from "./locales";
-import { FORMATS } from "./formats";
+import { FORMATS, TIME_ZONE } from "./formats";
 
 export async function resolveRequestLocale(): Promise<Locale> {
   const cookieStore = await cookies();
@@ -28,5 +28,6 @@ export default getRequestConfig(async () => {
     locale,
     messages,
     formats: FORMATS,
+    timeZone: TIME_ZONE,
   };
 });

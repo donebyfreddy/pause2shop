@@ -56,6 +56,13 @@ export interface DiscoveryInput {
   /** Techo de peticiones de descubrimiento por invocación (cortesía + tiempo). */
   maxRequests?: number;
   /**
+   * Se consulta entre cada petición de descubrimiento. Sin esto, cancelar un
+   * job atrapado en un sitemap-index enorme no tenía efecto hasta agotar
+   * `maxRequests` — el botón "Cancelar" del admin podía tardar decenas de
+   * segundos en hacer algo.
+   */
+  shouldCancel?: () => boolean;
+  /**
    * Mercados/locales que interesan (p. ej. `["ES", "es_ES", "es-es"]`). Muchas
    * tiendas publican un sitemap por locale: sin esta pista el descubrimiento
    * gasta su presupuesto recorriendo Andorra o Serbia antes de llegar a España.
@@ -71,6 +78,8 @@ export interface DiscoveryResult {
   requests: number;
   /** Estrategias que aportaron al menos una URL. */
   strategiesUsed: string[];
+  /** Se salió por `shouldCancel()`, no por agotar cola/límite/`maxRequests`. */
+  cancelled: boolean;
 }
 
 /** Niveles de sitemapindex que recorremos como máximo. */
@@ -231,7 +240,12 @@ export async function discoverProductUrls(input: DiscoveryInput): Promise<Discov
     return checkpoint.queue.splice(bestIndex, 1)[0];
   };
 
+  let cancelled = false;
   while (checkpoint.queue.length > 0 && found.size < input.limit && requests < maxRequests) {
+    if (input.shouldCancel?.()) {
+      cancelled = true;
+      break;
+    }
     const item = dequeue();
     if (!item) break;
     if (visited.has(item.url)) continue;
@@ -329,12 +343,13 @@ export async function discoverProductUrls(input: DiscoveryInput): Promise<Discov
   checkpoint.visited = [...visited].slice(-500);
   checkpoint.found = [...found];
   checkpoint.done =
-    checkpoint.queue.length === 0 || found.size >= input.limit;
+    !cancelled && (checkpoint.queue.length === 0 || found.size >= input.limit);
 
   return {
     urls: [...found].slice(0, input.limit),
     checkpoint,
     requests,
     strategiesUsed: [...strategiesUsed],
+    cancelled,
   };
 }

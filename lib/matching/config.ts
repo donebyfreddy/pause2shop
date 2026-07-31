@@ -1,22 +1,16 @@
 import type { MatchingMode } from "./types";
+import { DEFAULT_MATCHING_MODE, normalizeMatchingMode } from "./types";
 
 /**
  * Configuración de los modos de matching (catálogo propio ⇄ pipeline externo).
  *
- * El default es "external-only" A PROPÓSITO: si la variable no está definida,
- * el comportamiento actual de la app no cambia por sorpresa. El .env.example
- * recomienda "catalog-first" para cuando el servicio de catálogo esté vivo.
+ * El default es "catalog_first": intenta resolver dentro del catálogo propio y
+ * solo gasta una llamada externa cuando no hay coincidencia fiable. Es también
+ * la opción marcada de serie en la UI, para que backend y UI coincidan.
  */
 
-const MATCHING_MODES: readonly MatchingMode[] = [
-  "catalog-only",
-  "catalog-first",
-  "external-only",
-  "hybrid",
-];
-
 export function isMatchingMode(v: unknown): v is MatchingMode {
-  return typeof v === "string" && (MATCHING_MODES as readonly string[]).includes(v);
+  return normalizeMatchingMode(v) !== null;
 }
 
 function bool(v: string | undefined, fallback: boolean): boolean {
@@ -35,14 +29,55 @@ function score01(v: string | undefined, fallback: number): number {
   return Number.isFinite(n) && n > 0 && n <= 1 ? n : fallback;
 }
 
+const CATEGORY_THRESHOLD_PREFIX = "CATALOG_MATCH_THRESHOLD_";
+
+/**
+ * Umbrales por categoría: `CATALOG_MATCH_THRESHOLD_FOOTWEAR=0.9` afina una
+ * categoría concreta sin tocar el umbral global. La clave se normaliza a
+ * minúsculas para compararla con `item.category`.
+ */
+function thresholdsByCategory(env: NodeJS.ProcessEnv): Record<string, number> {
+  const out: Record<string, number> = {};
+  for (const [key, value] of Object.entries(env)) {
+    if (!key.startsWith(CATEGORY_THRESHOLD_PREFIX)) continue;
+    const category = key.slice(CATEGORY_THRESHOLD_PREFIX.length).toLowerCase();
+    if (!category) continue;
+    const n = Number(value);
+    if (Number.isFinite(n) && n > 0 && n <= 1) out[category] = n;
+  }
+  return out;
+}
+
+/** Umbral de catálogo aplicable a una categoría concreta. */
+export function catalogThresholdFor(
+  config: MatchingConfig,
+  category: string | null | undefined
+): number {
+  if (!category) return config.catalogMatchMinScore;
+  return (
+    config.catalogThresholdByCategory[category.trim().toLowerCase()] ??
+    config.catalogMatchMinScore
+  );
+}
+
 export type MatchingConfig = {
   mode: MatchingMode;
   /** Identificador del motor integrado; se conserva por compatibilidad diagnóstica. */
   catalogServiceUrl: string;
   /** API key para el header x-api-key (null = sin auth configurada). */
   catalogServiceApiKey: string | null;
-  /** Umbral de finalScore para considerar fiable un match del catálogo. */
+  /**
+   * Umbral de finalScore para considerar fiable un match del CATÁLOGO.
+   * `CATALOG_MATCH_THRESHOLD` es el nombre nuevo; `CATALOG_MATCH_MIN_SCORE`
+   * se sigue leyendo por compatibilidad con despliegues existentes.
+   */
   catalogMatchMinScore: number;
+  /** Umbral propio del proveedor EXTERNO (no comparte el del catálogo). */
+  externalMatchMinScore: number;
+  /** Umbral del ranking combinado en modo comparar (hybrid). */
+  hybridMatchMinScore: number;
+  /** Umbrales por categoría, opcionales: `CATALOG_MATCH_THRESHOLD_<CATEGORIA>`. */
+  catalogThresholdByCategory: Record<string, number>;
   catalogMatchTopK: number;
   catalogRequestTimeoutMs: number;
   /** catalog-first: si el catálogo no resuelve, ¿se cae al pipeline externo? */
@@ -61,14 +96,19 @@ export type MatchingConfig = {
 export function getMatchingConfig(
   env: NodeJS.ProcessEnv = process.env
 ): MatchingConfig {
-  const rawMode = env.PRODUCT_MATCHING_MODE?.trim();
   return {
-    // Valor desconocido → external-only (comportamiento actual, nunca romper).
-    mode: isMatchingMode(rawMode) ? rawMode : "external-only",
+    // Valor desconocido o ausente → el modo recomendado (catalog_first).
+    mode: normalizeMatchingMode(env.PRODUCT_MATCHING_MODE) ?? DEFAULT_MATCHING_MODE,
     catalogServiceUrl: (env.CATALOG_SERVICE_URL?.trim() || "http://localhost:4100")
       .replace(/\/$/, ""),
     catalogServiceApiKey: env.CATALOG_SERVICE_API_KEY?.trim() || null,
-    catalogMatchMinScore: score01(env.CATALOG_MATCH_MIN_SCORE, 0.82),
+    catalogMatchMinScore: score01(
+      env.CATALOG_MATCH_THRESHOLD ?? env.CATALOG_MATCH_MIN_SCORE,
+      0.82
+    ),
+    externalMatchMinScore: score01(env.EXTERNAL_MATCH_THRESHOLD, 0.75),
+    hybridMatchMinScore: score01(env.HYBRID_MATCH_THRESHOLD, 0.8),
+    catalogThresholdByCategory: thresholdsByCategory(env),
     catalogMatchTopK: Math.floor(num(env.CATALOG_MATCH_TOP_K, 10)),
     catalogRequestTimeoutMs: num(env.CATALOG_REQUEST_TIMEOUT_MS, 5000),
     catalogExternalFallback: bool(env.CATALOG_EXTERNAL_FALLBACK, true),

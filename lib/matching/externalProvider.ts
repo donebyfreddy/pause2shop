@@ -1,6 +1,7 @@
 import type { DetectedItem } from "@/lib/types";
 import { SCORE_NORMALIZER } from "@/lib/visualSearch/matchConfidence";
 import type { RankedCandidate, VisualMatch } from "@/lib/visualSearch/types";
+import { getMatchingConfig } from "./config";
 import type {
   MatchLabel,
   NormalizedProductMatch,
@@ -34,7 +35,8 @@ export type ExternalSearchFn = (
 
 function toNormalizedExternal(
   c: RankedCandidate,
-  item: DetectedItem
+  item: DetectedItem,
+  threshold: number
 ): NormalizedProductMatch {
   const breakdown = c.scoreBreakdown ?? {};
   // Marca: solo cuenta como evidencia si el ranking la corroboró Y la
@@ -42,6 +44,17 @@ function toNormalizedExternal(
   // es evidencia (regla de matchConfidence.ts).
   const brandVerified =
     Boolean(breakdown.same_brand) && item.brand_status === "verified";
+  const finalScore = Math.max(0, Math.min(c.score / SCORE_NORMALIZER, 1));
+  // Una búsqueda externa NO es una coincidencia exacta por defecto: solo se
+  // afirma "exact" si el motor devolvió la MISMA imagen. Lo demás, según score.
+  let matchType: NormalizedProductMatch["matchType"];
+  if (c.exactImageMatch || breakdown.exact_image_match) {
+    matchType = "exact";
+  } else if (finalScore >= threshold) {
+    matchType = "probable";
+  } else {
+    matchType = "similar";
+  }
   return {
     source: "external",
     productId: null,
@@ -55,6 +68,10 @@ function toNormalizedExternal(
     availability: null,
     matchStage: null,
     provider: c.source,
+    // Los motores de reverse image no devuelven categoría normalizada.
+    category: null,
+    model: null,
+    matchType,
     scores: {
       detectionScore: Number.isFinite(item.confidence) ? item.confidence : null,
       // Señal visual: solo si el motor la reportó (imagen idéntica o posición
@@ -79,14 +96,21 @@ function toNormalizedExternal(
   };
 }
 
-/** Normaliza el outcome del pipeline externo al contrato común. */
+/**
+ * Normaliza el outcome del pipeline externo al contrato común.
+ *
+ * El umbral EXTERNO es propio (EXTERNAL_MATCH_THRESHOLD): un candidato que el
+ * motor clasificó como match pero que no llega al umbral se degrada a SIMILAR
+ * en vez de presentarse como coincidencia fiable.
+ */
 export function externalOutcomeToResult(
   outcome: ExternalPipelineOutcome,
-  item: DetectedItem
+  item: DetectedItem,
+  threshold: number = getMatchingConfig().externalMatchMinScore
 ): ProductMatchingResult {
   const ranked = outcome.match?.ranked_candidates ?? [];
   const matches = ranked
-    .map((c) => toNormalizedExternal(c, item))
+    .map((c) => toNormalizedExternal(c, item, threshold))
     .sort((a, b) => b.scores.finalScore - a.scores.finalScore);
   if (matches[0] && outcome.match) {
     matches[0].evidence = outcome.match.evidence;
@@ -94,8 +118,10 @@ export function externalOutcomeToResult(
 
   let matchLabel: MatchLabel = "NO_MATCH";
   if (outcome.match) {
+    const engineSaysMatch = outcome.match.match_type !== "similar";
+    const best = matches[0]?.scores.finalScore ?? 0;
     matchLabel =
-      outcome.match.match_type === "similar" ? "SIMILAR" : "EXTERNAL_MATCH";
+      engineSaysMatch && best >= threshold ? "EXTERNAL_MATCH" : "SIMILAR";
   }
 
   return {
@@ -105,16 +131,26 @@ export function externalOutcomeToResult(
     fallbackUsed: outcome.fallbackUsed,
     cached: outcome.cached,
     timings: outcome.timings,
+    catalogAttempted: false,
+    externalAttempted: true,
+    externalFallbackUsed: false,
+    unresolvedReason:
+      matchLabel === "NO_MATCH"
+        ? "La búsqueda externa no devolvió ningún producto."
+        : undefined,
   };
 }
 
 export class ExternalVisualSearchProvider implements ProductMatchingProvider {
-  constructor(private readonly runExternal: ExternalSearchFn) {}
+  constructor(
+    private readonly runExternal: ExternalSearchFn,
+    private readonly threshold?: number
+  ) {}
 
   async search(input: ProductMatchingInput): Promise<ProductMatchingResult> {
     try {
       const outcome = await this.runExternal(input);
-      return externalOutcomeToResult(outcome, input.item);
+      return externalOutcomeToResult(outcome, input.item, this.threshold);
     } catch (err) {
       // El pipeline externo nunca debería lanzar, pero si lo hace el análisis
       // continúa con NO_MATCH en vez de romperse.
