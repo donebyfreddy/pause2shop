@@ -4,6 +4,7 @@ import dynamic from "next/dynamic";
 import { motion } from "motion/react";
 import { ArrowUpRight, Loader } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { useTranslations } from "next-intl";
 import { ButtonLink, SectionLabel } from "@/components/ui";
 
 /**
@@ -23,17 +24,19 @@ const StudioExperience = dynamic(() => import("@/components/studio/StudioExperie
 });
 
 function StudioSkeleton() {
+  const t = useTranslations("landing.studioSection");
   return (
     <div className="panel flex min-h-[420px] items-center justify-center">
       <div className="flex flex-col items-center gap-3">
         <Loader className="size-5 animate-spin text-brand-bright" aria-hidden />
-        <p className="text-xs text-ink-subtle">Cargando el estudio de análisis…</p>
+        <p className="text-xs text-ink-subtle">{t("loading")}</p>
       </div>
     </div>
   );
 }
 
 export function StudioSection() {
+  const t = useTranslations("landing.studioSection");
   const ref = useRef<HTMLDivElement>(null);
   const [mounted, setMounted] = useState(false);
 
@@ -74,17 +77,14 @@ export function StudioSection() {
           className="mb-8 flex flex-wrap items-end justify-between gap-4"
         >
           <div>
-            <SectionLabel className="text-accent">El estudio</SectionLabel>
-            <h2 className="display mt-2.5 text-3xl text-ink sm:text-4xl">
-              Analiza un vídeo o una imagen ahora
-            </h2>
+            <SectionLabel className="text-accent">{t("label")}</SectionLabel>
+            <h2 className="display mt-2.5 text-3xl text-ink sm:text-4xl">{t("heading")}</h2>
             <p className="mt-3 max-w-xl text-[15px] leading-relaxed text-ink-muted">
-              Elige categorías e intensidad, carga el contenido y observa las detecciones y
-              coincidencias en tiempo real.
+              {t("description")}
             </p>
           </div>
           <ButtonLink href="/studio" variant="outline" size="sm">
-            Abrir en pantalla completa
+            {t("openFullscreen")}
             <ArrowUpRight className="size-3.5" aria-hidden />
           </ButtonLink>
         </motion.div>

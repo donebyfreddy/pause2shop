@@ -14,7 +14,7 @@ export function TableWrap({ className, ...props }: ComponentProps<"div">) {
 export function Table({ className, ...props }: ComponentProps<"table">) {
   return (
     <table
-      className={cn("w-full min-w-[720px] border-collapse text-left text-[13px]", className)}
+      className={cn("w-full min-w-[720px] border-collapse text-start text-[13px]", className)}
       {...props}
     />
   );

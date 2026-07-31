@@ -1,15 +1,17 @@
 import type { Metadata } from "next";
+import { getTranslations } from "next-intl/server";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { ConnectorsView } from "@/components/admin/ConnectorsView";
 
-export const metadata: Metadata = { title: "Conectores" };
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("admin.connectors");
+  return { title: t("title") };
+}
 
-export default function AdminConnectorsPage() {
+export default async function AdminConnectorsPage() {
+  const t = await getTranslations("admin.connectors");
   return (
-    <AdminShell
-      title="Conectores de catálogo"
-      description="Registro de fuentes de moda con su madurez de implementación y su estado operativo real"
-    >
+    <AdminShell title={t("title")} description={t("description")}>
       <ConnectorsView />
     </AdminShell>
   );

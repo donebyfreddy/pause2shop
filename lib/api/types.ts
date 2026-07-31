@@ -63,7 +63,7 @@ export type AnalyzeFrameSuccess = {
   timings?: Record<string, number>;
 };
 
-export type AnalyzeFrameError = { ok: false; error: string };
+export type AnalyzeFrameError = { ok: false; error: string; errorDetail?: string };
 export type AnalyzeFrameApiResponse = AnalyzeFrameSuccess | AnalyzeFrameError;
 
 export type CatalogListResponse =

@@ -5,8 +5,10 @@ import { usePathname } from "next/navigation";
 import { motion, useScroll, useMotionValueEvent } from "motion/react";
 import { LayoutDashboard, Menu, Sparkles, X } from "lucide-react";
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { cn } from "@/lib/ui/cn";
 import { ButtonLink } from "@/components/ui";
+import { LanguageSelector } from "@/components/i18n/LanguageSelector";
 import { Logo } from "./Logo";
 
 /**
@@ -18,12 +20,14 @@ import { Logo } from "./Logo";
  */
 
 const NAV = [
-  { href: "/studio", label: "Estudio" },
-  { href: "/catalog", label: "Catálogo" },
-  { href: "/demo", label: "Demo vídeo" },
+  { href: "/studio", labelKey: "studio" },
+  { href: "/catalog", labelKey: "catalog" },
+  { href: "/demo", labelKey: "demoVideo" },
 ] as const;
 
 export function SiteHeader({ transparentOnTop = false }: { transparentOnTop?: boolean }) {
+  const t = useTranslations("navigation");
+  const tActions = useTranslations("actions");
   const pathname = usePathname();
   const [solid, setSolid] = useState(!transparentOnTop);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -46,7 +50,7 @@ export function SiteHeader({ transparentOnTop = false }: { transparentOnTop?: bo
       <div className="mx-auto flex h-16 w-full max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
         <Logo />
 
-        <nav className="hidden items-center gap-1 md:flex" aria-label="Navegación principal">
+        <nav className="hidden items-center gap-1 md:flex" aria-label={t("mainNav")}>
           {NAV.map((item) => {
             const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
             return (
@@ -58,7 +62,7 @@ export function SiteHeader({ transparentOnTop = false }: { transparentOnTop?: bo
                   active ? "text-ink" : "text-ink-subtle hover:text-ink"
                 )}
               >
-                {item.label}
+                {t(item.labelKey)}
                 {active && (
                   <motion.span
                     layoutId="site-nav-active"
@@ -71,24 +75,25 @@ export function SiteHeader({ transparentOnTop = false }: { transparentOnTop?: bo
         </nav>
 
         <div className="flex items-center gap-2">
+          <LanguageSelector />
           <ButtonLink
             href="/admin"
             variant="ghost"
             size="sm"
             className="hidden sm:inline-flex"
-            title="Panel de operaciones del catálogo"
+            title={tActions("viewCatalogPanel")}
           >
             <LayoutDashboard className="size-4" aria-hidden />
-            Admin
+            {t("admin")}
           </ButtonLink>
           <ButtonLink href="/studio" variant="primary" size="sm">
             <Sparkles className="size-4" aria-hidden />
-            Prueba ahora
+            {tActions("tryNow")}
           </ButtonLink>
           <button
             type="button"
             onClick={() => setMenuOpen((v) => !v)}
-            aria-label={menuOpen ? "Cerrar menú" : "Abrir menú"}
+            aria-label={menuOpen ? t("closeMenu") : t("openMenu")}
             aria-expanded={menuOpen}
             className="grid size-9 place-items-center rounded-lg border border-line text-ink-muted md:hidden"
           >
@@ -102,17 +107,17 @@ export function SiteHeader({ transparentOnTop = false }: { transparentOnTop?: bo
           initial={{ height: 0, opacity: 0 }}
           animate={{ height: "auto", opacity: 1 }}
           className="overflow-hidden border-t border-line bg-canvas/95 backdrop-blur-xl md:hidden"
-          aria-label="Navegación móvil"
+          aria-label={t("mobileNav")}
         >
           <div className="flex flex-col gap-1 px-4 py-3">
-            {[...NAV, { href: "/admin", label: "Admin" }].map((item) => (
+            {[...NAV, { href: "/admin", labelKey: "admin" as const }].map((item) => (
               <Link
                 key={item.href}
                 href={item.href}
                 onClick={() => setMenuOpen(false)}
                 className="rounded-lg px-3 py-2.5 text-sm text-ink-muted transition-colors hover:bg-white/[0.04] hover:text-ink"
               >
-                {item.label}
+                {t(item.labelKey)}
               </Link>
             ))}
           </div>

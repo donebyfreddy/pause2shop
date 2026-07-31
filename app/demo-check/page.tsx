@@ -2,6 +2,7 @@
 
 import { useCallback, useState } from "react";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 
 type CheckStatus = "ok" | "warning" | "error";
 
@@ -21,43 +22,48 @@ type ApiResponse = {
   ranAt: number;
 };
 
-const STATUS_UI: Record<CheckStatus, { icon: string; text: string; cls: string }> = {
-  ok: { icon: "✓", text: "OK", cls: "text-success border-success/30 bg-success/10" },
-  warning: { icon: "!", text: "Aviso", cls: "text-warning border-warning/30 bg-warning/10" },
-  error: { icon: "✕", text: "Error", cls: "text-danger border-danger/30 bg-danger/10" },
+const STATUS_ICON: Record<CheckStatus, string> = { ok: "✓", warning: "!", error: "✕" };
+const STATUS_CLS: Record<CheckStatus, string> = {
+  ok: "text-success border-success/30 bg-success/10",
+  warning: "text-warning border-warning/30 bg-warning/10",
+  error: "text-danger border-danger/30 bg-danger/10",
 };
 
 /** Checks que solo pueden hacerse en el navegador (permisos/APIs). */
-function browserChecks(): CheckResult[] {
-  const results: CheckResult[] = [];
-  const hasDisplayMedia =
-    typeof navigator !== "undefined" &&
-    Boolean(navigator.mediaDevices?.getDisplayMedia);
-  results.push({
-    id: "displaymedia",
-    label: "Captura de pestaña (getDisplayMedia)",
-    status: hasDisplayMedia ? "ok" : "error",
-    latencyMs: null,
-    detail: hasDisplayMedia
-      ? "El navegador soporta captura de pestaña para YouTube."
-      : "Este navegador no soporta getDisplayMedia: el flujo de YouTube no funcionará.",
-    action: hasDisplayMedia ? undefined : "Usa Chrome/Edge de escritorio.",
-  });
-  const hasClipboard =
-    typeof navigator !== "undefined" && Boolean(navigator.clipboard);
-  results.push({
-    id: "clipboard",
-    label: "Portapapeles (pegar imagen)",
-    status: hasClipboard ? "ok" : "warning",
-    latencyMs: null,
-    detail: hasClipboard
-      ? "Pegar con Ctrl+V disponible."
-      : "API de portapapeles limitada; usa arrastrar y soltar.",
-  });
-  return results;
+function useBrowserChecks(): () => CheckResult[] {
+  const t = useTranslations("demo.check.browserChecks");
+  return () => {
+    const results: CheckResult[] = [];
+    const hasDisplayMedia =
+      typeof navigator !== "undefined" &&
+      Boolean(navigator.mediaDevices?.getDisplayMedia);
+    results.push({
+      id: "displaymedia",
+      label: t("displayMedia.label"),
+      status: hasDisplayMedia ? "ok" : "error",
+      latencyMs: null,
+      detail: hasDisplayMedia
+        ? t("displayMedia.okDetail")
+        : t("displayMedia.errorDetail"),
+      action: hasDisplayMedia ? undefined : t("displayMedia.action"),
+    });
+    const hasClipboard =
+      typeof navigator !== "undefined" && Boolean(navigator.clipboard);
+    results.push({
+      id: "clipboard",
+      label: t("clipboard.label"),
+      status: hasClipboard ? "ok" : "warning",
+      latencyMs: null,
+      detail: hasClipboard ? t("clipboard.okDetail") : t("clipboard.warningDetail"),
+    });
+    return results;
+  };
 }
 
 export default function DemoCheckPage() {
+  const t = useTranslations("demo.check");
+  const tStatus = useTranslations("demo.check.status");
+  const browserChecks = useBrowserChecks();
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState<ApiResponse | null>(null);
   const [clientChecks, setClientChecks] = useState<CheckResult[]>([]);
@@ -74,11 +80,11 @@ export default function DemoCheckPage() {
       const json = (await res.json()) as ApiResponse;
       setData(json);
     } catch {
-      setError("No se pudo ejecutar la comprobación (timeout o servidor caído).");
+      setError(t("runError"));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [browserChecks, t]);
 
   const all = [...(data?.checks ?? []), ...clientChecks];
   const overall: CheckStatus | null = all.length
@@ -93,14 +99,11 @@ export default function DemoCheckPage() {
     <main className="mx-auto max-w-3xl px-6 py-10 text-ink">
       <div className="mb-8 flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold">Preflight de la demo</h1>
-          <p className="mt-1 text-sm text-ink-muted">
-            Comprueba servicios externos, base de datos y permisos del navegador
-            antes de empezar. No muestra claves.
-          </p>
+          <h1 className="text-2xl font-semibold">{t("title")}</h1>
+          <p className="mt-1 text-sm text-ink-muted">{t("description")}</p>
         </div>
         <Link href="/" className="text-sm text-ink-muted hover:text-ink">
-          ← Volver
+          {t("back")}
         </Link>
       </div>
 
@@ -109,7 +112,7 @@ export default function DemoCheckPage() {
         disabled={loading}
         className="mb-6 rounded-xl bg-success px-5 py-2.5 text-sm font-semibold text-canvas transition hover:bg-success disabled:opacity-50"
       >
-        {loading ? "Comprobando…" : "Ejecutar comprobación completa"}
+        {loading ? t("running") : t("runButton")}
       </button>
 
       {error && (
@@ -120,13 +123,11 @@ export default function DemoCheckPage() {
 
       {overall && (
         <div
-          className={`mb-6 rounded-xl border px-4 py-3 text-sm font-medium ${STATUS_UI[overall].cls}`}
+          className={`mb-6 rounded-xl border px-4 py-3 text-sm font-medium ${STATUS_CLS[overall]}`}
         >
-          {overall === "ok" && "Todo listo para la demo."}
-          {overall === "warning" &&
-            "La demo puede hacerse, pero hay avisos: revisa las acciones recomendadas."}
-          {overall === "error" &&
-            "Hay errores que afectan a la demo: resuélvelos o usa el plan B del runbook."}
+          {overall === "ok" && t("overall.ok")}
+          {overall === "warning" && t("overall.warning")}
+          {overall === "error" && t("overall.error")}
         </div>
       )}
 
@@ -138,13 +139,13 @@ export default function DemoCheckPage() {
           >
             <div className="flex items-center gap-3">
               <span
-                className={`flex h-6 w-6 items-center justify-center rounded-full border text-xs font-bold ${STATUS_UI[c.status].cls}`}
+                className={`flex h-6 w-6 items-center justify-center rounded-full border text-xs font-bold ${STATUS_CLS[c.status]}`}
               >
-                {STATUS_UI[c.status].icon}
+                {STATUS_ICON[c.status]}
               </span>
               <span className="font-medium">{c.label}</span>
-              <span className={`ml-auto text-xs ${STATUS_UI[c.status].cls.split(" ")[0]}`}>
-                {STATUS_UI[c.status].text}
+              <span className={`ml-auto text-xs ${STATUS_CLS[c.status].split(" ")[0]}`}>
+                {tStatus(c.status)}
               </span>
               {c.latencyMs != null && (
                 <span className="text-xs text-ink-subtle">{c.latencyMs} ms</span>
@@ -159,9 +160,7 @@ export default function DemoCheckPage() {
       </ul>
 
       {!all.length && !loading && (
-        <p className="text-sm text-ink-subtle">
-          Pulsa el botón para lanzar todas las comprobaciones.
-        </p>
+        <p className="text-sm text-ink-subtle">{t("emptyHint")}</p>
       )}
     </main>
   );

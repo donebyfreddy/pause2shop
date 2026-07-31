@@ -2,6 +2,7 @@
 
 import { motion, useReducedMotion } from "motion/react";
 import { ArrowDown, LayoutDashboard } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { Button, ButtonLink, Reveal } from "@/components/ui";
 
 /**
@@ -9,6 +10,7 @@ import { Button, ButtonLink, Reveal } from "@/components/ui";
  * estudio, que está montado en la misma página (#studio).
  */
 export function CtaBridge() {
+  const t = useTranslations("landing.cta");
   const reduce = useReducedMotion();
 
   return (
@@ -29,11 +31,10 @@ export function CtaBridge() {
 
             <div className="relative">
               <h2 className="display mx-auto max-w-2xl text-3xl text-ink sm:text-5xl">
-                Pruébalo con tu propio vídeo
+                {t("heading")}
               </h2>
               <p className="mx-auto mt-5 max-w-xl text-[15px] leading-relaxed text-ink-muted">
-                Elige qué categorías buscar, ajusta la intensidad del análisis y mira cómo
-                aparecen las coincidencias frame a frame. Sin registro.
+                {t("description")}
               </p>
 
               <div className="mt-9 flex flex-wrap items-center justify-center gap-3">
@@ -46,7 +47,7 @@ export function CtaBridge() {
                       ?.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "start" })
                   }
                 >
-                  Prueba ahora
+                  {t("action")}
                   <motion.span
                     animate={reduce ? {} : { y: [0, 3, 0] }}
                     transition={{ duration: 1.6, repeat: Infinity, ease: "easeInOut" }}
@@ -57,7 +58,7 @@ export function CtaBridge() {
                 </Button>
                 <ButtonLink href="/admin" variant="secondary" size="lg">
                   <LayoutDashboard className="size-4" aria-hidden />
-                  Panel de operaciones
+                  {t("operationsPanel")}
                 </ButtonLink>
               </div>
             </div>

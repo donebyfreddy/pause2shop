@@ -10,6 +10,7 @@ import {
   ScrollText,
   TriangleAlert,
 } from "lucide-react";
+import { useFormatter, useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
 import {
   Badge,
@@ -40,20 +41,15 @@ import { ConsoleTransportNote, ScraperConsole } from "./ScraperConsole";
 
 const POLL_MS = 4000;
 
-const LEVELS = [
-  { value: "all" as const, label: "Todo" },
-  { value: "info" as const, label: "Info+" },
-  { value: "warn" as const, label: "Avisos+" },
-  { value: "error" as const, label: "Errores" },
-];
+const LEVEL_VALUES = ["all", "info", "warn", "error"] as const;
 
-type LevelFilter = (typeof LEVELS)[number]["value"];
+type LevelFilter = (typeof LEVEL_VALUES)[number];
 
-const LEVEL_STYLES: Record<LogEntry["level"], { dot: string; text: string; label: string }> = {
-  debug: { dot: "bg-ink-faint", text: "text-ink-faint", label: "DEBUG" },
-  info: { dot: "bg-info", text: "text-info", label: "INFO" },
-  warn: { dot: "bg-warning", text: "text-warning", label: "WARN" },
-  error: { dot: "bg-danger", text: "text-danger", label: "ERROR" },
+const LEVEL_DOT_STYLES: Record<LogEntry["level"], { dot: string; text: string }> = {
+  debug: { dot: "bg-ink-faint", text: "text-ink-faint" },
+  info: { dot: "bg-info", text: "text-info" },
+  warn: { dot: "bg-warning", text: "text-warning" },
+  error: { dot: "bg-danger", text: "text-danger" },
 };
 
 /**
@@ -64,23 +60,26 @@ const LEVEL_STYLES: Record<LogEntry["level"], { dot: string; text: string; label
  *  - «Proceso» — el buffer circular en memoria del servicio entero. Diagnóstico
  *    general, sin retención.
  */
-const VIEWS = [
-  { value: "ingest" as const, label: "Ingesta" },
-  { value: "process" as const, label: "Proceso" },
-];
+const VIEW_VALUES = ["ingest", "process"] as const;
 
 export function LogsView() {
+  const t = useTranslations("logs");
   const [view, setView] = useState<"ingest" | "process">("ingest");
   const scraper = useAdminResource<ScraperStatus>("scraper/status", { pollMs: 15000 });
   const connectorsForConsole = useAdminResource<ConnectorsResponse>("connectors");
 
+  const views = useMemo(
+    () => VIEW_VALUES.map((value) => ({ value, label: t(`views.${value}`) })),
+    [t]
+  );
+
   return (
     <div className="space-y-5">
       <Segmented
-        ariaLabel="Tipo de log"
+        ariaLabel={t("ariaLabels.logType")}
         value={view}
         onChange={setView}
-        options={VIEWS}
+        options={views}
       />
       {view === "ingest" ? (
         <div className="space-y-5">
@@ -106,6 +105,7 @@ export function LogsView() {
  * Un panel que dijera solo "IA: no" obligaría a ir al servidor a averiguarlo.
  */
 function ScraperStatusPanel({ status }: { status: ScraperStatus | null }) {
+  const t = useTranslations("logs");
   if (!status) {
     return <Skeleton className="h-24" />;
   }
@@ -114,51 +114,61 @@ function ScraperStatusPanel({ status }: { status: ScraperStatus | null }) {
     <div className="space-y-3">
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <StatusTile
-          label="Extractor IA"
-          value={status.ai.enabled ? status.ai.model : "desactivado"}
+          label={t("status.aiExtractor")}
+          value={status.ai.enabled ? status.ai.model : t("status.disabled")}
           tone={status.ai.enabled ? "success" : "muted"}
           detail={
             status.ai.unavailableReason ??
-            `solo como fallback · caché ${status.ai.cachePersistent ? "persistente" : "en memoria"}`
+            t("status.aiDetailFallback", {
+              cache: status.ai.cachePersistent
+                ? t("status.cachePersistent")
+                : t("status.cacheInMemory"),
+            })
           }
         />
         <StatusTile
-          label="Navegador"
+          label={t("status.browser")}
           value={
             status.browser.enabled
               ? status.browser.connected
-                ? "conectado"
-                : "disponible"
-              : "desactivado"
+                ? t("status.connected")
+                : t("status.available")
+              : t("status.disabled")
           }
           tone={
             status.browser.enabled && !status.browser.unavailableReason ? "success" : "muted"
           }
           detail={
             status.browser.unavailableReason ??
-            `${status.browser.contexts} contextos · ${status.browser.openPages} páginas abiertas`
+            t("status.browserDetail", {
+              contexts: status.browser.contexts,
+              pages: status.browser.openPages,
+            })
           }
         />
         <StatusTile
-          label="Catálogo"
+          label={t("status.catalog")}
           value={status.persistence.catalogBackend}
           tone={status.persistence.productionGrade ? "success" : "warning"}
           detail={
             status.persistence.productionGrade
-              ? "persistencia de producción"
-              : "store de fichero: NO es persistencia de producción"
+              ? t("status.productionPersistence")
+              : t("status.fileStoreWarning")
           }
         />
         <StatusTile
           label="robots.txt"
-          value="respetado"
+          value={t("status.respected")}
           tone="success"
-          detail={`${status.limits.requestDelayMs} ms entre peticiones · ${status.limits.maxConcurrency} en paralelo`}
+          detail={t("status.rateLimitDetail", {
+            delay: status.limits.requestDelayMs,
+            concurrency: status.limits.maxConcurrency,
+          })}
         />
       </div>
 
       {openCircuits.length > 0 && (
-        <Callout tone="danger" icon={TriangleAlert} title="Circuit breakers abiertos">
+        <Callout tone="danger" icon={TriangleAlert} title={t("status.circuitBreakersOpen")}>
           {openCircuits.map((c) => (
             <span key={c.host} className="block font-mono text-[11px]">
               {c.host}: {c.lastError}
@@ -168,7 +178,7 @@ function ScraperStatusPanel({ status }: { status: ScraperStatus | null }) {
       )}
 
       {status.warnings.length > 0 && (
-        <Callout tone="warning" icon={TriangleAlert} title="Avisos del subsistema">
+        <Callout tone="warning" icon={TriangleAlert} title={t("status.subsystemWarnings")}>
           <ul className="list-disc space-y-1 pl-4">
             {status.warnings.map((w) => (
               <li key={w}>{w}</li>
@@ -205,6 +215,10 @@ function StatusTile({
 }
 
 function ProcessLogsView() {
+  const t = useTranslations("logs");
+  const tCommon = useTranslations("common");
+  const tActions = useTranslations("actions");
+  const format = useFormatter();
   const [level, setLevel] = useState<LevelFilter>("all");
   const [source, setSource] = useState("all");
   const [query, setQuery] = useState("");
@@ -227,6 +241,16 @@ function ProcessLogsView() {
     [connectors.data]
   );
 
+  const levelFilterOptions = useMemo(
+    () => [
+      { value: "all" as const, label: t("filters.all") },
+      { value: "info" as const, label: t("filters.infoPlus") },
+      { value: "warn" as const, label: t("filters.warnPlus") },
+      { value: "error" as const, label: t("filters.errors") },
+    ],
+    [t]
+  );
+
   return (
     <div className="space-y-5">
       <div className="grid gap-3 sm:grid-cols-4">
@@ -234,9 +258,9 @@ function ProcessLogsView() {
           <div key={lvl} className="panel px-4 py-3">
             <div className="flex items-center justify-between">
               <p className="text-[10px] font-semibold tracking-[0.12em] text-ink-faint uppercase">
-                {LEVEL_STYLES[lvl].label}
+                {t(`level.${lvl}`)}
               </p>
-              <span className={cn("size-1.5 rounded-full", LEVEL_STYLES[lvl].dot)} />
+              <span className={cn("size-1.5 rounded-full", LEVEL_DOT_STYLES[lvl].dot)} />
             </div>
             <p className="mt-1.5 text-xl font-semibold text-ink tabular-nums">
               {counts?.[lvl] ?? 0}
@@ -245,34 +269,34 @@ function ProcessLogsView() {
         ))}
       </div>
 
-      <Callout tone="info" icon={Info} title="Sobre estos logs">
-        {data?.retention ?? "Buffer circular en memoria del servicio."} Nivel mínimo emitido:{" "}
-        <code className="font-mono text-[11px]">{data?.minLevelEmitted ?? "info"}</code> (se
-        configura con <code className="font-mono text-[11px]">LOG_LEVEL</code>). Para retención
-        real, recoge el stdout del servicio con tu plataforma de logs.
+      <Callout tone="info" icon={Info} title={t("about.title")}>
+        {data?.retention ?? t("about.defaultRetention")} {t("about.minLevelLabel")}{" "}
+        <code className="font-mono text-[11px]">{data?.minLevelEmitted ?? "info"}</code>{" "}
+        {t("about.configuredVia")} <code className="font-mono text-[11px]">LOG_LEVEL</code>
+        {t("about.stdoutNote")}
       </Callout>
 
       <div className="flex flex-wrap items-center gap-3">
         <SearchInput
-          placeholder="Filtrar por mensaje o contexto…"
+          placeholder={t("filters.searchPlaceholder")}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           className="min-w-56 flex-1"
         />
         <Segmented
           size="sm"
-          ariaLabel="Nivel mínimo"
+          ariaLabel={t("ariaLabels.minLevel")}
           value={level}
           onChange={setLevel}
-          options={LEVELS}
+          options={levelFilterOptions}
         />
         <Select
           value={source}
           onChange={(e) => setSource(e.target.value)}
           className="w-auto min-w-40"
-          aria-label="Fuente"
+          aria-label={t("filters.sourceLabel")}
         >
-          <option value="all">Todas las fuentes</option>
+          <option value="all">{t("filters.allSources")}</option>
           {sourcesWithLogs.map((id) => (
             <option key={id} value={id}>
               {id}
@@ -287,16 +311,16 @@ function ProcessLogsView() {
           {paused ? (
             <>
               <Play className="size-3.5" aria-hidden />
-              Reanudar
+              {tActions("resume")}
             </>
           ) : (
             <>
               <Pause className="size-3.5" aria-hidden />
-              Pausar stream
+              {t("actions.pauseStream")}
             </>
           )}
         </Button>
-        <Button variant="ghost" size="sm" icon onClick={reload} aria-label="Refrescar">
+        <Button variant="ghost" size="sm" icon onClick={reload} aria-label={t("ariaLabels.refresh")}>
           <RefreshCw className={refreshing ? "size-4 animate-spin" : "size-4"} aria-hidden />
         </Button>
       </div>
@@ -304,11 +328,11 @@ function ProcessLogsView() {
       <Card className="overflow-hidden">
         <div className="flex items-center justify-between border-b border-line px-4 py-2.5">
           <p className="font-mono text-[11px] text-ink-subtle">
-            {data?.logs.length ?? 0} eventos · más recientes primero
+            {t("table.eventsCount", { count: data?.logs.length ?? 0 })}
           </p>
           {!paused && (
             <Badge tone="success" dot pulse>
-              en directo
+              {t("table.live")}
             </Badge>
           )}
         </div>
@@ -325,11 +349,11 @@ function ProcessLogsView() {
           {!loading && error && (
             <EmptyState
               icon={CircleAlert}
-              title="No se pudieron leer los logs"
+              title={t("empty.errorTitle")}
               description={error.message}
               action={
                 <Button variant="secondary" size="sm" onClick={reload}>
-                  Reintentar
+                  {tCommon("retry")}
                 </Button>
               }
             />
@@ -338,15 +362,15 @@ function ProcessLogsView() {
           {!loading && !error && (data?.logs.length ?? 0) === 0 && (
             <EmptyState
               icon={ScrollText}
-              title="Sin eventos con estos filtros"
-              description="El buffer solo contiene lo ocurrido desde el último arranque del servicio. Lanza un sync para generar actividad."
+              title={t("empty.noEventsTitle")}
+              description={t("empty.noEventsDescription")}
             />
           )}
 
           <ul className="divide-y divide-line/60">
             <AnimatePresence initial={false}>
               {(data?.logs ?? []).map((entry) => {
-                const style = LEVEL_STYLES[entry.level];
+                const style = LEVEL_DOT_STYLES[entry.level];
                 const contextKeys = Object.keys(entry.context);
                 return (
                   <motion.li
@@ -360,16 +384,16 @@ function ProcessLogsView() {
                       <span className="mt-1 flex shrink-0 items-center gap-2">
                         <span className={cn("size-1.5 rounded-full", style.dot)} />
                         <span className="font-mono text-[10px] text-ink-faint">
-                          {new Date(entry.ts).toLocaleTimeString("es-ES")}
+                          {format.dateTime(new Date(entry.ts), "time")}
                         </span>
                       </span>
                       <span
                         className={cn(
-                          "w-12 shrink-0 font-mono text-[10px] font-semibold",
+                          "w-12 shrink-0 font-mono text-[10px] font-semibold uppercase",
                           style.text
                         )}
                       >
-                        {style.label}
+                        {t(`level.${entry.level}`)}
                       </span>
                       <div className="min-w-0 flex-1">
                         <p className="text-[12px] break-words text-ink-muted">

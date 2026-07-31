@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useTranslations } from "next-intl";
 import { useScreenCapture, type CaptureStatus } from "@/hooks/useScreenCapture";
 import { useYouTubePlayer } from "@/hooks/useYouTubePlayer";
 import { formatTimestamp } from "@/lib/utils";
@@ -12,22 +13,21 @@ type Props = {
   analyzing: boolean;
 };
 
-const CAPTURE_HINTS: Record<CaptureStatus, { label: string; tone: string }> = {
-  idle: { label: "Captura no activa", tone: "text-ink-muted" },
-  active: { label: "Captura activa", tone: "text-success" },
-  denied: { label: "Permiso denegado", tone: "text-danger" },
-  "needs-selection": {
-    label: "Selecciona esta pestaña o ventana",
-    tone: "text-warning",
-  },
-  error: { label: "Error de captura", tone: "text-danger" },
-};
+/** Claves de mensajes (namespace studio.videoAnalyzer.captureHint) por estado de captura. */
+const CAPTURE_HINT_KEY = {
+  idle: { key: "captureHint.idle", tone: "text-ink-muted" },
+  active: { key: "captureHint.active", tone: "text-success" },
+  denied: { key: "captureHint.denied", tone: "text-danger" },
+  "needs-selection": { key: "captureHint.needsSelection", tone: "text-warning" },
+  error: { key: "captureHint.error", tone: "text-danger" },
+} as const satisfies Record<CaptureStatus, { key: string; tone: string }>;
 
 export default function YouTubeAnalyzer({
   videoId,
   onRequestAnalysis,
   analyzing,
 }: Props) {
+  const t = useTranslations("studio.videoAnalyzer");
   const [autoAnalyze, setAutoAnalyze] = useState(true);
   const lastAnalyzedRef = useRef<number | null>(null);
 
@@ -80,7 +80,7 @@ export default function YouTubeAnalyzer({
     lastAnalyzedRef.current = null;
   }, [videoId]);
 
-  const captureHint = CAPTURE_HINTS[captureStatus];
+  const captureHint = CAPTURE_HINT_KEY[captureStatus];
 
   return (
     <div className="space-y-4">
@@ -92,7 +92,7 @@ export default function YouTubeAnalyzer({
 
         {status === "loading" && (
           <div className="absolute inset-0 flex items-center justify-center bg-black/60 text-sm text-ink-muted">
-            Cargando reproductor…
+            {t("loadingPlayer")}
           </div>
         )}
 
@@ -100,7 +100,7 @@ export default function YouTubeAnalyzer({
           <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-[2px]">
             <div className="flex items-center gap-3 rounded-full border border-line-strong bg-black/70 px-5 py-2.5 text-sm font-medium text-white">
               <span className="h-2 w-2 animate-pulse rounded-full bg-brand-bright" />
-              Analizando frame…
+              {t("analyzingFrameOverlay")}
             </div>
           </div>
         )}
@@ -122,13 +122,13 @@ export default function YouTubeAnalyzer({
             <span className="h-6 w-11 rounded-full bg-white/10 transition peer-checked:bg-brand" />
             <span className="absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white transition peer-checked:translate-x-5" />
           </span>
-          Analizar al pausar
+          {t("analyzeOnPause")}
         </label>
 
         <div className="ml-auto flex items-center gap-2 text-xs">
           <span className={`flex items-center gap-1.5 ${captureHint.tone}`}>
             <span className="h-1.5 w-1.5 rounded-full bg-current" />
-            {captureHint.label}
+            {t(captureHint.key)}
           </span>
         </div>
 
@@ -138,14 +138,14 @@ export default function YouTubeAnalyzer({
               onClick={startCapture}
               className="rounded-lg bg-white/10 px-3.5 py-2 text-xs font-semibold text-white transition hover:bg-white/20"
             >
-              Activar captura de pantalla
+              {t("activateScreenCapture")}
             </button>
           ) : (
             <button
               onClick={stopCapture}
               className="rounded-lg border border-line bg-transparent px-3.5 py-2 text-xs font-medium text-ink-muted transition hover:bg-white/10"
             >
-              Detener captura
+              {t("stopCapture")}
             </button>
           )}
 
@@ -157,22 +157,20 @@ export default function YouTubeAnalyzer({
             disabled={!isActive || analyzing}
             className="rounded-lg bg-gradient-to-br from-brand to-magenta px-3.5 py-2 text-xs font-semibold text-white transition hover:brightness-110 disabled:opacity-40"
           >
-            Analizar este frame ahora
+            {t("analyzeFrameNow")}
           </button>
         </div>
       </div>
 
       {!isActive && (
         <div className="rounded-xl border border-warning/20 bg-warning/10 px-4 py-3 text-xs leading-relaxed text-warning">
-          Para analizar vídeos de YouTube necesito permiso de captura de pantalla. Esto
-          es necesario porque YouTube no permite leer frames directamente desde el
-          iframe. Al activarla, selecciona <strong>esta pestaña o ventana</strong>.
+          {t.rich("youtubeCaptureRequired", { b: (chunks) => <strong>{chunks}</strong> })}
           {captureError && <span className="block mt-1 text-warning/80">{captureError}</span>}
         </div>
       )}
 
       <p className="text-center text-[11px] text-ink-faint">
-        Posición actual: {formatTimestamp(getCurrentTime())}
+        {t("currentPosition", { timestamp: formatTimestamp(getCurrentTime()) })}
       </p>
     </div>
   );

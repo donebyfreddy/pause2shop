@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { motion } from "motion/react";
+import { useFormatter, useTranslations } from "next-intl";
 import {
   Activity,
   AlertTriangle,
@@ -52,6 +53,9 @@ import { cn } from "@/lib/ui/cn";
 const POLL_MS = 10_000;
 
 export function OverviewView() {
+  const t = useTranslations("overview");
+  const tCommon = useTranslations("common");
+  const format = useFormatter();
   const { data, error, loading, refreshing, lastUpdatedAt, reload } =
     useAdminResource<Overview>("overview", { pollMs: POLL_MS });
 
@@ -60,19 +64,17 @@ export function OverviewView() {
       <Card>
         <EmptyState
           icon={CircleAlert}
-          title="No se puede leer el servicio de catálogo"
-          description={
-            <>
-              {error.message}. El motor de catálogo corre integrado en esta misma app: revisa
-              que <code className="font-mono text-[11px]">DATABASE_URL</code> apunte a un
-              Postgres válido y que las migraciones estén aplicadas (
-              <code className="font-mono text-[11px]">npm run db:migrate</code>).
-            </>
-          }
+          title={t("errorState.title")}
+          description={t.rich("errorState.description", {
+            message: error.message,
+            code: (chunks) => (
+              <code className="font-mono text-[11px]">{chunks}</code>
+            ),
+          })}
           action={
             <Button variant="secondary" size="sm" onClick={reload}>
               <RefreshCw className="size-3.5" aria-hidden />
-              Reintentar
+              {tCommon("retry")}
             </Button>
           }
         />
@@ -90,50 +92,53 @@ export function OverviewView() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-3">
-        <SectionLabel>Estado general</SectionLabel>
+        <SectionLabel>{t("sectionLabel.status")}</SectionLabel>
         <span className="flex items-center gap-2 text-[11px] text-ink-faint">
           {refreshing && <RefreshCw className="size-3 animate-spin" aria-hidden />}
           {lastUpdatedAt
-            ? `actualizado ${lastUpdatedAt.toLocaleTimeString("es-ES")}`
-            : "cargando…"}
+            ? t("status.updated", { time: format.dateTime(lastUpdatedAt, "time") })
+            : t("status.loading")}
         </span>
       </div>
 
       {/* ------------------------- métricas ------------------------- */}
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard
-          label="Productos"
-          value={(catalog?.totalProducts ?? 0).toLocaleString("es-ES")}
-          hint={`${(catalog?.activeProducts ?? 0).toLocaleString("es-ES")} activos · ${(
-            catalog?.withImages ?? 0
-          ).toLocaleString("es-ES")} con imagen`}
+          label={t("kpi.products")}
+          value={format.number(catalog?.totalProducts ?? 0)}
+          hint={t("kpi.productsHint", {
+            active: format.number(catalog?.activeProducts ?? 0),
+            withImages: format.number(catalog?.withImages ?? 0),
+          })}
           icon={Boxes}
           tone="brand"
           loading={loading}
         />
         <StatCard
-          label="Conectores"
+          label={t("kpi.connectors")}
           value={connectors?.total ?? 0}
-          hint={`${connectors?.syncable ?? 0} sincronizables · ${
-            connectors?.paused ?? 0
-          } pausados`}
+          hint={t("kpi.connectorsHint", {
+            syncable: connectors?.syncable ?? 0,
+            paused: connectors?.paused ?? 0,
+          })}
           icon={Plug}
           tone="accent"
           loading={loading}
         />
         <StatCard
-          label="Throughput"
-          value={`${data?.throughput.perMinute ?? 0}/min`}
-          hint={`${data?.throughput.products ?? 0} productos nuevos en ${
-            data?.throughput.windowMinutes ?? 15
-          } min`}
+          label={t("kpi.throughput")}
+          value={t("kpi.throughputValue", { perMinute: format.number(data?.throughput.perMinute ?? 0) })}
+          hint={t("kpi.throughputHint", {
+            products: format.number(data?.throughput.products ?? 0),
+            minutes: data?.throughput.windowMinutes ?? 15,
+          })}
           icon={Gauge}
           loading={loading}
         />
         <StatCard
-          label="Tasa de error"
-          value={`${errorRate}%`}
-          hint="fetches fallidos sobre intentos, en los jobs recientes"
+          label={t("kpi.errorRate")}
+          value={`${format.number(errorRate)}%`}
+          hint={t("kpi.errorRateHint")}
           icon={errorRate > 5 ? TriangleAlert : ShieldCheck}
           tone={errorTone}
           loading={loading}
@@ -142,10 +147,10 @@ export function OverviewView() {
 
       {/* Aviso honesto sobre el backend degradado. */}
       {data?.backend === "file" && (
-        <Callout tone="warning" icon={AlertTriangle} title="Persistencia en modo degradado">
-          El servicio usa el store en fichero porque no hay una{" "}
-          <code className="font-mono text-[11px]">DATABASE_URL</code> Postgres válida. Todo
-          funciona, pero sin pgvector la búsqueda vectorial se hace en memoria y no escala.
+        <Callout tone="warning" icon={AlertTriangle} title={t("degraded.title")}>
+          {t.rich("degraded.body", {
+            code: (chunks) => <code className="font-mono text-[11px]">{chunks}</code>,
+          })}
         </Callout>
       )}
 
@@ -160,18 +165,19 @@ export function OverviewView() {
                 </Badge>
               }
             >
-              <CardTitle>Embeddings</CardTitle>
+              <CardTitle>{t("embeddings.title")}</CardTitle>
             </CardHeader>
             <CardBody className="space-y-4">
               <div className="flex items-end justify-between gap-4">
                 <div>
                   <p className="text-2xl font-semibold text-ink tabular-nums">
-                    {data?.embeddings.coverage ?? 0}%
+                    {format.number(data?.embeddings.coverage ?? 0)}%
                   </p>
                   <p className="mt-0.5 text-[11px] text-ink-subtle">
-                    {(catalog?.withEmbeddings ?? 0).toLocaleString("es-ES")} de{" "}
-                    {(catalog?.totalProducts ?? 0).toLocaleString("es-ES")} productos
-                    indexados
+                    {t("embeddings.indexedOf", {
+                      indexed: format.number(catalog?.withEmbeddings ?? 0),
+                      total: format.number(catalog?.totalProducts ?? 0),
+                    })}
                   </p>
                 </div>
                 <div className="text-right">
@@ -179,20 +185,20 @@ export function OverviewView() {
                     {data?.embeddings.model ?? "—"}
                   </p>
                   <p className="text-[11px] text-ink-faint">
-                    {data?.embeddings.dimension ?? 0} dimensiones
+                    {t("embeddings.dimensions", { count: data?.embeddings.dimension ?? 0 })}
                   </p>
                 </div>
               </div>
               <Progress
                 value={data?.embeddings.coverage ?? 0}
                 tone={(data?.embeddings.coverage ?? 0) > 90 ? "success" : "brand"}
-                label="Cobertura de embeddings"
+                label={t("embeddings.coverageLabel")}
               />
               {data?.embeddings.provider === "hash" && (
                 <p className="text-[11px] leading-relaxed text-ink-faint">
-                  Proveedor <code className="font-mono">hash</code>: vectores deterministas de
-                  64 dimensiones, válidos para demo y tests pero no para similitud visual real.
-                  Instala el proveedor local (CLIP) y reindexa para producción.
+                  {t.rich("embeddings.hashNote", {
+                    code: (chunks) => <code className="font-mono">{chunks}</code>,
+                  })}
                 </p>
               )}
             </CardBody>
@@ -205,17 +211,17 @@ export function OverviewView() {
                   href="/admin/jobs"
                   className="inline-flex items-center gap-1 text-[11px] font-medium text-ink-muted transition-colors hover:text-brand-bright"
                 >
-                  Ver todos
+                  {t("queue.viewAll")}
                   <ArrowRight className="size-3" aria-hidden />
                 </Link>
               }
             >
-              <CardTitle>Cola de ingesta</CardTitle>
+              <CardTitle>{t("queue.title")}</CardTitle>
             </CardHeader>
             <CardBody>
               <div className="mb-4 flex flex-wrap gap-2">
                 {Object.entries(queue?.byStatus ?? {}).length === 0 ? (
-                  <p className="text-xs text-ink-subtle">Todavía no se ha ejecutado ningún job.</p>
+                  <p className="text-xs text-ink-subtle">{t("queue.noJobsYet")}</p>
                 ) : (
                   Object.entries(queue?.byStatus ?? {}).map(([status, count]) => {
                     const meta = metaFor(JOB_META, status);
@@ -245,8 +251,12 @@ export function OverviewView() {
                             )}
                           </p>
                           <p className="mt-0.5 font-mono text-[10px] text-ink-faint">
-                            {job.progress.new} nuevos · {job.progress.updated} act. ·{" "}
-                            {job.progress.duplicates} dup · {job.progress.errors} err
+                            {t("queue.progressLine", {
+                              new: job.progress.new,
+                              updated: job.progress.updated,
+                              duplicates: job.progress.duplicates,
+                              errors: job.progress.errors,
+                            })}
                           </p>
                         </div>
                         <div className="flex shrink-0 items-center gap-2">
@@ -262,14 +272,14 @@ export function OverviewView() {
               ) : (
                 <EmptyState
                   icon={ListChecks}
-                  title="Sin jobs todavía"
-                  description="Lanza un sync desde Conectores para llenar el catálogo."
+                  title={t("queue.emptyTitle")}
+                  description={t("queue.emptyDescription")}
                   action={
                     <Link
                       href="/admin/connectors"
                       className="text-[11px] font-medium text-brand-bright hover:underline"
                     >
-                      Ir a conectores →
+                      {t("queue.goToConnectors")}
                     </Link>
                   }
                 />
@@ -282,7 +292,7 @@ export function OverviewView() {
         <div className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>Madurez del registro de fuentes</CardTitle>
+              <CardTitle>{t("registry.title")}</CardTitle>
             </CardHeader>
             <CardBody className="space-y-3">
               {Object.entries(connectors?.byLifecycle ?? {})
@@ -312,7 +322,7 @@ export function OverviewView() {
                   );
                 })}
               <div className="flex items-center justify-between border-t border-line pt-3">
-                <span className="text-[11px] text-ink-subtle">Último sync</span>
+                <span className="text-[11px] text-ink-subtle">{t("registry.lastSync")}</span>
                 <span className="inline-flex items-center gap-1.5 text-[11px] text-ink">
                   <Clock className="size-3 text-ink-faint" aria-hidden />
                   {timeAgo(connectors?.lastSyncAt)}
@@ -328,12 +338,12 @@ export function OverviewView() {
                   href="/admin/logs"
                   className="inline-flex items-center gap-1 text-[11px] font-medium text-ink-muted transition-colors hover:text-brand-bright"
                 >
-                  Ver logs
+                  {t("logs.viewAll")}
                   <ArrowRight className="size-3" aria-hidden />
                 </Link>
               }
             >
-              <CardTitle>Actividad reciente</CardTitle>
+              <CardTitle>{t("recentActivity")}</CardTitle>
             </CardHeader>
             <CardBody>
               {(data?.logs.recent.length ?? 0) > 0 ? (
@@ -358,7 +368,7 @@ export function OverviewView() {
                       <div className="min-w-0">
                         <p className="truncate text-[12px] text-ink-muted">{entry.msg}</p>
                         <p className="font-mono text-[10px] text-ink-faint">
-                          {new Date(entry.ts).toLocaleTimeString("es-ES")}
+                          {format.dateTime(new Date(entry.ts), "time")}
                           {typeof entry.context.connector === "string" &&
                             ` · ${entry.context.connector}`}
                         </p>
@@ -369,8 +379,8 @@ export function OverviewView() {
               ) : (
                 <EmptyState
                   icon={ScrollText}
-                  title="Sin actividad registrada"
-                  description="El buffer de logs se llena cuando el servicio empieza a trabajar."
+                  title={t("logs.emptyTitle")}
+                  description={t("logs.emptyDescription")}
                 />
               )}
             </CardBody>
@@ -381,25 +391,25 @@ export function OverviewView() {
               <div className="flex items-center justify-between">
                 <span className="inline-flex items-center gap-2 text-[12px] text-ink-muted">
                   <Copy className="size-3.5 text-ink-faint" aria-hidden />
-                  Duplicados detectados
+                  {t("misc.duplicatesDetected")}
                 </span>
                 <span className="text-[13px] font-semibold text-ink tabular-nums">
-                  {(catalog?.duplicatesDetected ?? 0).toLocaleString("es-ES")}
+                  {format.number(catalog?.duplicatesDetected ?? 0)}
                 </span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="inline-flex items-center gap-2 text-[12px] text-ink-muted">
                   <Binary className="size-3.5 text-ink-faint" aria-hidden />
-                  Origen externo
+                  {t("misc.externalOrigin")}
                 </span>
                 <span className="text-[13px] font-semibold text-ink tabular-nums">
-                  {(catalog?.byOrigin.externally_discovered ?? 0).toLocaleString("es-ES")}
+                  {format.number(catalog?.byOrigin.externally_discovered ?? 0)}
                 </span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="inline-flex items-center gap-2 text-[12px] text-ink-muted">
                   <Activity className="size-3.5 text-ink-faint" aria-hidden />
-                  Uptime del servicio
+                  {t("misc.serviceUptime")}
                 </span>
                 <span className="text-[13px] font-semibold text-ink tabular-nums">
                   {formatDuration((data?.uptimeSeconds ?? 0) * 1000)}

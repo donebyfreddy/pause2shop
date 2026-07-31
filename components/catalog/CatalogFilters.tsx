@@ -1,7 +1,8 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import type { ItemStatus, ItemType } from "@/lib/catalog/types";
-import { STATUS_LABELS, TYPE_LABELS } from "./catalogUi";
+import { useSourceTypeLabels, useStatusLabels, useTypeLabels } from "./catalogUi";
 
 export type FilterState = {
   q: string;
@@ -33,16 +34,16 @@ const TYPES: ItemType[] = [
 ];
 const STATUSES: ItemStatus[] = ["detected", "reviewed", "matched", "ignored"];
 
-const SOURCE_TYPE_OPTIONS: { value: string; label: string }[] = [
-  { value: "youtube", label: "YouTube" },
-  { value: "dailymotion", label: "Dailymotion" },
-  { value: "vimeo", label: "Vimeo" },
-  { value: "direct_mp4", label: "MP4 directo" },
-  { value: "hls", label: "HLS / Stream" },
-  { value: "uploaded", label: "Vídeo local" },
-  { value: "image_upload", label: "Imagen subida" },
-  { value: "screen_capture", label: "Captura de pantalla" },
-];
+const SOURCE_TYPE_VALUES = [
+  "youtube",
+  "dailymotion",
+  "vimeo",
+  "direct_mp4",
+  "hls",
+  "uploaded",
+  "image_upload",
+  "screen_capture",
+] as const;
 
 const selectClass =
   "rounded-lg border border-line bg-white/5 px-3 py-2 text-sm text-ink outline-none transition focus:border-brand-bright/60 focus:bg-white/10";
@@ -56,7 +57,11 @@ export default function CatalogFilters({
   onChange,
   onClear,
   onClearVideo,
-}: Props) {
+}: Readonly<Props>) {
+  const t = useTranslations("publicCatalog.filters");
+  const sourceTypeLabels = useSourceTypeLabels();
+  const typeLabels = useTypeLabels();
+  const statusLabels = useStatusLabels();
   const hasFilters =
     value.q || value.category || value.color || value.type || value.status || value.sourceType || videoFilter;
 
@@ -70,7 +75,7 @@ export default function CatalogFilters({
           <input
             value={value.q}
             onChange={(e) => onChange({ q: e.target.value })}
-            placeholder="Buscar por nombre, descripción, estilo…"
+            placeholder={t("searchPlaceholder")}
             className={inputClass + " w-full pl-9"}
           />
         </div>
@@ -79,12 +84,12 @@ export default function CatalogFilters({
           value={value.type}
           onChange={(e) => onChange({ type: e.target.value })}
           className={selectClass}
-          aria-label="Tipo"
+          aria-label={t("typeAriaLabel")}
         >
-          <option value="">Todos los tipos</option>
-          {TYPES.map((t) => (
-            <option key={t} value={t}>
-              {TYPE_LABELS[t]}
+          <option value="">{t("allTypes")}</option>
+          {TYPES.map((ty) => (
+            <option key={ty} value={ty}>
+              {typeLabels[ty]}
             </option>
           ))}
         </select>
@@ -93,12 +98,12 @@ export default function CatalogFilters({
           value={value.status}
           onChange={(e) => onChange({ status: e.target.value })}
           className={selectClass}
-          aria-label="Estado"
+          aria-label={t("statusAriaLabel")}
         >
-          <option value="">Cualquier estado</option>
+          <option value="">{t("anyStatus")}</option>
           {STATUSES.map((s) => (
             <option key={s} value={s}>
-              {STATUS_LABELS[s]}
+              {statusLabels[s]}
             </option>
           ))}
         </select>
@@ -107,12 +112,12 @@ export default function CatalogFilters({
           value={value.sourceType}
           onChange={(e) => onChange({ sourceType: e.target.value })}
           className={selectClass}
-          aria-label="Origen"
+          aria-label={t("originAriaLabel")}
         >
-          <option value="">Cualquier origen</option>
-          {SOURCE_TYPE_OPTIONS.map((o) => (
-            <option key={o.value} value={o.value}>
-              {o.label}
+          <option value="">{t("anyOrigin")}</option>
+          {SOURCE_TYPE_VALUES.map((v) => (
+            <option key={v} value={v}>
+              {sourceTypeLabels[v]}
             </option>
           ))}
         </select>
@@ -120,27 +125,25 @@ export default function CatalogFilters({
         <input
           value={value.category}
           onChange={(e) => onChange({ category: e.target.value })}
-          placeholder="Categoría"
+          placeholder={t("categoryPlaceholder")}
           className={inputClass + " md:w-36"}
         />
         <input
           value={value.color}
           onChange={(e) => onChange({ color: e.target.value })}
-          placeholder="Color"
+          placeholder={t("colorPlaceholder")}
           className={inputClass + " md:w-32"}
         />
       </div>
 
       <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-ink-subtle">
-        <span>
-          {total} elemento{total === 1 ? "" : "s"}
-        </span>
+        <span>{t("itemCount", { count: total })}</span>
         {!persisted && (
           <span
             className="rounded-full border border-warning/20 bg-warning/10 px-2 py-0.5 text-warning"
-            title="La base de datos no está disponible: los elementos y sus imágenes se conservan durante esta sesión y se sincronizarán cuando vuelva la conexión."
+            title={t("localSaveTitle")}
           >
-            Guardado en esta sesión · sincronización pendiente
+            {t("localSaveBadge")}
           </span>
         )}
         {videoFilter && (
@@ -148,7 +151,7 @@ export default function CatalogFilters({
             onClick={onClearVideo}
             className="rounded-full border border-brand-bright/30 bg-brand/15 px-2 py-0.5 text-brand-bright transition hover:bg-brand/25"
           >
-            vídeo: {videoFilter.slice(0, 8)}… ✕
+            {t("videoBadge", { id: videoFilter.slice(0, 8) })} ✕
           </button>
         )}
         {hasFilters && (
@@ -156,7 +159,7 @@ export default function CatalogFilters({
             onClick={onClear}
             className="ml-auto text-ink-muted transition hover:text-ink"
           >
-            Limpiar filtros
+            {t("clearFilters")}
           </button>
         )}
       </div>

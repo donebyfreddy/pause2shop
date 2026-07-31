@@ -1,12 +1,21 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useTranslations } from "next-intl";
 import type { FrameMeta } from "@/lib/api/types";
+import type { DetectedItem } from "@/lib/types";
+import DetectionOverlay from "@/components/DetectionOverlay";
 
 type Props = {
   onRequestAnalysis: (dataUrl: string, meta: FrameMeta) => void;
   analyzing: boolean;
   onReset: () => void;
+  /** Objetos detectados en la imagen actual, para pintar el overlay de hotspots. */
+  items?: DetectedItem[];
+  /** Item seleccionado en el panel lateral (resalta su hotspot). */
+  selectedKey?: string | null;
+  /** Clic en un hotspot del overlay: selecciona su card en el panel lateral. */
+  onItemClick?: (item: DetectedItem) => void;
 };
 
 const ACCEPTED_TYPES = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
@@ -19,22 +28,35 @@ type ImageState =
   | { phase: "invalid"; error: string }
   | { phase: "ready"; dataUrl: string; fileName: string; sizeKb: number };
 
-export default function ImageAnalyzer({ onRequestAnalysis, analyzing, onReset }: Props) {
+export default function ImageAnalyzer({
+  onRequestAnalysis,
+  analyzing,
+  onReset,
+  items = [],
+  selectedKey = null,
+  onItemClick,
+}: Props) {
+  const t = useTranslations("studio.imageAnalyzer");
+  const tStudio = useTranslations("studio");
   const [state, setState] = useState<ImageState>({ phase: "idle" });
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [analyzed, setAnalyzed] = useState(false);
+  const [imageAspect, setImageAspect] = useState<number | null>(null);
 
   const processFile = useCallback((file: File) => {
     if (!ACCEPTED_TYPES.includes(file.type)) {
-      setState({ phase: "invalid", error: `Formato no soportado: ${file.type || "desconocido"}. Usa JPG, PNG o WebP.` });
+      setState({
+        phase: "invalid",
+        error: t("unsupportedFormat", { format: file.type || t("unknownFormat") }),
+      });
       return;
     }
     if (file.size === 0) {
-      setState({ phase: "invalid", error: "El archivo está vacío." });
+      setState({ phase: "invalid", error: t("emptyFile") });
       return;
     }
     if (file.size > MAX_BYTES) {
-      setState({ phase: "invalid", error: `La imagen supera el límite de ${MAX_MB} MB.` });
+      setState({ phase: "invalid", error: t("tooLarge", { maxMb: MAX_MB }) });
       return;
     }
 
@@ -42,7 +64,7 @@ export default function ImageAnalyzer({ onRequestAnalysis, analyzing, onReset }:
     reader.onload = (e) => {
       const dataUrl = e.target?.result as string;
       if (!dataUrl?.startsWith("data:image/")) {
-        setState({ phase: "invalid", error: "No se pudo leer la imagen." });
+        setState({ phase: "invalid", error: t("readError") });
         return;
       }
       setState({
@@ -54,7 +76,7 @@ export default function ImageAnalyzer({ onRequestAnalysis, analyzing, onReset }:
       setAnalyzed(false);
     };
     reader.readAsDataURL(file);
-  }, []);
+  }, [t]);
 
   const handleFiles = (files: FileList | null) => {
     const file = files?.[0];
@@ -138,14 +160,21 @@ export default function ImageAnalyzer({ onRequestAnalysis, analyzing, onReset }:
           <span className="text-4xl">{state.phase === "dragging" ? "⬇️" : "🖼️"}</span>
           <div>
             <p className="text-sm font-medium text-ink">
-              {state.phase === "dragging" ? "Suelta la imagen aquí" : "Sube, arrastra o pega una imagen"}
+              {state.phase === "dragging" ? t("dropHere") : t("uploadPrompt")}
             </p>
             <p className="mt-1 text-xs text-ink-subtle">
-              JPG, PNG, WebP — máx. {MAX_MB} MB · <kbd className="rounded border border-line bg-white/5 px-1 py-0.5 font-mono text-[10px]">Ctrl+V</kbd> para pegar
+              {t.rich("pasteHint", {
+                maxMb: MAX_MB,
+                kbd: (chunks) => (
+                  <kbd className="rounded border border-line bg-white/5 px-1 py-0.5 font-mono text-[10px]">
+                    {chunks}
+                  </kbd>
+                ),
+              })}
             </p>
           </div>
           <span className="rounded-xl border border-line bg-white/5 px-4 py-2 text-xs font-medium text-ink-muted transition hover:bg-white/10">
-            Seleccionar archivo
+            {tStudio("selectFile")}
           </span>
           <input
             id="image-upload"
@@ -174,20 +203,39 @@ export default function ImageAnalyzer({ onRequestAnalysis, analyzing, onReset }:
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={state.dataUrl}
-            alt="Preview"
+            alt={t("previewAlt")}
             className="h-full w-full object-contain"
+            onLoad={(e) => {
+              const img = e.currentTarget;
+              if (img.naturalWidth && img.naturalHeight) {
+                setImageAspect(img.naturalWidth / img.naturalHeight);
+              }
+            }}
           />
+          {analyzed && !analyzing && items.length > 0 && (
+            <DetectionOverlay
+              items={items}
+              mediaAspect={imageAspect}
+              selectedKey={selectedKey}
+              onItemClick={onItemClick}
+            />
+          )}
           {analyzing && (
             <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-[2px]">
               <div className="flex items-center gap-3 rounded-full border border-line-strong bg-black/70 px-5 py-2.5 text-sm font-medium text-white">
                 <span className="h-2 w-2 animate-pulse rounded-full bg-brand-bright" />
-                Analizando imagen…
+                {t("analyzingOverlay")}
               </div>
             </div>
           )}
           {analyzed && !analyzing && (
-            <div className="absolute left-2 top-2 rounded-full border border-success/30 bg-success/15 px-2.5 py-1 text-[11px] font-semibold text-success">
-              Analizado ✓
+            <div className="absolute left-2 top-2 flex items-center gap-1.5 rounded-full border border-success/30 bg-success/15 px-2.5 py-1 text-[11px] font-semibold text-success">
+              {t("analyzedBadge")}
+              {items.length > 0 && (
+                <span className="rounded-full bg-success/20 px-1.5 text-success">
+                  {items.length}
+                </span>
+              )}
             </div>
           )}
         </div>
@@ -196,7 +244,7 @@ export default function ImageAnalyzer({ onRequestAnalysis, analyzing, onReset }:
       <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-line bg-white/[0.03] p-4">
         <div className="flex-1 min-w-0">
           <p className="truncate text-sm font-medium text-ink">{state.fileName}</p>
-          <p className="text-xs text-ink-subtle">{state.sizeKb} KB · imagen subida</p>
+          <p className="text-xs text-ink-subtle">{t("fileInfo", { sizeKb: state.sizeKb })}</p>
         </div>
 
         <div className="flex gap-2">
@@ -205,19 +253,23 @@ export default function ImageAnalyzer({ onRequestAnalysis, analyzing, onReset }:
             disabled={analyzing || analyzed}
             className="rounded-lg bg-gradient-to-br from-brand to-magenta px-3.5 py-2 text-xs font-semibold text-white transition hover:brightness-110 disabled:opacity-40"
           >
-            {analyzed ? "Analizado ✓" : analyzing ? "Analizando…" : "Analizar imagen"}
+            {analyzed
+              ? t("analyzedBadge")
+              : analyzing
+                ? t("analyzingLabel")
+                : tStudio("analysisType.image")}
           </button>
           {analyzed && (
             <button
               onClick={handleReset}
               className="rounded-lg border border-line bg-white/5 px-3.5 py-2 text-xs font-medium text-ink-muted transition hover:bg-white/10"
             >
-              Analizar otra imagen
+              {t("analyzeAnother")}
             </button>
           )}
           {!analyzed && (
             <label className="cursor-pointer rounded-lg border border-line bg-white/5 px-3.5 py-2 text-xs font-medium text-ink-muted transition hover:bg-white/10">
-              Cambiar imagen
+              {t("changeImage")}
               <input
                 type="file"
                 accept="image/jpeg,image/jpg,image/png,image/webp"

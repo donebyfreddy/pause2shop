@@ -2,6 +2,7 @@
 
 import { motion, useReducedMotion } from "motion/react";
 import { Check, ScanSearch, Sparkles } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 /**
  * Visual del hero: la metáfora del producto en movimiento.
@@ -14,14 +15,28 @@ import { Check, ScanSearch, Sparkles } from "lucide-react";
  * para decorar, y así el hero no depende de assets ni de red.
  */
 
-const BOXES = [
-  { id: "jacket", label: "Chaqueta de lino", conf: 0.94, x: 30, y: 18, w: 40, h: 34, delay: 1.0 },
-  { id: "bag", label: "Bolso shopper", conf: 0.88, x: 63, y: 47, w: 24, h: 24, delay: 1.45 },
-  { id: "sneaker", label: "Zapatilla blanca", conf: 0.81, x: 33, y: 71, w: 22, h: 17, delay: 1.9 },
+const BOX_META = [
+  { id: "jacket", conf: 0.94, x: 30, y: 18, w: 40, h: 34, delay: 1.0 },
+  { id: "bag", conf: 0.88, x: 63, y: 47, w: 24, h: 24, delay: 1.45 },
+  { id: "sneaker", conf: 0.81, x: 33, y: 71, w: 22, h: 17, delay: 1.9 },
+] as const;
+
+const MATCH_META = [
+  { key: "match1", price: "59,95 €", score: 0.93, exact: true, delay: 1.6 },
+  { key: "match2", price: "79,99 €", score: 0.87, exact: true, delay: 2.0 },
+  { key: "match3", price: "—", score: 0.72, exact: false, delay: 2.35 },
 ] as const;
 
 export function HeroVisual() {
+  const t = useTranslations("landing.heroVisual");
   const reduce = useReducedMotion();
+
+  const boxes = BOX_META.map((box) => ({ ...box, label: t(`boxes.${box.id}`) }));
+  const matches = MATCH_META.map((match) => ({
+    ...match,
+    title: t(`${match.key}.title`),
+    store: t(`${match.key}.store`),
+  }));
 
   return (
     <motion.div
@@ -44,12 +59,10 @@ export function HeroVisual() {
             <span className="size-2.5 rounded-full bg-surface-3" />
             <span className="size-2.5 rounded-full bg-surface-3" />
           </div>
-          <p className="ml-2 font-mono text-[11px] text-ink-faint">
-            estudio · análisis continuo · 00:42
-          </p>
+          <p className="ml-2 font-mono text-[11px] text-ink-faint">{t("windowStatus")}</p>
           <span className="ml-auto inline-flex items-center gap-1.5 rounded-full border border-success/30 bg-success/10 px-2 py-0.5 text-[10px] font-medium text-success">
             <span className="size-1.5 animate-pulse rounded-full bg-success" />
-            en directo
+            {t("liveBadge")}
           </span>
         </div>
 
@@ -85,7 +98,7 @@ export function HeroVisual() {
             )}
 
             {/* cajas de detección */}
-            {BOXES.map((box) => (
+            {boxes.map((box) => (
               <motion.div
                 key={box.id}
                 initial={{ opacity: 0, scale: reduce ? 1 : 0.85 }}
@@ -125,7 +138,7 @@ export function HeroVisual() {
             <div className="absolute bottom-3 left-3 flex items-center gap-2 rounded-lg border border-line bg-canvas/80 px-2.5 py-1.5 backdrop-blur-sm">
               <ScanSearch className="size-3.5 text-accent" aria-hidden />
               <span className="font-mono text-[10px] text-ink-muted">
-                3 objetos · 1 persona · dedup activo
+                {t("detectionSummary")}
               </span>
             </div>
           </div>
@@ -134,18 +147,14 @@ export function HeroVisual() {
           <div className="flex flex-col gap-2.5 p-4">
             <div className="flex items-center justify-between">
               <p className="text-[10px] font-semibold tracking-[0.14em] text-ink-faint uppercase">
-                Coincidencias
+                {t("matchesTitle")}
               </p>
-              <span className="font-mono text-[10px] text-ink-faint">catálogo + Lens</span>
+              <span className="font-mono text-[10px] text-ink-faint">{t("matchesSource")}</span>
             </div>
 
-            {[
-              { title: "Chaqueta de lino relaxed", store: "Catálogo · Zara", price: "59,95 €", score: 0.93, exact: true, delay: 1.6 },
-              { title: "Bolso shopper de piel", store: "Catálogo · Mango", price: "79,99 €", score: 0.87, exact: true, delay: 2.0 },
-              { title: "Zapatilla low white", store: "Google Lens", price: "—", score: 0.72, exact: false, delay: 2.35 },
-            ].map((match) => (
+            {matches.map((match) => (
               <motion.div
-                key={match.title}
+                key={match.key}
                 initial={{ opacity: 0, x: reduce ? 0 : 22 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ duration: 0.5, delay: match.delay, ease: [0.22, 0.61, 0.36, 1] }}
@@ -180,8 +189,8 @@ export function HeroVisual() {
               className="mt-auto rounded-xl border border-line bg-white/[0.02] px-3 py-2"
             >
               <div className="flex items-center justify-between text-[10px] text-ink-subtle">
-                <span>Latencia media</span>
-                <span className="font-mono text-ink">1,4 s / frame</span>
+                <span>{t("latencyLabel")}</span>
+                <span className="font-mono text-ink">{t("latencyValue")}</span>
               </div>
               <div className="mt-2 h-1 overflow-hidden rounded-full bg-surface-3">
                 <motion.div

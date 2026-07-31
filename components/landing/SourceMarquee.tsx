@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { Reveal } from "@/components/ui";
 
 /**
@@ -21,6 +22,7 @@ export function SourceMarquee({
   verified: number;
   partnerRequired: number;
 }) {
+  const t = useTranslations("landing.sourceMarquee");
   if (labels.length === 0) return null;
   // Duplicamos la lista para que el bucle de la animación sea continuo.
   const track = [...labels, ...labels];
@@ -30,12 +32,12 @@ export function SourceMarquee({
       <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
         <Reveal className="flex flex-wrap items-baseline justify-between gap-3">
           <p className="text-[10px] font-semibold tracking-[0.16em] text-ink-faint uppercase">
-            Registro de fuentes de moda
+            {t("registryLabel")}
           </p>
           <p className="font-mono text-[11px] text-ink-subtle">
-            <span className="text-ink">{total}</span> fuentes ·{" "}
-            <span className="text-success">{verified}</span> verificadas con fixtures ·{" "}
-            <span className="text-warning">{partnerRequired}</span> requieren acuerdo
+            <span className="text-ink">{total}</span> {t("totalLabel")} ·{" "}
+            <span className="text-success">{verified}</span> {t("verifiedLabel")} ·{" "}
+            <span className="text-warning">{partnerRequired}</span> {t("partnerLabel")}
           </p>
         </Reveal>
       </div>
@@ -60,9 +62,9 @@ export function SourceMarquee({
       </div>
 
       <p className="mx-auto mt-7 max-w-3xl px-4 text-center text-[11px] leading-relaxed text-ink-faint">
-        Listado del registro de conectores del servicio de catálogo. Aparecer aquí indica que la
-        fuente está registrada con su estado real de implementación y cumplimiento —{" "}
-        <span className="text-ink-subtle">no implica relación comercial ni permiso concedido</span>.
+        {t.rich("footnote", {
+          emphasis: (chunks) => <span className="text-ink-subtle">{chunks}</span>,
+        })}
       </p>
     </section>
   );

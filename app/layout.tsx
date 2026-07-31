@@ -1,6 +1,9 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { ToastProvider } from "@/components/ui";
+import { LocaleProvider } from "@/components/i18n/LocaleProvider";
+import { loadMessages, resolveRequestLocale } from "@/i18n/request";
+import { isRtl } from "@/i18n/locales";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -30,19 +33,28 @@ export const viewport: Viewport = {
   colorScheme: "dark",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const locale = await resolveRequestLocale();
+  const messages = await loadMessages(locale);
+
   return (
     <html
-      lang="es"
+      lang={locale}
+      dir={isRtl(locale) ? "rtl" : "ltr"}
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="flex min-h-full flex-col bg-canvas text-ink">
-        {/* Un único ToastProvider para las tres superficies: landing, estudio y admin. */}
-        <ToastProvider>{children}</ToastProvider>
+        {/* LocaleProvider envuelve todo: conmutar idioma solo cambia su
+            estado interno, nunca desmonta lo que hay debajo (vídeo en curso,
+            formularios, resultados, scroll). */}
+        <LocaleProvider initialLocale={locale} initialMessages={messages}>
+          {/* Un único ToastProvider para las tres superficies: landing, estudio y admin. */}
+          <ToastProvider>{children}</ToastProvider>
+        </LocaleProvider>
       </body>
     </html>
   );

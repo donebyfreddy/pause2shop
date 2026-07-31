@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useFormatter, useTranslations } from "next-intl";
 import { SiteHeader } from "@/components/shell/SiteHeader";
 import { SiteFooter } from "@/components/shell/SiteFooter";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -32,12 +33,7 @@ const CLIENT_MAX_DURATION_S = Number(
   process.env.NEXT_PUBLIC_MAX_VIDEO_DURATION_SECONDS ?? "120"
 );
 
-const MODE_LABELS: Array<{ mode: MatchingMode; label: string; hint: string }> = [
-  { mode: "catalog-only", label: "Solo catálogo", hint: "sin búsquedas externas" },
-  { mode: "catalog-first", label: "Catálogo primero", hint: "externo solo si no resuelve" },
-  { mode: "external-only", label: "Solo búsqueda externa", hint: "pipeline Lens clásico" },
-  { mode: "hybrid", label: "Híbrido", hint: "ambos, ranking común" },
-];
+const MODES: MatchingMode[] = ["catalog-only", "catalog-first", "external-only", "hybrid"];
 
 const LABEL_STYLES: Record<string, string> = {
   CATALOG_MATCH: "border-success/50 bg-success/15 text-success",
@@ -132,6 +128,8 @@ async function cropFromFrame(
 // ---------------------------------------------------------------------------
 
 export default function DemoPage() {
+  const t = useTranslations("demo");
+  const format = useFormatter();
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const cancelRef = useRef(false);
 
@@ -186,7 +184,7 @@ export default function DemoPage() {
     setLiveItems([]);
     if (!file) return;
     if (!file.type.startsWith("video/")) {
-      setValidationError("El archivo debe ser un vídeo (mp4, webm…).");
+      setValidationError(t("upload.notVideoError"));
       return;
     }
     setFileInfo({ name: file.name, size: file.size, type: file.type });
@@ -194,7 +192,7 @@ export default function DemoPage() {
       if (prev) URL.revokeObjectURL(prev);
       return URL.createObjectURL(file);
     });
-  }, []);
+  }, [t]);
 
   const onLoadedMetadata = useCallback(() => {
     const video = videoRef.current;
@@ -207,10 +205,13 @@ export default function DemoPage() {
     );
     if (video.duration > CLIENT_MAX_DURATION_S) {
       setValidationError(
-        `El vídeo dura ${Math.round(video.duration)}s; el máximo de la demo es ${CLIENT_MAX_DURATION_S}s.`
+        t("upload.durationError", {
+          seconds: Math.round(video.duration),
+          maxSeconds: CLIENT_MAX_DURATION_S,
+        })
       );
     }
-  }, []);
+  }, [t]);
 
   /** Sube a /crops los mejores encuadres pedidos por el servidor. */
   const fulfillCropRequests = useCallback(
@@ -263,7 +264,7 @@ export default function DemoPage() {
         }),
       });
       const created = await createRes.json();
-      if (!created.ok) throw new Error(created.error ?? "No se pudo crear el job.");
+      if (!created.ok) throw new Error(created.error ?? t("errors.createJobFailed"));
       const id: string = created.jobId;
       const fps: number = created.config?.detectionFps ?? 5;
       const maxBatch: number = Math.min(created.config?.maxFramesPerBatch ?? 25, 8);
@@ -286,7 +287,7 @@ export default function DemoPage() {
           body: JSON.stringify({ frames: payload }),
         });
         const body = (await res.json()) as { ok: boolean; error?: string } & FrameBatchResult;
-        if (!body.ok) throw new Error(body.error ?? "Error procesando el lote de frames.");
+        if (!body.ok) throw new Error(body.error ?? t("errors.frameBatchFailed"));
         // Overlay en vivo: detecciones del último frame analizado del lote.
         const lastAnalyzed = [...body.frames].reverse().find((f) => f.analyzed);
         if (lastAnalyzed) setLiveItems(lastAnalyzed.items);
@@ -323,15 +324,15 @@ export default function DemoPage() {
       setPhase("matching");
       const finalRes = await fetch(`/api/analysis/jobs/${id}/finalize`, { method: "POST" });
       const finalBody = await finalRes.json();
-      if (!finalBody.ok) throw new Error(finalBody.error ?? "Error al finalizar el job.");
+      if (!finalBody.ok) throw new Error(finalBody.error ?? t("errors.finalizeFailed"));
       setJob(finalBody.job);
       setPhase(finalBody.job?.status === "cancelled" ? "cancelled" : "done");
       setLiveItems([]);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Error desconocido.");
+      setError(err instanceof Error ? err.message : t("errors.unknown"));
       setPhase("error");
     }
-  }, [analysisConfig, duration, fileInfo, fulfillCropRequests, matchingMode, validationError]);
+  }, [analysisConfig, duration, fileInfo, fulfillCropRequests, matchingMode, validationError, t]);
 
   const cancelAnalysis = useCallback(async () => {
     cancelRef.current = true;
@@ -348,6 +349,13 @@ export default function DemoPage() {
   }, []);
 
 
+  const modeCopy: Record<MatchingMode, { label: string; hint: string }> = {
+    "catalog-only": { label: t("matchingMode.catalogOnly.label"), hint: t("matchingMode.catalogOnly.hint") },
+    "catalog-first": { label: t("matchingMode.catalogFirst.label"), hint: t("matchingMode.catalogFirst.hint") },
+    "external-only": { label: t("matchingMode.externalOnly.label"), hint: t("matchingMode.externalOnly.hint") },
+    hybrid: { label: t("matchingMode.hybrid.label"), hint: t("matchingMode.hybrid.hint") },
+  };
+
   const counters = job?.counters;
   const timings = job?.timings;
 
@@ -357,17 +365,16 @@ export default function DemoPage() {
       <main className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
       <header className="mb-6 flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="display text-3xl text-ink sm:text-4xl">Demo de vídeo completo</h1>
+          <h1 className="display text-3xl text-ink sm:text-4xl">{t("page.title")}</h1>
           <p className="mt-2 max-w-2xl text-sm leading-relaxed text-ink-muted">
-            Análisis asíncrono de un vídeo subido: job con checkpoint, detección de escenas,
-            tracking y deduplicación global de productos.
+            {t("page.description")}
           </p>
         </div>
         <Link
           href="/studio"
           className="text-xs font-medium text-ink-subtle transition-colors hover:text-brand-bright"
         >
-          Ir al estudio interactivo →
+          {t("page.goToStudio")}
         </Link>
       </header>
 
@@ -376,13 +383,9 @@ export default function DemoPage() {
         <section className="space-y-4">
           <div className="rounded-2xl border border-line bg-white/[0.03] p-4">
             <h1 className="text-base font-semibold text-ink">
-              Sube un vídeo (máx. {CLIENT_MAX_DURATION_S}s)
+              {t("upload.title", { seconds: CLIENT_MAX_DURATION_S })}
             </h1>
-            <p className="mt-1 text-xs text-ink-subtle">
-              El navegador extrae los frames; el servidor mantiene un job asíncrono con
-              checkpoint, escenas, tracking y deduplicación global. Las búsquedas caras se
-              pagan una sola vez por producto único.
-            </p>
+            <p className="mt-1 text-xs text-ink-subtle">{t("upload.description")}</p>
             <input
               type="file"
               accept="video/*"
@@ -425,11 +428,12 @@ export default function DemoPage() {
           {/* Selector de modo de matching */}
           <div className="rounded-2xl border border-line bg-white/[0.03] p-4">
             <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-subtle">
-              Modo de matching
+              {t("matchingMode.title")}
             </p>
             <div className="mt-2 flex flex-wrap gap-2">
-              {MODE_LABELS.map(({ mode, label, hint }) => {
+              {MODES.map((mode) => {
                 const active = matchingMode === mode;
+                const { label, hint } = modeCopy[mode];
                 return (
                   <button
                     key={mode}
@@ -467,7 +471,7 @@ export default function DemoPage() {
               disabled={!videoUrl || Boolean(validationError) || running || !duration}
               className="rounded-xl bg-brand px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-brand-bright disabled:cursor-not-allowed disabled:opacity-40"
             >
-              {running ? "Analizando…" : "Analizar vídeo"}
+              {running ? t("actions.analyzing") : t("actions.analyze")}
             </button>
             {running && (
               <button
@@ -475,7 +479,7 @@ export default function DemoPage() {
                 onClick={cancelAnalysis}
                 className="rounded-xl border border-danger/40 bg-danger/10 px-4 py-2.5 text-sm font-medium text-danger transition hover:bg-danger/20"
               >
-                Cancelar
+                {t("actions.cancel")}
               </button>
             )}
             <label className="ml-auto flex items-center gap-2 text-xs text-ink-muted">
@@ -484,7 +488,7 @@ export default function DemoPage() {
                 checked={showBoxes}
                 onChange={(e) => setShowBoxes(e.target.checked)}
               />
-              Bounding boxes
+              {t("actions.boundingBoxes")}
             </label>
           </div>
 
@@ -499,46 +503,48 @@ export default function DemoPage() {
         <aside className="space-y-4">
           <div className="rounded-2xl border border-line bg-white/[0.03] p-4">
             <div className="flex items-center justify-between">
-              <h2 className="text-sm font-semibold text-ink">Job de análisis</h2>
+              <h2 className="text-sm font-semibold text-ink">{t("job.title")}</h2>
               <StatusBadge phase={phase} jobStatus={job?.status} />
             </div>
             {jobId && (
-              <p className="mt-1 truncate text-[10px] text-ink-faint">id: {jobId}</p>
+              <p className="mt-1 truncate text-[10px] text-ink-faint">
+                {t("job.idLabel", { jobId })}
+              </p>
             )}
             <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs">
-              <Stat label="Frames recibidos" value={counters?.framesReceived ?? 0} />
-              <Stat label="Frames analizados" value={counters?.framesAnalyzed ?? 0} />
-              <Stat label="Escenas" value={counters?.scenes ?? 0} />
-              <Stat label="Tracks" value={counters?.tracks ?? 0} />
-              <Stat label="Productos únicos" value={counters?.uniqueProducts ?? 0} />
-              <Stat label="Búsquedas externas" value={counters?.externalSearchesUsed ?? 0} />
+              <Stat label={t("job.stats.framesReceived")} value={counters?.framesReceived ?? 0} />
+              <Stat label={t("job.stats.framesAnalyzed")} value={counters?.framesAnalyzed ?? 0} />
+              <Stat label={t("job.stats.scenes")} value={counters?.scenes ?? 0} />
+              <Stat label={t("job.stats.tracks")} value={counters?.tracks ?? 0} />
+              <Stat label={t("job.stats.uniqueProducts")} value={counters?.uniqueProducts ?? 0} />
+              <Stat label={t("job.stats.externalSearches")} value={counters?.externalSearchesUsed ?? 0} />
             </dl>
           </div>
 
           <div className="rounded-2xl border border-success/20 bg-success/[0.06] p-4">
             <h3 className="text-xs font-semibold uppercase tracking-wider text-success">
-              Llamadas caras evitadas
+              {t("savings.title")}
             </h3>
             <dl className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs">
-              <Stat label="Frames dedup (hash)" value={counters?.framesSkippedSimilar ?? 0} />
-              <Stat label="Tracks fundidos" value={counters?.dedupMergedTracks ?? 0} />
-              <Stat label="Cache hits" value={counters?.cacheHits ?? 0} />
-              <Stat label="Catálogo hits" value={counters?.catalogHits ?? 0} />
+              <Stat label={t("savings.framesDedup")} value={counters?.framesSkippedSimilar ?? 0} />
+              <Stat label={t("savings.tracksMerged")} value={counters?.dedupMergedTracks ?? 0} />
+              <Stat label={t("savings.cacheHits")} value={counters?.cacheHits ?? 0} />
+              <Stat label={t("savings.catalogHits")} value={counters?.catalogHits ?? 0} />
             </dl>
           </div>
 
           {timings && (
             <div className="rounded-2xl border border-line bg-white/[0.03] p-4">
               <h3 className="text-xs font-semibold uppercase tracking-wider text-ink-subtle">
-                Tiempo por etapa
+                {t("timings.title")}
               </h3>
               <dl className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs">
-                <Stat label="Hash/escenas" value={`${timings.hashMs} ms`} />
-                <Stat label="Detección" value={`${timings.detectionMs} ms`} />
-                <Stat label="Tracking" value={`${timings.trackingMs} ms`} />
-                <Stat label="Dedup global" value={`${timings.dedupMs} ms`} />
-                <Stat label="Matching" value={`${timings.matchingMs} ms`} />
-                <Stat label="Total" value={`${timings.totalMs} ms`} />
+                <Stat label={t("timings.hashScenes")} value={`${timings.hashMs} ms`} />
+                <Stat label={t("timings.detection")} value={`${timings.detectionMs} ms`} />
+                <Stat label={t("timings.tracking")} value={`${timings.trackingMs} ms`} />
+                <Stat label={t("timings.globalDedup")} value={`${timings.dedupMs} ms`} />
+                <Stat label={t("timings.matching")} value={`${timings.matchingMs} ms`} />
+                <Stat label={t("timings.total")} value={`${timings.totalMs} ms`} />
               </dl>
             </div>
           )}
@@ -549,7 +555,7 @@ export default function DemoPage() {
       {job && job.products.length > 0 && (
         <section className="mt-8">
           <h2 className="text-sm font-semibold text-ink">
-            Productos únicos ({job.products.length})
+            {t("products.title", { count: job.products.length })}
           </h2>
           <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
             {job.products.map((p) => {
@@ -575,7 +581,7 @@ export default function DemoPage() {
                         {p.item.category}
                         {p.trackIds.length > 1 && (
                           <span className="ml-1 text-success">
-                            · {p.trackIds.length} tracks fundidos
+                            · {t("products.tracksMerged", { count: p.trackIds.length })}
                           </span>
                         )}
                       </p>
@@ -603,15 +609,19 @@ export default function DemoPage() {
                         </a>
                       </p>
                       <p className="mt-0.5 text-[11px] text-ink-subtle">
-                        score {(best.scores.finalScore * 100).toFixed(0)} · fuente{" "}
-                        {best.source} ({best.provider})
-                        {best.price != null && ` · ${best.price} ${best.currency ?? "EUR"}`}
+                        {t("products.scoreLine", {
+                          score: (best.scores.finalScore * 100).toFixed(0),
+                          source: best.source,
+                          provider: best.provider,
+                        })}
+                        {best.price != null &&
+                          ` · ${format.number(best.price, { style: "currency", currency: best.currency ?? "EUR" })}`}
                       </p>
                     </div>
                   )}
                   {p.matchingSkippedReason && (
                     <p className="mt-2 text-[11px] text-warning/80">
-                      matching omitido: {p.matchingSkippedReason}
+                      {t("products.matchingSkipped", { reason: p.matchingSkippedReason })}
                     </p>
                   )}
 
@@ -623,7 +633,10 @@ export default function DemoPage() {
                           <button
                             key={`${p.productId}-${s.startSeconds}`}
                             type="button"
-                            title={`${formatTimestamp(s.startSeconds)} – ${formatTimestamp(s.endSeconds)}`}
+                            title={t("products.segmentTooltip", {
+                              start: formatTimestamp(s.startSeconds),
+                              end: formatTimestamp(s.endSeconds),
+                            })}
                             onClick={() => seekPlayer(s.startSeconds)}
                             className="absolute top-0 h-full rounded-sm bg-brand-bright/80 transition hover:bg-brand-bright"
                             style={{
@@ -655,7 +668,7 @@ export default function DemoPage() {
 
       {job && phase === "done" && job.products.length === 0 && (
         <p className="mt-8 rounded-lg border border-line bg-white/[0.03] px-4 py-3 text-sm text-ink-muted">
-          No se detectaron productos en las categorías seleccionadas.
+          {t("products.noProductsDetected")}
         </p>
       )}
       </main>
@@ -677,15 +690,16 @@ function StatusBadge({
   phase,
   jobStatus,
 }: Readonly<{ phase: Phase; jobStatus?: string }>) {
+  const t = useTranslations("demo.status");
   const text =
     phase === "idle"
-      ? "sin iniciar"
+      ? t("notStarted")
       : phase === "creating"
-        ? "creando job…"
+        ? t("creatingJob")
         : phase === "scanning"
-          ? "extrayendo frames…"
+          ? t("scanningFrames")
           : phase === "matching"
-            ? "matching por producto…"
+            ? t("matchingProducts")
             : (jobStatus ?? phase);
   const style =
     phase === "done"

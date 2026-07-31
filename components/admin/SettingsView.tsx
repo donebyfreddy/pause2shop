@@ -14,6 +14,7 @@ import {
   Sparkles,
   TriangleAlert,
 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import {
   Badge,
   Button,
@@ -40,6 +41,8 @@ import type { Settings } from "@/lib/catalogService/types";
  */
 
 export function SettingsView() {
+  const t = useTranslations("settings");
+  const tCommon = useTranslations("common");
   const toast = useToast();
   const { data, error, loading, refreshing, reload } =
     useAdminResource<Settings>("settings", { pollMs: 60_000 });
@@ -47,10 +50,13 @@ export function SettingsView() {
   const reindex = async () => {
     const res = await adminPost<{ jobId: string }>("products/reindex");
     if (!res.ok) {
-      toast.error("No se pudo lanzar el reindexado", res.error.message);
+      toast.error(t("sections.embeddings.reindexErrorTitle"), res.error.message);
       return;
     }
-    toast.success("Reindexado encolado", `Job ${res.data.jobId.slice(0, 8)}`);
+    toast.success(
+      t("sections.embeddings.reindexSuccessTitle"),
+      t("sections.embeddings.reindexSuccessBody", { jobId: res.data.jobId.slice(0, 8) }),
+    );
   };
 
   if (error && !data) {
@@ -58,11 +64,11 @@ export function SettingsView() {
       <Card>
         <EmptyState
           icon={CircleAlert}
-          title="No se pudo leer la configuración"
+          title={t("empty.errorTitle")}
           description={error.message}
           action={
             <Button variant="secondary" size="sm" onClick={reload}>
-              Reintentar
+              {tCommon("retry")}
             </Button>
           }
         />
@@ -90,11 +96,11 @@ export function SettingsView() {
     <div className="space-y-5">
       <div className="flex items-center justify-between gap-3">
         <Callout tone="info" icon={Lock} className="flex-1">
-          Estos valores se leen del entorno del servicio de catálogo y se muestran en modo
-          lectura: la configuración se cambia en su <code className="font-mono text-[11px]">.env</code>{" "}
-          y se aplica al reiniciar. Así queda trazable y no divergen las réplicas.
+          {t.rich("banner.body", {
+            code: (chunks) => <code className="font-mono text-[11px]">{chunks}</code>,
+          })}
         </Callout>
-        <Button variant="ghost" size="sm" icon onClick={reload} aria-label="Refrescar">
+        <Button variant="ghost" size="sm" icon onClick={reload} aria-label={t("refresh")}>
           <RefreshCw className={refreshing ? "size-4 animate-spin" : "size-4"} aria-hidden />
         </Button>
       </div>
@@ -105,30 +111,29 @@ export function SettingsView() {
           <CardHeader
             actions={
               <Badge tone={data.service.authEnforced ? "success" : "danger"} dot>
-                {data.service.authEnforced ? "Auth activa" : "Auth deshabilitada"}
+                {data.service.authEnforced
+                  ? t("sections.keys.authBadgeOn")
+                  : t("sections.keys.authBadgeOff")}
               </Badge>
             }
           >
             <CardTitle className="flex items-center gap-2">
               <KeyRound className="size-4 text-ink-faint" aria-hidden />
-              Claves de API
+              {t("sections.keys.title")}
             </CardTitle>
-            <CardDescription>
-              La clave del servicio nunca sale del servidor: el admin habla con él a través del
-              proxy de la app.
-            </CardDescription>
+            <CardDescription>{t("sections.keys.description")}</CardDescription>
           </CardHeader>
           <CardBody>
             <DataRow label="CATALOG_SERVICE_API_KEY">
               {data.service.apiKey.configured ? (
                 <span className="text-success">
-                  configurada · {data.service.apiKey.length} caracteres
+                  {t("sections.keys.configured", { count: data.service.apiKey.length })}
                 </span>
               ) : (
-                <span className="text-danger">sin configurar</span>
+                <span className="text-danger">{t("sections.keys.notConfigured")}</span>
               )}
             </DataRow>
-            <DataRow label="Puerto del servicio" mono>
+            <DataRow label={t("sections.keys.portLabel")} mono>
               {data.service.port}
             </DataRow>
             <DataRow label="LOG_LEVEL" mono>
@@ -137,9 +142,9 @@ export function SettingsView() {
 
             {!data.service.authEnforced && (
               <Callout tone="danger" icon={TriangleAlert} className="mt-3">
-                Sin <code className="font-mono text-[11px]">CATALOG_SERVICE_API_KEY</code> el
-                servicio acepta cualquier petición. Aceptable en local; nunca en un entorno
-                accesible desde fuera.
+                {t.rich("sections.keys.authWarning", {
+                  code: (chunks) => <code className="font-mono text-[11px]">{chunks}</code>,
+                })}
               </Callout>
             )}
           </CardBody>
@@ -156,34 +161,30 @@ export function SettingsView() {
           >
             <CardTitle className="flex items-center gap-2">
               <Database className="size-4 text-ink-faint" aria-hidden />
-              Almacenamiento
+              {t("storage")}
             </CardTitle>
-            <CardDescription>
-              Backend elegido automáticamente según haya una connection string válida.
-            </CardDescription>
+            <CardDescription>{t("sections.storage.description")}</CardDescription>
           </CardHeader>
           <CardBody>
             <DataRow label="DATABASE_URL">
               {data.storage.databaseConfigured ? (
-                <span className="text-success">configurada</span>
+                <span className="text-success">{t("sections.storage.configured")}</span>
               ) : (
-                <span className="text-warning">ausente o no es postgres://</span>
+                <span className="text-warning">{t("sections.storage.missing")}</span>
               )}
             </DataRow>
-            <DataRow label="Directorio de datos" mono>
+            <DataRow label={t("sections.storage.dataDirLabel")} mono>
               {data.storage.dataDir}
             </DataRow>
-            <DataRow label="Directorio de imágenes" mono>
+            <DataRow label={t("sections.storage.imagesDirLabel")} mono>
               {data.storage.imagesDir}
             </DataRow>
 
             {data.storage.backend === "file" && (
               <Callout tone="warning" icon={TriangleAlert} className="mt-3">
-                Modo fichero: el catálogo persiste en JSON y la búsqueda vectorial se hace en
-                memoria. Configura una connection string{" "}
-                <code className="font-mono text-[11px]">postgres://</code> (endpoint{" "}
-                <code className="font-mono text-[11px]">-pooler</code> de Neon) y ejecuta las
-                migraciones para activar pgvector.
+                {t.rich("sections.storage.fileWarning", {
+                  code: (chunks) => <code className="font-mono text-[11px]">{chunks}</code>,
+                })}
               </Callout>
             )}
           </CardBody>
@@ -195,44 +196,35 @@ export function SettingsView() {
             actions={
               <Button variant="secondary" size="xs" onClick={reindex}>
                 <Sparkles className="size-3.5" aria-hidden />
-                Reindexar
+                {t("sections.embeddings.reindex")}
               </Button>
             }
           >
             <CardTitle className="flex items-center gap-2">
               <Binary className="size-4 text-ink-faint" aria-hidden />
-              Embeddings
+              {t("embeddings")}
             </CardTitle>
-            <CardDescription>
-              Al cambiar de proveedor cambia la dimensión: hay que reindexar o los vectores
-              antiguos dejan de ser comparables.
-            </CardDescription>
+            <CardDescription>{t("sections.embeddings.description")}</CardDescription>
           </CardHeader>
           <CardBody>
-            <DataRow label="Proveedor de imagen" mono>
+            <DataRow label={t("sections.embeddings.imageProviderLabel")} mono>
               {data.embeddings.imageProvider}
             </DataRow>
-            <DataRow label="Modelo de imagen" mono>
+            <DataRow label={t("sections.embeddings.imageModelLabel")} mono>
               {data.embeddings.imageModel}
             </DataRow>
-            <DataRow label="Proveedor de texto" mono>
+            <DataRow label={t("sections.embeddings.textProviderLabel")} mono>
               {data.embeddings.textProvider}
             </DataRow>
-            <DataRow label="Activo ahora" mono>
+            <DataRow label={t("sections.embeddings.activeNowLabel")} mono>
               {data.embeddings.active.name} · {data.embeddings.active.dimension}d
             </DataRow>
 
             {data.embeddings.imageProvider === "hash" && (
               <Callout tone="warning" icon={TriangleAlert} className="mt-3">
-                Proveedor <code className="font-mono text-[11px]">hash</code>: vectores
-                deterministas de 64 dimensiones para demo y tests. No hace similitud visual
-                real — instala el proveedor local con{" "}
-                <code className="font-mono text-[11px]">npm run embeddings:install</code> en
-                catalog-scraper y pon{" "}
-                <code className="font-mono text-[11px]">
-                  CATALOG_IMAGE_EMBEDDING_PROVIDER=local
-                </code>
-                .
+                {t.rich("sections.embeddings.hashWarning", {
+                  code: (chunks) => <code className="font-mono text-[11px]">{chunks}</code>,
+                })}
               </Callout>
             )}
           </CardBody>
@@ -243,24 +235,21 @@ export function SettingsView() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Cpu className="size-4 text-ink-faint" aria-hidden />
-              Umbrales de matching y dedup
+              {t("sections.matching.title")}
             </CardTitle>
-            <CardDescription>
-              Nada se publica por debajo del score mínimo: preferimos no devolver resultado a
-              devolver uno dudoso.
-            </CardDescription>
+            <CardDescription>{t("sections.matching.description")}</CardDescription>
           </CardHeader>
           <CardBody>
-            <DataRow label="Score mínimo de imagen" mono>
+            <DataRow label={t("sections.matching.minImageScoreLabel")} mono>
               {data.matching.minImageScore}
             </DataRow>
-            <DataRow label="Distancia máx. de hash perceptual" mono>
+            <DataRow label={t("sections.matching.perceptualHashLabel")} mono>
               {data.matching.perceptualHashMaxDistance} / 64
             </DataRow>
-            <DataRow label="Umbral de dedup por embedding" mono>
+            <DataRow label={t("sections.matching.dedupThresholdLabel")} mono>
               {data.matching.embeddingDedupThreshold}
             </DataRow>
-            <DataRow label="Workers de jobs" mono>
+            <DataRow label={t("sections.matching.jobsWorkersLabel")} mono>
               {data.jobs.workers}
             </DataRow>
           </CardBody>
@@ -271,49 +260,51 @@ export function SettingsView() {
           <CardHeader
             actions={
               <Badge tone="success" dot>
-                robots.txt respetado
+                {t("sections.compliance.robotsBadge")}
               </Badge>
             }
           >
             <CardTitle className="flex items-center gap-2">
               <Gauge className="size-4 text-ink-faint" aria-hidden />
-              Límites de ingesta y cumplimiento
+              {t("sections.compliance.title")}
             </CardTitle>
-            <CardDescription>
-              Los valores por defecto son deliberadamente conservadores: es mejor tardar más que
-              molestar a una tienda.
-            </CardDescription>
+            <CardDescription>{t("sections.compliance.description")}</CardDescription>
           </CardHeader>
           <CardBody className="grid gap-x-8 gap-y-0 lg:grid-cols-2">
             <div>
-              <DataRow label="Intervalo mínimo por dominio" mono>
+              <DataRow label={t("sections.compliance.rateLimitLabel")} mono>
                 {data.scraping.rateLimitPerDomainMs} ms
               </DataRow>
-              <DataRow label="Concurrencia global" mono>
+              <DataRow label={t("sections.compliance.concurrencyLabel")} mono>
                 {data.scraping.maxConcurrency}
               </DataRow>
-              <DataRow label="Timeout por petición" mono>
+              <DataRow label={t("sections.compliance.timeoutLabel")} mono>
                 {data.scraping.requestTimeoutMs} ms
               </DataRow>
             </div>
             <div>
-              <DataRow label="Reintentos" mono>
+              <DataRow label={t("sections.compliance.retriesLabel")} mono>
                 {data.scraping.maxRetries}
               </DataRow>
-              <DataRow label="Umbral del circuit breaker" mono>
-                {data.scraping.circuitBreakerThreshold} fallos seguidos
+              <DataRow label={t("sections.compliance.circuitBreakerLabel")} mono>
+                {data.scraping.circuitBreakerThreshold} {t("sections.compliance.circuitBreakerSuffix")}
               </DataRow>
-              <DataRow label="User-Agent" mono>
+              <DataRow label={t("sections.compliance.userAgentLabel")} mono>
                 {data.scraping.userAgent}
               </DataRow>
             </div>
 
             <div className="lg:col-span-2">
-              <Callout tone="success" icon={ShieldCheck} className="mt-4" title="Política aplicada">
-                {data.scraping.robotsPolicy}. Además: <code className="font-mono text-[11px]">Crawl-delay</code>{" "}
-                respetado cuando la tienda lo declara, User-Agent identificable con contacto, y
-                circuit breaker que deja de insistir ante bloqueos sostenidos. Las fuentes que
-                requieren acuerdo de partner o afiliación no se ingieren hasta tenerlo.
+              <Callout
+                tone="success"
+                icon={ShieldCheck}
+                className="mt-4"
+                title={t("sections.compliance.policyTitle")}
+              >
+                {t.rich("sections.compliance.policyBody", {
+                  policy: data.scraping.robotsPolicy,
+                  code: (chunks) => <code className="font-mono text-[11px]">{chunks}</code>,
+                })}
               </Callout>
             </div>
           </CardBody>
@@ -324,25 +315,23 @@ export function SettingsView() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <ScrollText className="size-4 text-ink-faint" aria-hidden />
-              Observabilidad y caché
+              {t("sections.observability.title")}
             </CardTitle>
           </CardHeader>
           <CardBody className="space-y-3">
-            <DataRow label="Logs">
-              Buffer circular en memoria (750 eventos) + JSON estructurado a stdout
+            <DataRow label={t("sections.observability.logsLabel")}>
+              {t("sections.observability.logsValue")}
             </DataRow>
-            <DataRow label="Caché de health de conectores">
-              10 minutos por fuente; la comprobación live es manual
+            <DataRow label={t("sections.observability.healthCacheLabel")}>
+              {t("sections.observability.healthCacheValue")}
             </DataRow>
-            <DataRow label="Métricas">
-              Contadores en memoria expuestos en{" "}
-              <code className="font-mono text-[11px]">/stats</code> y{" "}
-              <code className="font-mono text-[11px]">/overview</code>
+            <DataRow label={t("sections.observability.metricsLabel")}>
+              {t.rich("sections.observability.metricsValue", {
+                code: (chunks) => <code className="font-mono text-[11px]">{chunks}</code>,
+              })}
             </DataRow>
             <p className="text-[11px] leading-relaxed text-ink-faint">
-              Todo el estado observable es del proceso: al reiniciar el servicio se reinician
-              contadores y buffer de logs. Para histórico real, recoge el stdout y usa el backend
-              Postgres.
+              {t("sections.observability.footnote")}
             </p>
           </CardBody>
         </Card>

@@ -1,0 +1,1467 @@
+{
+  "common": {
+    "loading": "Carregant…",
+    "error": "Error",
+    "retry": "Torna-ho a provar",
+    "cancel": "Cancel·la",
+    "save": "Desa",
+    "close": "Tanca",
+    "search": "Cerca",
+    "noResults": "Sense resultats",
+    "comingSoon": "Properament",
+    "seeMore": "Veure més",
+    "seeLess": "Veure menys",
+    "page": "Pàgina {page} de {totalPages}"
+  },
+  "navigation": {
+    "studio": "Estudi",
+    "catalog": "Catàleg",
+    "demoVideo": "Demo vídeo",
+    "admin": "Admin",
+    "openMenu": "Obre el menú",
+    "closeMenu": "Tanca el menú",
+    "mainNav": "Navegació principal",
+    "mobileNav": "Navegació mòbil"
+  },
+  "actions": {
+    "tryNow": "Prova-ho ara",
+    "viewCatalogPanel": "Panell d'operacions del catàleg",
+    "analyzeVideo": "Analitza un vídeo",
+    "analyzeImage": "Analitza una imatge",
+    "upload": "Puja",
+    "export": "Exporta",
+    "sync": "Sincronitza",
+    "pause": "Pausa",
+    "resume": "Reprèn",
+    "viewDetails": "Veure detalls",
+    "viewCatalog": "Veure catàleg",
+    "viewDemo": "Veure demo",
+    "activate": "Activa",
+    "deactivate": "Desactiva",
+    "cancelJob": "Cancel·la",
+    "retryJob": "Torna-ho a provar",
+    "reindex": "Reindexa embeddings"
+  },
+  "languageSelector": {
+    "trigger": "Idioma: {language}",
+    "searchPlaceholder": "Cerca un idioma…",
+    "noMatches": "Sense coincidències",
+    "currentLanguage": "Idioma actual: {language}",
+    "listLabel": "Selector d'idioma"
+  },
+  "toast": {
+    "dismiss": "Tanca l'avís",
+    "catalog": {
+      "searchFailed": "La cerca ha fallat",
+      "noResultsAboveThreshold": "Sense resultats per sobre del llindar",
+      "imageSearchFailed": "La cerca per imatge ha fallat",
+      "notAnImage": "Aquest fitxer no és una imatge",
+      "productDeactivated": "Producte desactivat",
+      "productActivated": "Producte activat",
+      "statusChangeFailed": "No s'ha pogut canviar l'estat",
+      "matchesFound": "{count, plural, one{# coincidència} other{# coincidències}}",
+      "matchCascadeDescription": "Cascada: hash exacte → hash perceptual → embedding visual"
+    },
+    "jobs": {
+      "cancelFailed": "No s'ha pogut cancel·lar",
+      "retryFailed": "No s'ha pogut tornar a provar",
+      "actionSucceeded": "{action} correctament",
+      "cancelRequested": "Cancel·lació sol·licitada",
+      "retryQueued": "Reintent encuat",
+      "retryQueuedDetail": "Nou job {jobId} — reprèn des del checkpoint",
+      "reindexFailed": "No s'ha pogut llançar el reindexat",
+      "reindexQueued": "Reindexat d'embeddings encuat",
+      "reindexQueuedDetail": "Job {jobId}"
+    },
+    "connectors": {
+      "actionFailed": "No s'ha pogut {action}",
+      "paused": "{id} pausat",
+      "resumed": "{id} reprès",
+      "syncFailed": "No s'ha pogut llançar el sync"
+    }
+  },
+  "errors": {
+    "generic": "S'ha produït un error",
+    "network": "Error de xarxa. Comprova la teva connexió.",
+    "unauthorized": "No autoritzat",
+    "notFound": "No trobat",
+    "validation": {
+      "required": "Aquest camp és obligatori"
+    },
+    "upload": {
+      "tooLarge": "El fitxer és massa gran",
+      "unsupportedFormat": "Format no compatible"
+    }
+  },
+  "landing": {
+    "hero": {
+      "badge": "Detecció visual de producte en vídeo, en temps real",
+      "title": "Pausa el vídeo.",
+      "subtitle": "Troba el producte.",
+      "description": "Pause2Shop analitza vídeo i imatge, detecta cada peça de roba, calçat o complement i el creua contra un catàleg de moda propi i una cerca visual inversa. Amb procedència i confiança en cada resultat.",
+      "ctaPrimary": "Prova-ho ara",
+      "ctaSecondary": "Veure catàleg",
+      "ctaTertiary": "Veure demo"
+    },
+    "howItWorks": {
+      "title": "Com funciona",
+      "step1": {
+        "title": "Pausa",
+        "description": "Atura el vídeo en el moment exacte."
+      },
+      "step2": {
+        "title": "Detecta",
+        "description": "La IA localitza els productes visibles al fotograma."
+      },
+      "step3": {
+        "title": "Troba",
+        "description": "Coincidència contra catàleg i cerca visual inversa."
+      },
+      "heading": "Cinc passos entre un frame i un producte comprable",
+      "description": "El pipeline complet s'executa per cada objecte detectat, amb pressupost de crides i memòria cau a cada etapa.",
+      "steps": {
+        "capture": {
+          "title": "Captura de frames",
+          "body": "Del vídeo (pujat, YouTube o pantalla) s'extreuen frames candidats per FPS i detecció de canvi d'escena. Els frames quasi idèntics es descarten per hash perceptual: no paguen detecció.",
+          "meta": "rVFC · scene diff · hash perceptual"
+        },
+        "detect": {
+          "title": "Detecció multimodal",
+          "body": "Un model de visió localitza cada objecte amb caixa, categoria, color i relació amb la persona (posat, sostingut, de fons). Només s'analitzen les categories que hagis triat.",
+          "meta": "bounding boxes · relació · confiança"
+        },
+        "dedupe": {
+          "title": "Seguiment i deduplicació",
+          "body": "Els objectes conserven la seva identitat entre frames i es fusionen globalment: la mateixa jaqueta que reapareix deu vegades és un únic producte, amb el seu millor retall seleccionat.",
+          "meta": "trackIds · NMS · millor crop"
+        },
+        "match": {
+          "title": "Coincidència amb catàleg",
+          "body": "Cada retall es cerca primer al catàleg propi en cascada: hash exacte → hash perceptual → embedding visual. Si no hi ha prou coincidència, es recorre a la cerca visual inversa.",
+          "meta": "catalog-first · pgvector · CLIP"
+        },
+        "result": {
+          "title": "Resultat amb procedència",
+          "body": "Cada resultat arriba amb score, etapa que l'ha resolt i origen (catàleg o proveïdor extern). No es publica res per sota del llindar de confiança configurat.",
+          "meta": "score · matchStage · origin"
+        }
+      }
+    },
+    "useCases": {
+      "title": "Casos d'ús",
+      "heading": "Pensat per a catàlegs de vídeo, no per a una foto solta",
+      "primary": {
+        "title": "VOD i vídeo a demanda",
+        "body": "Converteix un catàleg de vídeo en un catàleg de producte. S'analitza el vídeo complet, es dedupliquen les reaparicions i es lliura la llista de productes amb el seu timestamp d'aparició.",
+        "point1": "Vídeos de fins a 2 minuts per job (configurable)",
+        "point2": "Timestamp i frame d'origen per producte",
+        "point3": "Pressupost de crides i cost per vídeo"
+      },
+      "secondary": {
+        "discovery": {
+          "title": "Descobriment de producte",
+          "body": "L'usuari veu alguna cosa a la pantalla i vol saber què és. Una imatge n'hi ha prou per iniciar la cerca."
+        },
+        "catalogMatch": {
+          "title": "Coincidència amb catàleg",
+          "body": "Creua detecions contra el teu propi catàleg abans de sortir a Internet: més precisió i menor cost."
+        },
+        "visualShopping": {
+          "title": "Shopping visual",
+          "body": "Resultats comprables amb preu, disponibilitat i enllaç directe a la fitxa de la botiga."
+        },
+        "clientDemos": {
+          "title": "Demos amb client",
+          "body": "Mode presentació, panell de costos i dades d'exemple llestos per ensenyar sense dependre de credencials."
+        }
+      }
+    },
+    "capabilities": {
+      "title": "Capacitats",
+      "heading": "Tot allò que ja funciona, amb enllaç directe per comprovar-ho",
+      "verifiableBadge": "Demo tècnica verificable",
+      "ctaOpenStudio": "Obre l'estudi",
+      "ctaViewInStudio": "Veure a l'estudi",
+      "features": {
+        "video": {
+          "body": "Vídeo pujat, de YouTube o captura de pantalla, amb anàlisi continu i overlay de deteccions sobre el reproductor."
+        },
+        "image": {
+          "body": "Puja una imatge i obtén els objectes detectats amb els seus retalls, llestos per cercar."
+        },
+        "connectors": {
+          "title": "Connectors de catàleg",
+          "body": "Registre modular de fonts de moda amb estat real: implementat, sense verificar, o pendent d'acord comercial.",
+          "cta": "Veure connectors"
+        },
+        "embeddings": {
+          "title": "Embeddings visuals",
+          "body": "CLIP local o proveïdor hash determinista per a demo. Reindexat complet des de l'admin quan canvia el model.",
+          "cta": "Veure ajustos",
+          "badge": "CLIP opcional"
+        },
+        "catalog": {
+          "title": "Catàleg normalitzat",
+          "body": "Esquema únic de producte amb marca i categoria normalitzades, historial de preus, dedup multinivell i traçabilitat de font.",
+          "cta": "Explorar catàleg"
+        },
+        "cost": {
+          "title": "Cost i pressupost",
+          "body": "Comptadors de crides per proveïdor, límit de cost per vídeo i memòria cau per no repetir cerques de pagament."
+        }
+      },
+      "complianceNote": {
+        "lead": "Ingesta amb regles.",
+        "body": "robots.txt comprovat abans de cada petició, <code>Crawl-delay</code> respectat, User-Agent identificable amb contacte i cap evasió anti-bot. Les fonts que exigeixen acord de partner o afiliació no s'ingereixen fins a tenir-lo."
+      }
+    },
+    "cta": {
+      "title": "Comença ara",
+      "action": "Prova-ho ara",
+      "heading": "Prova-ho amb el teu propi vídeo",
+      "description": "Tria quines categories cercar, ajusta la intensitat de l'anàlisi i mira com apareixen les coincidències frame a frame. Sense registre.",
+      "operationsPanel": "Panell d'operacions"
+    },
+    "sourceMarquee": {
+      "label": "Fonts connectades",
+      "registryLabel": "Registre de fonts de moda",
+      "totalLabel": "fonts",
+      "verifiedLabel": "verificades amb fixtures",
+      "partnerLabel": "requereixen acord",
+      "footnote": "Llistat del registre de connectors del servei de catàleg. Aparèixer aquí indica que la font està registrada amb el seu estat real d'implementació i compliment — <emphasis>no implica relació comercial ni permís concedit</emphasis>."
+    },
+    "stats": {
+      "productsIndexed": "{count, plural, one{# producte indexat} other{# productes indexats}}",
+      "catalogProducts": "Productes en catàleg",
+      "visualEmbeddingCoverage": "Amb embedding visual",
+      "detectableCategories": "Categories detectables"
+    },
+    "heroVisual": {
+      "windowStatus": "estudi · anàlisi continu · 00:42",
+      "liveBadge": "en directe",
+      "boxes": {
+        "jacket": "Jaqueta de lli",
+        "bag": "Bossa shopper",
+        "sneaker": "Sabatilla blanca"
+      },
+      "detectionSummary": "3 objectes · 1 persona · dedup actiu",
+      "matchesTitle": "Coincidències",
+      "matchesSource": "catàleg + Lens",
+      "match1": {
+        "title": "Jaqueta de lli relaxed",
+        "store": "Catàleg · Zara"
+      },
+      "match2": {
+        "title": "Bossa shopper de pell",
+        "store": "Catàleg · Mango"
+      },
+      "match3": {
+        "title": "Sabatilla low white",
+        "store": "Google Lens"
+      },
+      "latencyLabel": "Latència mitjana",
+      "latencyValue": "1,4 s / frame"
+    },
+    "studioSection": {
+      "label": "L'estudi",
+      "heading": "Analitza un vídeo o una imatge ara",
+      "description": "Tria categories i intensitat, carrega el contingut i observa les deteccions i coincidències en temps real.",
+      "openFullscreen": "Obre en pantalla completa",
+      "loading": "Carregant l'estudi d'anàlisi…"
+    },
+    "footer": {
+      "tagline": "Pausa el vídeo, troba el producte.",
+      "description": "Detecció visual de productes en vídeo i imatge, amb coincidència contra catàleg propi i cerca visual inversa. Els resultats provenen de fonts reals: no s'inventen marques, preus ni enllaços.",
+      "product": {
+        "title": "Producte",
+        "studio": "Estudi d'anàlisi",
+        "catalog": "Catàleg detectat",
+        "demo": "Demo de vídeo"
+      },
+      "operations": {
+        "title": "Operacions",
+        "admin": "Panell d'administració",
+        "connectors": "Connectors",
+        "jobs": "Jobs d'ingesta",
+        "logs": "Monitoratge"
+      },
+      "copyright": "© {year} {appName}. Demo tècnica.",
+      "complianceNote": "Ingesta de catàleg amb robots.txt respectat, límit de freqüència per domini i sense evasió anti-bot."
+    }
+  },
+  "studio": {
+    "page": {
+      "title": "Estudi d'anàlisi",
+      "description": "Detecta productes en vídeo o imatge i troba'ls al catàleg. Configura quines categories cercar i amb quina intensitat abans de començar."
+    },
+    "demoBadge": "Mode demo",
+    "technicalPanel": "Panell tècnic (consum i crides)",
+    "selectFile": "Selecciona un fitxer",
+    "analysisType": {
+      "label": "Tipus d'anàlisi",
+      "video": "Analitza un vídeo",
+      "image": "Analitza una imatge"
+    },
+    "urlInput": {
+      "placeholder": "https://www.youtube.com/watch?v=...",
+      "label": "URL del vídeo",
+      "submit": "Carrega el vídeo",
+      "invalidUrl": "Aquesta URL no sembla vàlida. Enganxa un enllaç de YouTube (watch, youtu.be o shorts)."
+    },
+    "liveStats": {
+      "peopleDetected": "{count, plural, one{<value>#</value> persona} other{<value>#</value> persones}}",
+      "tracking": "{count, plural, one{<value>#</value> en seguiment} other{<value>#</value> en seguiment}}",
+      "uniqueProducts": "{count, plural, one{<value>#</value> producte únic} other{<value>#</value> productes únics}}",
+      "withMatch": "amb coincidència"
+    },
+    "product": {
+      "fallbackTitle": "Objecte",
+      "brand": "Marca: {brand}",
+      "seenCount": "Vist {count, plural, one{# vegada} other{# vegades}}",
+      "imageAlt": "imatge"
+    },
+    "loading": {
+      "processing": "Analitzant el contingut"
+    },
+    "cost": {
+      "title": "Cost",
+      "heading": "Consum i cost d'IA",
+      "demoMode": "mode demo",
+      "real": "real",
+      "totalCost": "Cost total",
+      "apiCalls": "Crides API",
+      "cacheHits": "Cache hits",
+      "itemsDetected": "Ítems detectats",
+      "openaiVision": "OpenAI Vision",
+      "aiSuggestions": "Suggeriments IA",
+      "reverseSearch": "Reverse search (Lens)",
+      "shopping": "Shopping",
+      "callsCount": "{count, plural, one{# crida} other{# crides}}",
+      "fallbacksUsed": "fallbacks: {count}",
+      "mockCallsNote": "{count, plural, one{# crida en mode demo (sense cost)} other{# crides en mode demo (sense cost)}}"
+    },
+    "overlayDetail": {
+      "subtitle": "{category} · {color} · {confidence}% de confiança",
+      "matchesTitle": "Coincidències trobades",
+      "searchingMatches": "Cercant coincidències visuals d'aquest objecte…"
+    },
+    "history": {
+      "title": "Frames analitzats",
+      "clear": "Neteja",
+      "frameAlt": "frame analitzat",
+      "itemCount": "{count, plural, one{# objecte} other{# objectes}}",
+      "locatedCount": "{count, plural, one{# objecte localitzat} other{# objectes localitzats}}"
+    },
+    "videoAnalyzer": {
+      "phase": {
+        "idle": "No activa",
+        "requestingPermission": "Sol·licitant permís…",
+        "captureActive": "Captura activa",
+        "capturingFrame": "Capturant frame…",
+        "analyzingFrame": "Analitzant frame…",
+        "waitingNextInterval": "Esperant el següent interval",
+        "skippedSimilarFrame": "Frame omès (escena similar)",
+        "skippedBusy": "Frame omès (anàlisi en curs)",
+        "error": "Error",
+        "stopped": "Aturada"
+      },
+      "tabs": {
+        "pasteLink": "🔗 Enganxa un enllaç",
+        "uploadVideo": "📁 Puja un vídeo"
+      },
+      "uploadedVideoDefaultName": "Vídeo",
+      "uploadedReadyNote": "Vídeo preparat · L'anàlisi començarà automàticament en reproduir-lo.",
+      "providerDetectedLabel": "Proveïdor detectat:",
+      "embedCompatible": "Embed compatible",
+      "notEmbeddable": "No embeddable",
+      "requiresScreenShare": "· Requereix pantalla compartida",
+      "changeVideo": "Canvia el vídeo",
+      "changeUrl": "Canvia la URL",
+      "youtubeWarning": {
+        "title": "YouTube requereix captura de pantalla",
+        "body": "El navegador bloqueja la lectura directa de frames de l'iframe per restriccions cross-origin. Per analitzar:",
+        "step1": "Prem <b>Activa la captura de pantalla</b> a sota",
+        "step2": "Selecciona <b>Aquesta pestanya</b> (no tota la pantalla)",
+        "step3": "Activa l'auto-captura i reprodueix el vídeo",
+        "footer": "Si vols evitar compartir pantalla, puja un MP4 amb la pestanya <b>Puja un vídeo</b>."
+      },
+      "pauseHintNoCapture": "Has pausat el vídeo, però la captura de pestanya no està activa. Prem «Activa la captura de pantalla» per poder analitzar.",
+      "crossOriginWarning": "<b>{provider}</b> no permet llegir frames directament (restricció cross-origin). Activa la captura de pantalla i selecciona <b>aquesta pestanya</b>.",
+      "directCaptureActive": "Captura directa activa.",
+      "directCaptureDefaultReason": "No cal compartir pantalla per analitzar aquest vídeo.",
+      "unknownProviderHint": "Canvia a la pestanya <b>Puja un vídeo</b> o fes servir una URL .mp4/.m3u8.",
+      "urlPanel": {
+        "title": "Enganxa una URL de vídeo",
+        "subtitle": "YouTube · Dailymotion · Vimeo · enllaç directe .mp4 / .m3u8"
+      },
+      "upload": {
+        "dropHint": "Deixa anar el vídeo aquí",
+        "uploadHint": "Puja un vídeo per analitzar-ne els productes automàticament.",
+        "formatsHint": "MP4, WebM o MOV (si el teu navegador el reprodueix) · arrossega o selecciona el fitxer"
+      },
+      "status": {
+        "lastFrame": "Últim frame: fa {seconds}s",
+        "intervalLabel": "Interval: {seconds}s",
+        "captured": "Capturats:",
+        "analyzed": "Analitzats:",
+        "skipped": "Omesos:"
+      },
+      "stopAnalysis": "⏹ Atura l'anàlisi",
+      "resumeAnalysis": "▶ Reprèn l'anàlisi",
+      "detectingObjectsInline": "Detectant objectes…",
+      "analyzingRealtime": "Analitzant el vídeo en temps real · detecció en canviar l'escena",
+      "analysisPaused": "Anàlisi en pausa",
+      "technicalOptions": "Opcions tècniques",
+      "analyzeOnPause": "Analitza en pausar",
+      "forceAnalyzeFrame": "Força l'anàlisi d'aquest frame",
+      "autoCapture": "Auto-captura",
+      "autoCaptureInterval": "cada {seconds}s",
+      "activateScreenCapture": "Activa la captura de pantalla",
+      "stopCapture": "Atura la captura",
+      "analyzeScreenshot": "Analitza la captura de pantalla",
+      "tooltipActivateFirst": "Activa primer la captura de pantalla",
+      "tooltipAlreadyAnalyzing": "Ja hi ha una anàlisi en curs",
+      "realtimeIndicator": "Analitzant productes en temps real",
+      "frameCounter": "Frame {count}",
+      "fpsSuffix": "· {fps} fps",
+      "statsPersons": "{count, plural, one{# persona} other{# persones}}",
+      "statsTracked": "{count, plural, one{# producte seguit} other{# productes seguits}}",
+      "statsUnique": "{count, plural, one{# únic} other{# únics}}",
+      "statsMatched": "{count, plural, one{# identificat} other{# identificats}}",
+      "intervalOnlyNewFrames": "captura cada {seconds}s · només frames nous",
+      "currentPosition": "Posició actual: {timestamp}",
+      "debugTitle": "Debug captura",
+      "debugNoEvents": "Encara no hi ha esdeveniments.",
+      "debugFramesSummary": "Frames: {frameCount} · Analitzats: {analyzedCount} · Omesos: {skippedCount}",
+      "debugClear": "Neteja",
+      "loadingPlayer": "Carregant el reproductor…",
+      "detectingObjectsOverlay": "Detectant objectes…",
+      "analyzeFrameNow": "Analitza aquest frame ara",
+      "captureHint": {
+        "idle": "Captura no activa",
+        "active": "Captura activa",
+        "denied": "Permís denegat",
+        "needsSelection": "Selecciona aquesta pestanya o finestra",
+        "error": "Error de captura"
+      },
+      "youtubeCaptureRequired": "Per analitzar vídeos de YouTube necessito permís de captura de pantalla. Això és necessari perquè YouTube no permet llegir frames directament des de l'iframe. En activar-la, selecciona <b>aquesta pestanya o finestra</b>.",
+      "analyzingFrameOverlay": "Analitzant frame…"
+    },
+    "localVideo": {
+      "uploadHint": "Puja un vídeo (.mp4, .mov, .webm)",
+      "uploadSubHint": "Ideal per a proves ràpides — sense captura de pantalla",
+      "defaultTitle": "Vídeo local"
+    },
+    "imageAnalyzer": {
+      "unsupportedFormat": "Format no compatible: {format}. Fes servir JPG, PNG o WebP.",
+      "unknownFormat": "desconegut",
+      "emptyFile": "El fitxer està buit.",
+      "tooLarge": "La imatge supera el límit de {maxMb} MB.",
+      "readError": "No s'ha pogut llegir la imatge.",
+      "dropHere": "Deixa anar la imatge aquí",
+      "uploadPrompt": "Puja, arrossega o enganxa una imatge",
+      "pasteHint": "JPG, PNG, WebP — màx. {maxMb} MB · <kbd>Ctrl+V</kbd> per enganxar",
+      "analyzingOverlay": "Analitzant imatge…",
+      "analyzedBadge": "Analitzat ✓",
+      "analyzingLabel": "Analitzant…",
+      "analyzeAnother": "Analitza una altra imatge",
+      "changeImage": "Canvia la imatge",
+      "fileInfo": "{sizeKb} KB · imatge pujada",
+      "previewAlt": "Vista prèvia"
+    },
+    "configSelector": {
+      "title": "Què vols trobar?",
+      "subtitle": "Només s'analitzen les categories triades: la resta no consumeix IA ni cerques.",
+      "activeCount": "{count, plural, one{# activa} other{# actives}}",
+      "intensity": {
+        "fast": {
+          "label": "Ràpida",
+          "hint": "Menys passades · ideal per provar"
+        },
+        "standard": {
+          "label": "Estàndard",
+          "hint": "Equilibri precisió / cost"
+        },
+        "exhaustive": {
+          "label": "Exhaustiva",
+          "hint": "Màxima precisió · vídeos curts"
+        }
+      },
+      "intensityLabel": "Intensitat de l'anàlisi",
+      "personCentricNote": "Mode centrat en persones: s'analitzen les peces i complements que porten o sostenen les persones, i s'ignora el fons de l'escena."
+    },
+    "loadingAnalysis": {
+      "ariaLabel": "Analitzant frame",
+      "heading": "Analitzant el frame…",
+      "stages": {
+        "capture": "Capturant el frame",
+        "detect": "Detectant objectes",
+        "crop": "Retallant i deduplicant",
+        "search": "Cercant coincidències"
+      }
+    },
+    "productCard": {
+      "detectionTooltip": "Confiança en que l'objecte i els seus atributs s'han identificat correctament al vídeo.",
+      "detectionPct": "{pct}% detecció",
+      "matchTooltip": "Confiança en que el resultat web correspon al mateix producte.",
+      "matchPct": "{pct}% coincidència",
+      "matchLabel": {
+        "exact": "Producte exacte",
+        "nearExact": "Gairebé exacte",
+        "similar": "Similar"
+      },
+      "evidenceTitle": "Coincideix en",
+      "sourcesTitle": "Fonts de cerca",
+      "internalScore": "Score intern: {score} pts · motor: {source}",
+      "debugTitle": "Debug del matching",
+      "debugReverseSearch": "Reverse image search: sí (crop enviat, cerca visual pura primer)",
+      "debugProvider": "Proveïdor: {provider}",
+      "debugFallback": "Fallback utilitzat: {value}",
+      "debugCacheHit": "Cache hit: {value}",
+      "debugLatency": "Latència: {ms} ms",
+      "debugDetail": "Detall: {detail}",
+      "debugDataForSeoNote": "DataForSEO: només enriquiment de preu/botigues (no identitat)",
+      "yes": "sí",
+      "no": "no",
+      "sourceLabel": {
+        "searchapiGoogleLens": "Google Lens",
+        "serpapiGoogleLens": "Google Lens (fallback)",
+        "serpapiGoogleShopping": "Google Shopping",
+        "dataforseoGoogleShopping": "Google Shopping (DataForSEO)"
+      },
+      "candidateCount": "{count, plural, one{# candidat} other{# candidats}}",
+      "confirmedBySources": "✓ Confirmat per {count} fonts",
+      "waitingBetterFrame": "Esperant un enquadrament millor…",
+      "searchingByImage": "Cercant per imatge (Google Lens)…",
+      "statusMessage": {
+        "noMatch": "Sense coincidència exacta — a sota es mostren els productes visualment més semblants.",
+        "budgetExhausted": "Sense cerca externa (límit de consum assolit).",
+        "providerError": "Cerca visual no disponible ara mateix."
+      },
+      "evidenceVisibleText": "text visible: “{text}”",
+      "evidenceLogoDesc": "logo: {description}",
+      "evidenceLogoVisible": "logo reconeixible al producte",
+      "brandEvidenceTitle": "Marca afirmada per evidència — {evidence}",
+      "brandGuess": "≈ {brand}?",
+      "logoVisibleBadge": "logo visible",
+      "visibleTextLabel": "Text: “{text}”",
+      "logoDescLine": "Logo: {description}",
+      "similarLabel": {
+        "withMatch": "També similars:",
+        "withoutMatch": "Productes visualment similars:"
+      }
+    },
+    "resultsPanel": {
+      "title": "Resultats",
+      "subtitle": "Objectes detectats i les seves coincidències",
+      "reanalyzeTooltip": "Torna a analitzar l'últim frame ignorant la memòria cau",
+      "reanalyzeAction": "Analitza-ho un altre cop",
+      "scopeAriaLabel": "Àmbit dels resultats",
+      "thisFrame": "Aquest frame",
+      "wholeVideo": "Tot el vídeo",
+      "demoModeNotice": "Mode demo (sense <code>OPENAI_API_KEY</code>): es mostren dades d'exemple realistes.",
+      "savedInCatalog": "{count, plural, one{# element desat al catàleg} other{# elements desats al catàleg}}",
+      "view": "Veure",
+      "localSaveNotice": "Desament local d'aquesta sessió actiu; la sincronització es reintenta automàticament.",
+      "sessionSummary": "{count, plural, one{# objecte únic durant el vídeo, ja deduplicat entre frames.} other{# objectes únics durant el vídeo, ja deduplicats entre frames.}}",
+      "analyzeErrorTitle": "No s'ha pogut analitzar",
+      "technicalDetails": "Detalls tècnics",
+      "detectingMore": "Detectant més objectes en aquesta escena…",
+      "styleDetectedLabel": "Estil detectat:",
+      "noItemsTitle": "Sense objectes comprables clars",
+      "noItemsDescription": "Aquest frame no té productes prou definits. Prova amb un frame més proper o més ben il·luminat.",
+      "readyTitle": "Llest per analitzar",
+      "readyDescription": "Reprodueix el vídeo i posa'l en pausa en el moment que t'interessi, o puja una imatge. L'anàlisi comença en tenir un frame.",
+      "privacyNote": "La captura només s'utilitza per detectar objectes comprables. No identifiquem persones ni emmagatzemem imatges al servidor.",
+      "memoryFallbackNote": " (base de dades no disponible — desat en aquesta sessió, es reintenta sol)",
+      "localSessionNote": " (sessió local)",
+      "memoryNote": " (en memòria — configura <code>DATABASE_URL</code> per persistir)",
+      "groups": {
+        "worn": "El que porta",
+        "heldOrUsed": "El que sosté o utilitza",
+        "nearPerson": "A prop de la persona",
+        "otherObjects": "Altres objectes de l'escena ({count})",
+        "lowPriority": "prioritat baixa"
+      }
+    }
+  },
+  "analysis": {
+    "processing": "Analitzant el contingut",
+    "queued": "En cua",
+    "done": "Completat",
+    "failed": "Fallit",
+    "noItemsDetected": "No s'han detectat productes"
+  },
+  "catalog": {
+    "products": "Productes",
+    "empty": "No hi ha productes que coincideixin",
+    "status": {
+      "active": "Actiu",
+      "inactive": "Inactiu"
+    },
+    "filters": {
+      "searchPlaceholder": "Cerca marca, grup, regió…",
+      "titleSearchPlaceholder": "Cerca per títol, marca…",
+      "sourceAriaLabel": "Font",
+      "allSources": "Totes les fonts",
+      "originAriaLabel": "Origen",
+      "allOrigins": "Tot origen",
+      "statusAriaLabel": "Estat",
+      "allStatuses": "Actius i inactius",
+      "onlyActive": "Només actius",
+      "onlyInactive": "Només inactius"
+    },
+    "pagination": "{count} productes · pàgina {page} de {totalPages}",
+    "modeAriaLabel": "Mode d'exploració",
+    "modes": {
+      "browse": "Explora",
+      "text": "Cerca per text",
+      "image": "Cerca per imatge"
+    },
+    "viewAriaLabel": "Vista",
+    "view": {
+      "grid": "Graella",
+      "list": "Llista"
+    },
+    "actions": {
+      "refresh": "Refresca",
+      "previousPage": "Anterior",
+      "nextPage": "Següent"
+    },
+    "origin": {
+      "scraped": "Ingerit de botiga",
+      "external": "Descobert externament"
+    },
+    "textSearch": {
+      "placeholder": "vestit vermell setinat, blazer de punt negre…"
+    },
+    "imageSearch": {
+      "urlPlaceholder": "https://…/imatge.jpg",
+      "searchByUrl": "Cerca per URL",
+      "dropHint": "Arrossega una imatge o fes clic per triar-la",
+      "dropSubHint": "S'envia en base64 a l'endpoint de cerca visual del catàleg"
+    },
+    "originFilterNotice": "El filtre d'origen s'aplica sobre la pàgina carregada: el servei pagina abans de filtrar per origen.",
+    "errors": {
+      "loadFailed": "No s'ha pogut llegir el catàleg"
+    },
+    "grid": {
+      "emptyTitle": "El catàleg està buit amb aquests filtres",
+      "emptyDescription": "Llança un sync des de Connectors o executa el seed de fixtures (npm run catalog:seed a l'arrel) per tenir dades de demo."
+    },
+    "table": {
+      "product": "Producte",
+      "source": "Font",
+      "category": "Categoria",
+      "price": "Preu",
+      "indexes": "Índexs",
+      "lastSeen": "Vist",
+      "status": "Estat",
+      "emptyTitle": "Sense productes",
+      "emptyDescription": "Ajusta els filtres o ingereix catàleg des de Connectors."
+    },
+    "badges": {
+      "inactive": "inactiu",
+      "external": "extern",
+      "hasImageEmbeddingTooltip": "Amb embedding visual"
+    },
+    "noCategory": "sense categoria",
+    "card": {
+      "lastSeenPrefix": "vist"
+    },
+    "matches": {
+      "countLabel": "{count, plural, one{# coincidència} other{# coincidències}} ordenades per score",
+      "backToBrowse": "Torna a explorar",
+      "emptyTitle": "Sense coincidències per sobre del llindar",
+      "emptyDescription": "El catàleg no té res prou semblant. És el comportament correcte: preferim no retornar res abans que retornar alguna cosa dubtosa.",
+      "viewListing": "Fitxa"
+    },
+    "drawer": {
+      "fallbackTitle": "Producte",
+      "loading": "Carregant fitxa…",
+      "hasImageEmbeddingBadge": "embedding visual",
+      "hasPerceptualHashBadge": "hash perceptual",
+      "normalizedDataTitle": "Dades normalitzades",
+      "price": "Preu",
+      "originalPrice": "Preu original",
+      "availability": "Disponibilitat",
+      "category": "Categoria",
+      "subcategory": "Subcategoria",
+      "gender": "Gènere",
+      "color": "Color",
+      "firstSeen": "Primera vegada vist",
+      "lastSeen": "Última vegada vist",
+      "externalScore": "Score extern",
+      "perceptualHash": "Hash perceptual",
+      "id": "ID",
+      "extractionTitle": "Com es va extreure",
+      "primaryExtractor": "Extractor principal",
+      "extractorsUsed": "Extractors aplicats",
+      "aiLabel": "IA",
+      "aiUsedAsFallback": "utilitzada com a fallback",
+      "aiNotNeeded": "no necessària",
+      "browserLabel": "Navegador",
+      "browserUsedYes": "renderitzat amb Playwright",
+      "browserNotNeeded": "no necessari",
+      "confidence": "Confiança",
+      "extractedAt": "Extret",
+      "evidenceField": "Camp",
+      "evidenceSource": "Origen",
+      "evidenceSnippet": "Evidència",
+      "viewInStore": "Veure a la botiga",
+      "copyId": "Copia l'ID"
+    }
+  },
+  "jobs": {
+    "running": "En execució",
+    "queued": "En cua",
+    "completed": "Completat",
+    "failed": "Fallit",
+    "table": {
+      "job": "Tasca",
+      "type": "Tipus",
+      "status": "Estat",
+      "progress": "Progrés",
+      "duration": "Durada",
+      "cost": "Cost",
+      "startedAt": "Iniciat",
+      "actions": "Accions"
+    },
+    "filters": {
+      "statusAriaLabel": "Filtra per estat",
+      "sourceAriaLabel": "Filtra per font",
+      "all": "Tots",
+      "running": "En curs",
+      "completed": "Completats",
+      "failed": "Amb fallada",
+      "allSources": "Totes les fonts"
+    },
+    "actions": {
+      "refresh": "Refresca"
+    },
+    "callout": "Els jobs persisteixen el seu checkpoint a cada avenç: un job cancel·lat o caigut es reprèn amb <ink>Torna-ho a provar</ink> sense tornar a descobrir el catàleg.",
+    "empty": {
+      "errorTitle": "No s'han pogut llegir els jobs",
+      "noneTitle": "Cap job amb aquests filtres",
+      "noneDescription": "Llança un sync des de Connectors o canvia el filtre d'estat."
+    },
+    "drawer": {
+      "breakdown": "Desglossament",
+      "discovered": "Descoberts",
+      "fetched": "Descarregats",
+      "new": "Nous",
+      "updated": "Actualitzats",
+      "duplicates": "Duplicats",
+      "ignored": "Ignorats",
+      "errors": "Errors",
+      "withoutAi": "Sense IA",
+      "withAi": "Amb IA",
+      "withBrowser": "Amb navegador",
+      "retries": "Reintents",
+      "aiCostLine": "cost d'IA estimat: {cost} · {tokens} tokens",
+      "aiRatioSuffix": "{pct}% de fitxes amb IA",
+      "checkpoint": "checkpoint: reprendria a l'índex {index}",
+      "checkpointUrlsSuffix": "de {total} URLs",
+      "checkpointStageSuffix": "etapa {stage}",
+      "errorsTitle": "Errors ({count})",
+      "noErrors": "Sense errors registrats.",
+      "activityTitle": "Activitat del job"
+    }
+  },
+  "connectors": {
+    "kpi": {
+      "registered": "Fonts registrades",
+      "registeredHint": "totes les botigues del registre",
+      "syncable": "Sincronitzables ara",
+      "syncableHint": "amb implementació i credencials",
+      "verifiedLive": "Verificades en directe",
+      "verifiedLiveHint": "amb productes reals ja al catàleg",
+      "requireAgreement": "Requereixen acord",
+      "requireAgreementHint": "partner o xarxa d'afiliació"
+    },
+    "filters": {
+      "searchPlaceholder": "Cerca marca, grup, regió…",
+      "segmentLabel": "Segment de botiga",
+      "allSegments": "Tots els segments",
+      "filterAriaLabel": "Filtra connectors",
+      "group": {
+        "all": "Totes",
+        "syncable": "Sincronitzables",
+        "partner": "Requereixen acord",
+        "paused": "Pausades",
+        "problem": "Amb problema"
+      }
+    },
+    "table": {
+      "source": "Font",
+      "realStatus": "Estat real",
+      "health": "Salut",
+      "discovery": "Descobriment",
+      "compliance": "Compliment",
+      "products": "Productes",
+      "extraction": "Extracció",
+      "lastSync": "Últim sync",
+      "actions": "Accions"
+    },
+    "actionLabels": {
+      "test": "provar el connector",
+      "resume": "reprendre",
+      "pause": "pausar",
+      "checkHealth": "comprovar l'estat"
+    },
+    "actions": {
+      "healthLiveTitle": "Comprova en directe l'estat de les fonts sincronitzables (peticions reals)",
+      "healthLiveActive": "Health live actiu",
+      "healthLiveCheck": "Comprova health live",
+      "refresh": "Refresca",
+      "syncFullTitle": "Llança un sync complet (limitat a 25 fitxes)",
+      "syncShort": "Sync",
+      "testTitle": "Prova el pipeline amb una fitxa real",
+      "resumeTitle": "Reprèn",
+      "pauseTitle": "Pausa"
+    },
+    "badges": {
+      "paused": "Pausat"
+    },
+    "callout": {
+      "title": "Com llegir aquesta taula",
+      "body": "<muted>Estat real</muted> és l'etiqueta honesta: només diu <em>verificat</em> si aquesta font té productes reals al catàleg extrets pel pipeline — no n'hi ha prou que existeixi el codi. <muted>Salut</muted> és el que respon la botiga ara mateix, i <muted>extracció</muted> mesura quin percentatge de fitxes s'ha resolt sense IA (amb dades estructurades o DOM); la IA és només l'últim recurs. La comprovació en directe no es fa sola per a totes les fonts: seria descortès amb les botigues."
+    },
+    "empty": {
+      "noMatchTitle": "Cap font coincideix",
+      "noMatchDescription": "Prova amb un altre terme o treu els filtres actius.",
+      "clearFilters": "Neteja els filtres"
+    },
+    "errors": {
+      "loadFailed": "No s'ha pogut llegir el registre"
+    },
+    "extraction": {
+      "withoutAiPct": "{pct}% sense IA",
+      "withAiCost": "{count} amb IA · {cost}",
+      "noAiCalls": "0 crides a IA"
+    },
+    "footer": {
+      "showingCount": "Mostrant {filtered} de {total} fonts registrades."
+    },
+    "syncMode": {
+      "full": "complet",
+      "incremental": "incremental"
+    },
+    "toast": {
+      "testSucceeded": "{label}: pipeline correcte",
+      "testSample": "Fitxa de mostra: {sampleTitle} ({duration})",
+      "testFailed": "{label}: ha fallat a «{step}»",
+      "noDetail": "sense detall",
+      "healthChecked": "{id}: {label}",
+      "syncQueued": "Sync {mode} encuat",
+      "syncQueuedDetail": "Job {jobId} · segueix el progrés a la pestanya Jobs"
+    },
+    "drawer": {
+      "checkStatusButton": "Comprova l'estat",
+      "testPipelineButton": "Prova el pipeline",
+      "syncIncrementalButton": "Sync incremental",
+      "syncFullButton": "Sync complet",
+      "loading": "Carregant detall…",
+      "sourceStatusTitle": "Estat de la font",
+      "missingTitle": "Què falta per activar-la",
+      "missingEnvLabel": "Variables d'entorn pendents",
+      "lastErrorTitle": "Últim error registrat",
+      "extractionLabel": "Extracció mesurada",
+      "extractionEmpty": "Encara no hi ha productes d'aquesta font al catàleg: res mesurat. Llança un sync per tenir dades reals.",
+      "productsWithMetadata": "Productes amb metadades",
+      "resolvedWithoutAi": "Resolts sense IA",
+      "resolvedWithAi": "Resolts amb IA",
+      "neededBrowser": "Van necessitar navegador",
+      "avgConfidence": "Confiança mitjana",
+      "estimatedAiCost": "Cost d'IA (estimat)",
+      "primaryExtractor": "Extractor principal",
+      "techSheetLabel": "Fitxa tècnica",
+      "implementation": "Implementació",
+      "robotsPolicy": "Política robots.txt",
+      "robotsAlwaysRespected": "es respecta sempre",
+      "crawlDelay": "crawl-delay declarat: {seconds} s",
+      "declaredSelectors": "Selectors declarats",
+      "none": "cap",
+      "urlPattern": "Patró de fitxa",
+      "accessMethod": "Via d'accés",
+      "verification": "Verificació",
+      "syncModes": "Modes de sync",
+      "segments": "Segments",
+      "categories": "Categories",
+      "markets": "Mercats",
+      "productsInCatalog": "Productes al catàleg",
+      "healthCheckedAt": "Health comprovat",
+      "store": "Botiga",
+      "program": "Programa",
+      "sitemapsLabel": "Sitemaps declarats",
+      "sitemapsHint": "Si cap no respon, el connector busca els sitemaps declarats al robots.txt de la botiga.",
+      "recentJobsLabel": "Jobs recents d'aquesta font",
+      "noJobs": "Aquesta font encara no ha executat cap job.",
+      "logsLabel": "Logs de la font",
+      "noLogs": "Sense esdeveniments registrats per a aquesta font al buffer actual."
+    }
+  },
+  "settings": {
+    "title": "Ajustos",
+    "keys": "Claus",
+    "storage": "Emmagatzematge",
+    "embeddings": "Embeddings",
+    "matching": "Coincidència",
+    "compliance": "Compliment",
+    "refresh": "Refresca",
+    "empty": {
+      "errorTitle": "No s'ha pogut llegir la configuració"
+    },
+    "banner": {
+      "body": "Aquests valors es llegeixen de l'entorn del servei de catàleg i es mostren en mode lectura: la configuració es canvia al seu <code>.env</code> i s'aplica en reiniciar. Així queda traçable i les rèpliques no divergeixen."
+    },
+    "sections": {
+      "keys": {
+        "title": "Claus d'API",
+        "description": "La clau del servei mai no surt del servidor: l'admin hi parla a través del proxy de l'app.",
+        "authBadgeOn": "Auth activa",
+        "authBadgeOff": "Auth desactivada",
+        "configured": "configurada · {count} caràcters",
+        "notConfigured": "sense configurar",
+        "portLabel": "Port del servei",
+        "authWarning": "Sense <code>CATALOG_SERVICE_API_KEY</code> el servei accepta qualsevol petició. Acceptable en local; mai en un entorn accessible des de fora."
+      },
+      "storage": {
+        "description": "Backend triat automàticament segons hi hagi una connection string vàlida.",
+        "configured": "configurada",
+        "missing": "absent o no és postgres://",
+        "dataDirLabel": "Directori de dades",
+        "imagesDirLabel": "Directori d'imatges",
+        "fileWarning": "Mode fitxer: el catàleg persisteix en JSON i la cerca vectorial es fa en memòria. Configura una connection string <code>postgres://</code> (endpoint <code>-pooler</code> de Neon) i executa les migracions per activar pgvector."
+      },
+      "embeddings": {
+        "reindex": "Reindexa",
+        "description": "En canviar de proveïdor canvia la dimensió: cal reindexar o els vectors antics deixen de ser comparables.",
+        "imageProviderLabel": "Proveïdor d'imatge",
+        "imageModelLabel": "Model d'imatge",
+        "textProviderLabel": "Proveïdor de text",
+        "activeNowLabel": "Actiu ara",
+        "hashWarning": "Proveïdor <code>hash</code>: vectors deterministes de 64 dimensions per a demo i tests. No fa similitud visual real — instal·la el proveïdor local amb <code>npm run embeddings:install</code> a catalog-scraper i posa <code>CATALOG_IMAGE_EMBEDDING_PROVIDER=local</code>.",
+        "reindexSuccessTitle": "Reindexat encuat",
+        "reindexSuccessBody": "Job {jobId}",
+        "reindexErrorTitle": "No s'ha pogut llançar el reindexat"
+      },
+      "matching": {
+        "title": "Llindars de matching i dedup",
+        "description": "No es publica res per sota del score mínim: preferim no retornar resultat a retornar-ne un dubtós.",
+        "minImageScoreLabel": "Score mínim d'imatge",
+        "perceptualHashLabel": "Distància màx. de hash perceptual",
+        "dedupThresholdLabel": "Llindar de dedup per embedding",
+        "jobsWorkersLabel": "Workers de jobs"
+      },
+      "compliance": {
+        "title": "Límits d'ingesta i compliment",
+        "description": "Els valors per defecte són deliberadament conservadors: és millor trigar més que molestar una botiga.",
+        "robotsBadge": "robots.txt respectat",
+        "rateLimitLabel": "Interval mínim per domini",
+        "concurrencyLabel": "Concurrència global",
+        "timeoutLabel": "Timeout per petició",
+        "retriesLabel": "Reintents",
+        "circuitBreakerLabel": "Llindar del circuit breaker",
+        "circuitBreakerSuffix": "fallades seguides",
+        "userAgentLabel": "User-Agent",
+        "policyTitle": "Política aplicada",
+        "policyBody": "{policy}. A més: <code>Crawl-delay</code> respectat quan la botiga el declara, User-Agent identificable amb contacte, i circuit breaker que deixa d'insistir davant bloquejos sostinguts. Les fonts que requereixen acord de partner o afiliació no s'ingereixen fins a tenir-lo."
+      },
+      "observability": {
+        "title": "Observabilitat i memòria cau",
+        "logsLabel": "Logs",
+        "logsValue": "Buffer circular en memòria (750 esdeveniments) + JSON estructurat a stdout",
+        "healthCacheLabel": "Memòria cau de health de connectors",
+        "healthCacheValue": "10 minuts per font; la comprovació en directe és manual",
+        "metricsLabel": "Mètriques",
+        "metricsValue": "Comptadors en memòria exposats a <code>/stats</code> i <code>/overview</code>",
+        "footnote": "Tot l'estat observable és del procés: en reiniciar el servei es reinicien comptadors i buffer de logs. Per a historial real, recull l'stdout i fes servir el backend Postgres."
+      }
+    }
+  },
+  "overview": {
+    "title": "Resum",
+    "recentActivity": "Activitat recent",
+    "sectionLabel": {
+      "status": "Estat general"
+    },
+    "status": {
+      "updated": "actualitzat {time}",
+      "loading": "carregant…"
+    },
+    "errorState": {
+      "title": "No es pot llegir el servei de catàleg",
+      "description": "{message}. El motor de catàleg corre integrat en aquesta mateixa app: revisa que <code>DATABASE_URL</code> apunti a un Postgres vàlid i que les migracions estiguin aplicades (<code>npm run db:migrate</code>)."
+    },
+    "kpi": {
+      "products": "Productes",
+      "productsHint": "{active} actius · {withImages} amb imatge",
+      "connectors": "Connectors",
+      "connectorsHint": "{syncable} sincronitzables · {paused} pausats",
+      "throughput": "Throughput",
+      "throughputValue": "{perMinute}/min",
+      "throughputHint": "{products} productes nous en {minutes} min",
+      "errorRate": "Taxa d'error",
+      "errorRateHint": "fetches fallits sobre intents, en els jobs recents"
+    },
+    "degraded": {
+      "title": "Persistència en mode degradat",
+      "body": "El servei fa servir el store en fitxer perquè no hi ha una <code>DATABASE_URL</code> Postgres vàlida. Tot funciona, però sense pgvector la cerca vectorial es fa en memòria i no escala."
+    },
+    "embeddings": {
+      "title": "Embeddings",
+      "indexedOf": "{indexed} de {total} productes indexats",
+      "dimensions": "{count} dimensions",
+      "coverageLabel": "Cobertura d'embeddings",
+      "hashNote": "Proveïdor <code>hash</code>: vectors deterministes de 64 dimensions, vàlids per a demo i tests però no per a similitud visual real. Instal·la el proveïdor local (CLIP) i reindexa per a producció."
+    },
+    "queue": {
+      "title": "Cua d'ingesta",
+      "viewAll": "Veure tots",
+      "noJobsYet": "Encara no s'ha executat cap job.",
+      "progressLine": "{new} nous · {updated} act. · {duplicates} dup · {errors} err",
+      "emptyTitle": "Sense jobs encara",
+      "emptyDescription": "Llança un sync des de Connectors per omplir el catàleg.",
+      "goToConnectors": "Vés a connectors →"
+    },
+    "registry": {
+      "title": "Maduresa del registre de fonts",
+      "lastSync": "Últim sync"
+    },
+    "logs": {
+      "viewAll": "Veure logs",
+      "emptyTitle": "Sense activitat registrada",
+      "emptyDescription": "El buffer de logs s'omple quan el servei comença a treballar."
+    },
+    "misc": {
+      "duplicatesDetected": "Duplicats detectats",
+      "externalOrigin": "Origen extern",
+      "serviceUptime": "Uptime del servei"
+    }
+  },
+  "logs": {
+    "title": "Registre d'esdeveniments",
+    "level": {
+      "error": "Error",
+      "warn": "Avís",
+      "info": "Info",
+      "debug": "Debug"
+    },
+    "ariaLabels": {
+      "logType": "Tipus de log",
+      "minLevel": "Nivell mínim",
+      "source": "Font",
+      "refresh": "Refresca"
+    },
+    "views": {
+      "ingest": "Ingesta",
+      "process": "Procés"
+    },
+    "status": {
+      "aiExtractor": "Extractor IA",
+      "disabled": "desactivat",
+      "aiDetailFallback": "només com a fallback · memòria cau {cache}",
+      "cachePersistent": "persistent",
+      "cacheInMemory": "en memòria",
+      "browser": "Navegador",
+      "connected": "connectat",
+      "available": "disponible",
+      "browserDetail": "{contexts} contextos · {pages} pàgines obertes",
+      "catalog": "Catàleg",
+      "productionPersistence": "persistència de producció",
+      "fileStoreWarning": "store de fitxer: NO és persistència de producció",
+      "respected": "respectat",
+      "rateLimitDetail": "{delay} ms entre peticions · {concurrency} en paral·lel",
+      "circuitBreakersOpen": "Circuit breakers oberts",
+      "subsystemWarnings": "Avisos del subsistema"
+    },
+    "about": {
+      "title": "Sobre aquests logs",
+      "defaultRetention": "Buffer circular en memòria del servei.",
+      "minLevelLabel": "Nivell mínim emès:",
+      "configuredVia": "(es configura amb",
+      "stdoutNote": "). Per a retenció real, recull l'stdout del servei amb la teva plataforma de logs."
+    },
+    "filters": {
+      "all": "Tot",
+      "infoPlus": "Info+",
+      "warnPlus": "Avisos+",
+      "errors": "Errors",
+      "searchPlaceholder": "Filtra per missatge o context…",
+      "sourceLabel": "Font",
+      "allSources": "Totes les fonts"
+    },
+    "actions": {
+      "pauseStream": "Pausa el stream"
+    },
+    "table": {
+      "eventsCount": "{count} esdeveniments · més recents primer",
+      "live": "en directe"
+    },
+    "empty": {
+      "errorTitle": "No s'han pogut llegir els logs",
+      "noEventsTitle": "Sense esdeveniments amb aquests filtres",
+      "noEventsDescription": "El buffer només conté el que ha passat des de l'últim arrencada del servei. Llança un sync per generar activitat."
+    },
+    "console": {
+      "filterPlaceholder": "Filtra per missatge o URL…",
+      "levelAriaLabel": "Nivell mínim",
+      "levels": {
+        "all": "Tot",
+        "debug": "Debug+",
+        "info": "Info+",
+        "success": "OK+",
+        "warn": "Avisos+",
+        "error": "Errors"
+      },
+      "stageAriaLabel": "Etapa",
+      "allStages": "Totes les etapes",
+      "sourceAriaLabel": "Font",
+      "allSources": "Totes les fonts",
+      "copyAriaLabel": "Copia els logs",
+      "downloadAriaLabel": "Descarrega els logs",
+      "reloadAriaLabel": "Recarrega",
+      "copyError": "el navegador no ha permès copiar al porta-retalls",
+      "lineCount": "{count, plural, one{# línia} other{# línies}}",
+      "errorCount": "{count, plural, one{# error} other{# errors}}",
+      "warnCount": "{count, plural, one{# avís} other{# avisos}}",
+      "aiCost": "IA ≈ {cost}",
+      "autoScroll": "auto-scroll",
+      "status": {
+        "streaming": "streaming",
+        "polling": "polling {seconds}s",
+        "connecting": "connectant…",
+        "paused": "pausat",
+        "memoryAndDb": "memòria + BD",
+        "memoryOnly": "només memòria"
+      },
+      "readErrorTitle": "No s'han pogut llegir els logs",
+      "emptyTitle": "Sense activitat amb aquests filtres",
+      "emptyDescription": "Llança un sync des de Connectors per veure el pipeline etapa per etapa.",
+      "detail": {
+        "closeAriaLabel": "Tanca el detall",
+        "moment": "Moment",
+        "duration": "Durada",
+        "job": "Job",
+        "product": "Producte",
+        "retry": "Reintent",
+        "url": "URL",
+        "metadata": "Metadata"
+      },
+      "transportNote": {
+        "title": "Abast d'aquests logs",
+        "persistentBody": "Els esdeveniments es persisteixen a la base de dades: la consola mostra també l'historial de jobs anteriors. El streaming SSE només lliura els esdeveniments d'<strong>aquesta invocació</strong>; la resta arriba pel polling.",
+        "ephemeralBody": "No hi ha base de dades configurada, així que els logs viuen <strong>només en memòria</strong> i es perden en reiniciar el procés. Configura <code>DATABASE_URL</code> (cadena <code>postgres://</code>) i executa <code>npm run db:migrate</code> per tenir historial."
+      }
+    }
+  },
+  "admin": {
+    "shell": {
+      "operationsLabel": "Operacions",
+      "sectionsNav": "Seccions de l'admin",
+      "closeNav": "Tanca la navegació",
+      "openNav": "Obre la navegació",
+      "backToProduct": "Torna al producte",
+      "nav": {
+        "overview": "Resum",
+        "connectors": "Connectors",
+        "jobs": "Jobs",
+        "catalog": "Catàleg",
+        "logs": "Monitoratge",
+        "settings": "Ajustos"
+      },
+      "servicePill": {
+        "unavailable": "Servei no disponible",
+        "checking": "comprovant…",
+        "postgres": "Postgres + pgvector",
+        "fileStore": "Store en fitxer",
+        "productsSummary": "{count} productes · {provider} {dimension}d"
+      }
+    },
+    "overview": {
+      "title": "Resum d'operacions",
+      "description": "Estat del catàleg, connectors, cua d'ingesta i activitat recent"
+    },
+    "connectors": {
+      "title": "Connectors de catàleg",
+      "description": "Registre de fonts de moda amb la seva maduresa d'implementació i el seu estat operatiu real"
+    },
+    "settings": {
+      "title": "Ajustos del servei",
+      "description": "Configuració efectiva de claus, emmagatzematge, embeddings, matching i compliment"
+    },
+    "catalog": {
+      "title": "Explorador de catàleg",
+      "description": "Productes normalitzats, estat d'índexs i cerca per text o imatge"
+    },
+    "logs": {
+      "title": "Monitoratge",
+      "description": "Esdeveniments del servei de catàleg amb filtres per nivell, font i text"
+    },
+    "jobs": {
+      "title": "Jobs d'ingesta",
+      "description": "Progrés, errors i reintent des de checkpoint de cada job del servei"
+    }
+  },
+  "publicCatalog": {
+    "meta": {
+      "title": "Catàleg",
+      "description": "Catàleg intern d'elements detectats en analitzar vídeos: peces de roba, accessoris i objectes comprables, amb les seves coincidències de producte."
+    },
+    "page": {
+      "heading": "Catàleg d'elements detectats",
+      "description": "Tot el que l'anàlisi ha detectat als teus vídeos i imatges. Filtra, revisa i cerca productes coincidents.",
+      "openScraper": "Obre l'scraper",
+      "ingestedCatalog": "Catàleg ingerit"
+    },
+    "empty": {
+      "filtered": "Cap element coincideix amb els filtres. Prova d'ajustar-los o netejar-los.",
+      "noItems": "El teu catàleg és buit. Posa en pausa un vídeo a {appName} per començar a detectar elements.",
+      "cta": "Vés a analitzar un vídeo"
+    },
+    "errors": {
+      "network": "Error de xarxa."
+    },
+    "filters": {
+      "searchPlaceholder": "Cerca per nom, descripció, estil…",
+      "typeAriaLabel": "Tipus",
+      "allTypes": "Tots els tipus",
+      "statusAriaLabel": "Estat",
+      "anyStatus": "Qualsevol estat",
+      "originAriaLabel": "Origen",
+      "anyOrigin": "Qualsevol origen",
+      "categoryPlaceholder": "Categoria",
+      "colorPlaceholder": "Color",
+      "itemCount": "{count, plural, one{# element} other{# elements}}",
+      "localSaveTitle": "La base de dades no està disponible: els elements i les seves imatges es conserven durant aquesta sessió i se sincronitzaran quan torni la connexió.",
+      "localSaveBadge": "Desat en aquesta sessió · sincronització pendent",
+      "videoBadge": "vídeo: {id}…",
+      "clearFilters": "Neteja els filtres"
+    },
+    "sourceTypes": {
+      "youtube": "YouTube",
+      "dailymotion": "Dailymotion",
+      "vimeo": "Vimeo",
+      "directMp4": "MP4 directe",
+      "hls": "HLS / Stream",
+      "uploaded": "Vídeo local",
+      "imageUpload": "Imatge pujada",
+      "screenCapture": "Captura de pantalla"
+    },
+    "itemTypes": {
+      "clothing": "Roba",
+      "footwear": "Calçat",
+      "accessory": "Accessori",
+      "electronics": "Electrònica",
+      "home": "Llar",
+      "beauty": "Bellesa",
+      "other": "Altres"
+    },
+    "itemStatus": {
+      "detected": "Detectat",
+      "reviewed": "Revisat",
+      "matched": "Amb productes",
+      "ignored": "Ignorat"
+    },
+    "matchType": {
+      "exact": "Coincidència exacta",
+      "nearExact": "Gairebé exacta",
+      "similar": "Similar"
+    },
+    "card": {
+      "viewDetailTitle": "Veure detall i recomanacions",
+      "detectedInVideo": "📸 Detectat al vídeo",
+      "foundProductTitle": "Producte trobat: {title}",
+      "matchPct": "{pct}% de coincidència",
+      "matchScoreTooltip": "Confiança que el resultat web correspon al mateix producte.",
+      "searchingMatches": "Cercant coincidències visuals…",
+      "localOnlyNotice": "Disponible en aquesta sessió · sincronització pendent",
+      "brandPrefix": "marca: {brand}",
+      "viewDetail": "Veure detall",
+      "viewProduct": "Veure producte ↗",
+      "markReviewed": "Marca com a revisat",
+      "ignore": "Ignora",
+      "reactivate": "Reactiva",
+      "originImage": "🖼️ imatge pujada",
+      "originScreen": "🖥️ captura de pantalla"
+    },
+    "drawer": {
+      "ariaLabel": "Detall de l'element",
+      "title": "Detall de l'element",
+      "loading": "Carregant…",
+      "selectItem": "Selecciona un element.",
+      "sectionDetected": "📸 Detectat al vídeo",
+      "noCaptureYet": "Encara no hi ha captura d'aquest objecte — es genera amb el matching visual.",
+      "seenCount": "vist ×{count}",
+      "specs": {
+        "moment": "Moment del vídeo",
+        "subcategory": "Subcategoria",
+        "color": "Color",
+        "otherColors": "Altres colors",
+        "style": "Estil",
+        "pattern": "Patró",
+        "materialGuess": "Material (estimat)",
+        "genderFit": "Ajust / gènere",
+        "visibleBrand": "Marca visible"
+      },
+      "viewOriginalFrame": "Veure frame original de l'escena",
+      "originalFrameAlt": "Frame d'origen de {name}",
+      "sectionBestMatch": "🛒 Producte trobat a Internet",
+      "searchingBestMatch": "Cercant coincidències visuals…",
+      "noReliableMatch": "Encara no hi ha cap coincidència fiable. Prova «Cerca productes».",
+      "searchProducts": "🔎 Cerca productes",
+      "searching": "Cercant…",
+      "markReviewed": "Marca com a revisat",
+      "ignore": "Ignora",
+      "reactivate": "Reactiva",
+      "alternativesTitle": "Alternatives ({count})",
+      "searchingProducts": "Cercant productes…",
+      "noMoreResults": "No hi ha més resultats.",
+      "auditTitle": "🔍 Auditoria tècnica",
+      "audit": {
+        "detectedImage": "Imatge detectada",
+        "localCrop": "crop local (sessió) — storage pendent",
+        "storedCrop": "crop en storage",
+        "noCrop": "sense crop",
+        "originFrame": "Frame d'origen",
+        "saved": "desat",
+        "notSaved": "no desat",
+        "matchProvider": "Proveïdor del match",
+        "matchScore": "Score del match",
+        "candidateCount": "Nre. de candidats",
+        "detectionCount": "Deteccions acumulades",
+        "createdAt": "Creat",
+        "updatedAt": "Actualitzat",
+        "searchQuery": "Query de cerca",
+        "marketplaceKeywords": "Paraules clau de marketplace"
+      },
+      "bestMatch": {
+        "matchScoreTooltip": "Confiança que el resultat web correspon al mateix producte.",
+        "matchPct": "{pct}% de coincidència",
+        "viewProduct": "Veure producte ↗"
+      },
+      "recommendation": {
+        "affinityPct": "{pct}% d'afinitat"
+      }
+    }
+  },
+  "demo": {
+    "page": {
+      "title": "Demo de vídeo complet",
+      "description": "Anàlisi asíncrona d'un vídeo pujat: job amb checkpoint, detecció d'escenes, tracking i deduplicació global de productes.",
+      "goToStudio": "Vés a l'estudi interactiu →"
+    },
+    "upload": {
+      "title": "Puja un vídeo (màx. {seconds}s)",
+      "description": "El navegador extreu els frames; el servidor manté un job asíncron amb checkpoint, escenes, tracking i deduplicació global. Les cerques cares es paguen una sola vegada per producte únic.",
+      "notVideoError": "L'arxiu ha de ser un vídeo (mp4, webm…).",
+      "durationError": "El vídeo dura {seconds}s; el màxim de la demo és {maxSeconds}s."
+    },
+    "matchingMode": {
+      "title": "Mode de matching",
+      "catalogOnly": {
+        "label": "Només catàleg",
+        "hint": "sense cerques externes"
+      },
+      "catalogFirst": {
+        "label": "Catàleg primer",
+        "hint": "extern només si no resol"
+      },
+      "externalOnly": {
+        "label": "Només cerca externa",
+        "hint": "pipeline Lens clàssic"
+      },
+      "hybrid": {
+        "label": "Híbrid",
+        "hint": "tots dos, rànquing comú"
+      }
+    },
+    "actions": {
+      "analyze": "Analitza el vídeo",
+      "analyzing": "Analitzant…",
+      "cancel": "Cancel·la",
+      "boundingBoxes": "Bounding boxes"
+    },
+    "errors": {
+      "createJobFailed": "No s'ha pogut crear el job.",
+      "frameBatchFailed": "Error en processar el lot de frames.",
+      "finalizeFailed": "Error en finalitzar el job.",
+      "unknown": "Error desconegut."
+    },
+    "job": {
+      "title": "Job d'anàlisi",
+      "idLabel": "id: {jobId}",
+      "stats": {
+        "framesReceived": "Frames rebuts",
+        "framesAnalyzed": "Frames analitzats",
+        "scenes": "Escenes",
+        "tracks": "Tracks",
+        "uniqueProducts": "Productes únics",
+        "externalSearches": "Cerques externes"
+      }
+    },
+    "savings": {
+      "title": "Trucades cares evitades",
+      "framesDedup": "Frames deduplicats (hash)",
+      "tracksMerged": "Tracks fusionats",
+      "cacheHits": "Cache hits",
+      "catalogHits": "Catàleg hits"
+    },
+    "timings": {
+      "title": "Temps per etapa",
+      "hashScenes": "Hash/escenes",
+      "detection": "Detecció",
+      "tracking": "Tracking",
+      "globalDedup": "Dedup global",
+      "matching": "Matching",
+      "total": "Total"
+    },
+    "status": {
+      "notStarted": "sense iniciar",
+      "creatingJob": "creant job…",
+      "scanningFrames": "extraient frames…",
+      "matchingProducts": "matching per producte…"
+    },
+    "products": {
+      "title": "Productes únics ({count})",
+      "tracksMerged": "{count} tracks fusionats",
+      "scoreLine": "score {score} · font {source} ({provider})",
+      "matchingSkipped": "matching omès: {reason}",
+      "noProductsDetected": "No s'ha detectat cap producte en les categories seleccionades.",
+      "segmentTooltip": "{start} – {end}"
+    },
+    "check": {
+      "title": "Preflight de la demo",
+      "description": "Comprova serveis externs, base de dades i permisos del navegador abans de començar. No mostra claus.",
+      "back": "← Torna",
+      "runButton": "Executa la comprovació completa",
+      "running": "Comprovant…",
+      "runError": "No s'ha pogut executar la comprovació (timeout o servidor caigut).",
+      "overall": {
+        "ok": "Tot a punt per a la demo.",
+        "warning": "La demo es pot fer, però hi ha avisos: revisa les accions recomanades.",
+        "error": "Hi ha errors que afecten la demo: resol-los o fes servir el pla B del runbook."
+      },
+      "emptyHint": "Prem el botó per llançar totes les comprovacions.",
+      "status": {
+        "ok": "OK",
+        "warning": "Avís",
+        "error": "Error"
+      },
+      "browserChecks": {
+        "displayMedia": {
+          "label": "Captura de pestanya (getDisplayMedia)",
+          "okDetail": "El navegador admet la captura de pestanya per a YouTube.",
+          "errorDetail": "Aquest navegador no admet getDisplayMedia: el flux de YouTube no funcionarà.",
+          "action": "Fes servir Chrome/Edge d'escriptori."
+        },
+        "clipboard": {
+          "label": "Porta-retalls (enganxar imatge)",
+          "okDetail": "Enganxar amb Ctrl+V disponible.",
+          "warningDetail": "API del porta-retalls limitada; fes servir arrossegar i deixar anar."
+        }
+      }
+    }
+  }
+}

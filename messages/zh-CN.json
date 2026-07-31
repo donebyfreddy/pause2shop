@@ -1,0 +1,1467 @@
+{
+  "common": {
+    "loading": "加载中…",
+    "error": "错误",
+    "retry": "重试",
+    "cancel": "取消",
+    "save": "保存",
+    "close": "关闭",
+    "search": "搜索",
+    "noResults": "没有结果",
+    "comingSoon": "即将上线",
+    "seeMore": "查看更多",
+    "seeLess": "收起",
+    "page": "第 {page} 页，共 {totalPages} 页"
+  },
+  "navigation": {
+    "studio": "工作台",
+    "catalog": "商品库",
+    "demoVideo": "演示视频",
+    "admin": "管理后台",
+    "openMenu": "打开菜单",
+    "closeMenu": "关闭菜单",
+    "mainNav": "主导航",
+    "mobileNav": "移动端导航"
+  },
+  "actions": {
+    "tryNow": "立即试用",
+    "viewCatalogPanel": "商品库运营面板",
+    "analyzeVideo": "分析视频",
+    "analyzeImage": "分析图片",
+    "upload": "上传",
+    "export": "导出",
+    "sync": "同步",
+    "pause": "暂停",
+    "resume": "恢复",
+    "viewDetails": "查看详情",
+    "viewCatalog": "查看商品库",
+    "viewDemo": "查看演示",
+    "activate": "启用",
+    "deactivate": "停用",
+    "cancelJob": "取消",
+    "retryJob": "重试",
+    "reindex": "重建嵌入索引"
+  },
+  "languageSelector": {
+    "trigger": "语言：{language}",
+    "searchPlaceholder": "搜索语言…",
+    "noMatches": "没有匹配项",
+    "currentLanguage": "当前语言：{language}",
+    "listLabel": "语言选择器"
+  },
+  "toast": {
+    "dismiss": "关闭提示",
+    "catalog": {
+      "searchFailed": "搜索失败",
+      "noResultsAboveThreshold": "没有超过阈值的结果",
+      "imageSearchFailed": "图片搜索失败",
+      "notAnImage": "该文件不是图片",
+      "productDeactivated": "商品已停用",
+      "productActivated": "商品已启用",
+      "statusChangeFailed": "状态修改失败",
+      "matchesFound": "{count, plural, one{# 个匹配结果} other{# 个匹配结果}}",
+      "matchCascadeDescription": "级联匹配：精确哈希 → 感知哈希 → 视觉嵌入"
+    },
+    "jobs": {
+      "cancelFailed": "取消失败",
+      "retryFailed": "重试失败",
+      "actionSucceeded": "{action} 成功",
+      "cancelRequested": "已请求取消",
+      "retryQueued": "重试已加入队列",
+      "retryQueuedDetail": "新任务 {jobId} — 从检查点恢复",
+      "reindexFailed": "无法启动重建索引",
+      "reindexQueued": "嵌入重建索引已加入队列",
+      "reindexQueuedDetail": "任务 {jobId}"
+    },
+    "connectors": {
+      "actionFailed": "无法{action}",
+      "paused": "{id} 已暂停",
+      "resumed": "{id} 已恢复",
+      "syncFailed": "无法启动同步"
+    }
+  },
+  "errors": {
+    "generic": "发生了一个错误",
+    "network": "网络错误，请检查你的连接。",
+    "unauthorized": "未授权",
+    "notFound": "未找到",
+    "validation": {
+      "required": "此字段为必填项"
+    },
+    "upload": {
+      "tooLarge": "文件过大",
+      "unsupportedFormat": "格式不支持"
+    }
+  },
+  "landing": {
+    "hero": {
+      "badge": "视频中的实时视觉商品检测",
+      "title": "暂停视频。",
+      "subtitle": "找到商品。",
+      "description": "Pause2Shop 分析视频与图片，检测每一件服装、鞋履或配饰，并与自有时尚商品库及反向视觉搜索进行匹配。每个结果都附带来源和置信度。",
+      "ctaPrimary": "立即试用",
+      "ctaSecondary": "查看商品库",
+      "ctaTertiary": "查看演示"
+    },
+    "howItWorks": {
+      "title": "工作原理",
+      "step1": {
+        "title": "暂停",
+        "description": "在准确的瞬间暂停视频。"
+      },
+      "step2": {
+        "title": "检测",
+        "description": "AI 定位画面中出现的商品。"
+      },
+      "step3": {
+        "title": "找到",
+        "description": "与商品库匹配并进行反向视觉搜索。"
+      },
+      "heading": "从一帧画面到可购买商品，五个步骤",
+      "description": "完整流水线按每个检测到的对象执行,每个阶段都有调用预算和缓存。",
+      "steps": {
+        "capture": {
+          "title": "帧捕获",
+          "body": "从视频（上传、YouTube 或屏幕录制）中按帧率和场景变化检测提取候选帧。几乎相同的帧会被感知哈希过滤掉，不会触发检测。",
+          "meta": "rVFC · 场景差异检测 · 感知哈希"
+        },
+        "detect": {
+          "title": "多模态检测",
+          "body": "视觉模型为每个对象定位边界框、类别、颜色以及与人物的关系（穿戴、手持、背景）。只分析你选定的类别。",
+          "meta": "边界框 · 关系 · 置信度"
+        },
+        "dedupe": {
+          "title": "追踪与去重",
+          "body": "对象在多帧之间保持身份标识并进行全局融合：同一件反复出现十次的夹克会被识别为同一商品，并选出最佳截图。",
+          "meta": "trackId · NMS · 最佳截图"
+        },
+        "match": {
+          "title": "与商品库匹配",
+          "body": "每个截图先按级联方式在自有商品库中搜索：精确哈希 → 感知哈希 → 视觉嵌入。如果没有足够可靠的匹配，则转向反向视觉搜索。",
+          "meta": "商品库优先 · pgvector · CLIP"
+        },
+        "result": {
+          "title": "带来源的结果",
+          "body": "每个结果都附带得分、解决匹配的阶段以及来源（商品库或外部提供方）。低于配置置信度阈值的结果不会被发布。",
+          "meta": "得分 · 匹配阶段 · 来源"
+        }
+      }
+    },
+    "useCases": {
+      "title": "应用场景",
+      "heading": "为视频商品库而生,而不是一张孤立的照片",
+      "primary": {
+        "title": "VOD 与点播视频",
+        "body": "把视频商品库转化为商品清单。系统分析整段视频，对反复出现的对象去重，并给出每个商品出现的时间戳。",
+        "point1": "每个任务最多支持 2 分钟视频（可配置）",
+        "point2": "每个商品都有对应的时间戳和来源帧",
+        "point3": "按视频计算的调用预算和成本"
+      },
+      "secondary": {
+        "discovery": {
+          "title": "商品发现",
+          "body": "用户在屏幕上看到某个东西，想知道它是什么。一张图片就足以启动搜索。"
+        },
+        "catalogMatch": {
+          "title": "商品库匹配",
+          "body": "在联网搜索之前，先将检测结果与你自己的商品库进行比对：更高的精度，更低的成本。"
+        },
+        "visualShopping": {
+          "title": "视觉购物",
+          "body": "可直接购买的结果，附带价格、库存状态及直达店铺页面的链接。"
+        },
+        "clientDemos": {
+          "title": "客户演示",
+          "body": "演示模式、成本面板与示例数据，不依赖真实凭据即可展示。"
+        }
+      }
+    },
+    "capabilities": {
+      "title": "能力",
+      "heading": "已经可用的一切,附带可直接验证的链接",
+      "verifiableBadge": "可验证的技术演示",
+      "ctaOpenStudio": "打开工作台",
+      "ctaViewInStudio": "在工作台中查看",
+      "features": {
+        "video": {
+          "body": "支持上传视频、YouTube 或屏幕录制，持续分析并在播放器上叠加检测框。"
+        },
+        "image": {
+          "body": "上传一张图片，获取检测到的对象及其截图，可直接用于搜索。"
+        },
+        "connectors": {
+          "title": "商品库连接器",
+          "body": "模块化的时尚货源注册表，状态真实可信：已实现、未验证，或待商务合作确认。",
+          "cta": "查看连接器"
+        },
+        "embeddings": {
+          "title": "视觉嵌入",
+          "body": "本地 CLIP 或用于演示的确定性哈希提供方。更换模型后可在管理后台一键全量重建索引。",
+          "cta": "查看设置",
+          "badge": "CLIP 可选"
+        },
+        "catalog": {
+          "title": "标准化商品库",
+          "body": "统一的商品结构，品牌与类别经过标准化，含历史价格、多层级去重与来源可追溯性。",
+          "cta": "浏览商品库"
+        },
+        "cost": {
+          "title": "成本与预算",
+          "body": "按提供方统计调用次数，设置每个视频的成本上限，并使用缓存避免重复付费搜索。"
+        }
+      },
+      "complianceNote": {
+        "lead": "有规则的采集。",
+        "body": "每次请求前检查 robots.txt，遵守 <code>Crawl-delay</code>，使用带联系方式的可识别 User-Agent，且不做任何反爬规避。要求合作伙伴协议或联盟关系的货源，在获得授权前不会被采集。"
+      }
+    },
+    "cta": {
+      "title": "立即开始",
+      "action": "立即试用",
+      "heading": "用你自己的视频试一试",
+      "description": "选择要查找的类别，调整分析强度，看着匹配结果逐帧出现。无需注册。",
+      "operationsPanel": "运营面板"
+    },
+    "sourceMarquee": {
+      "label": "已接入的货源",
+      "registryLabel": "时尚货源注册表",
+      "totalLabel": "个货源",
+      "verifiedLabel": "已通过测试样例验证",
+      "partnerLabel": "需要合作协议",
+      "footnote": "来自商品库服务连接器注册表的清单。出现在此处仅表示该货源已注册,并标注了其真实的实现与合规状态——<emphasis>不代表存在商业关系或已获得授权</emphasis>。"
+    },
+    "stats": {
+      "productsIndexed": "{count, plural, one{已索引 # 件商品} other{已索引 # 件商品}}",
+      "catalogProducts": "商品库中的商品",
+      "visualEmbeddingCoverage": "已生成视觉嵌入",
+      "detectableCategories": "可检测的类别"
+    },
+    "heroVisual": {
+      "windowStatus": "工作台 · 持续分析 · 00:42",
+      "liveBadge": "实时",
+      "boxes": {
+        "jacket": "亚麻外套",
+        "bag": "购物手袋",
+        "sneaker": "白色运动鞋"
+      },
+      "detectionSummary": "3 个对象 · 1 个人物 · 去重已启用",
+      "matchesTitle": "匹配结果",
+      "matchesSource": "商品库 + Lens",
+      "match1": {
+        "title": "宽松版亚麻外套",
+        "store": "商品库 · Zara"
+      },
+      "match2": {
+        "title": "皮质购物手袋",
+        "store": "商品库 · Mango"
+      },
+      "match3": {
+        "title": "低帮白色运动鞋",
+        "store": "Google Lens"
+      },
+      "latencyLabel": "平均延迟",
+      "latencyValue": "1.4 秒/帧"
+    },
+    "studioSection": {
+      "label": "工作台",
+      "heading": "立即分析一段视频或一张图片",
+      "description": "选择类别和强度，上传内容，实时查看检测与匹配结果。",
+      "openFullscreen": "全屏打开",
+      "loading": "正在加载分析工作台…"
+    },
+    "footer": {
+      "tagline": "暂停视频，找到商品。",
+      "description": "对视频和图片中的商品进行视觉检测，与自有商品库匹配并进行反向视觉搜索。所有结果均来自真实货源：不会捏造品牌、价格或链接。",
+      "product": {
+        "title": "产品",
+        "studio": "分析工作台",
+        "catalog": "已检测商品库",
+        "demo": "演示视频"
+      },
+      "operations": {
+        "title": "运营",
+        "admin": "管理后台",
+        "connectors": "连接器",
+        "jobs": "采集任务",
+        "logs": "监控"
+      },
+      "copyright": "© {year} {appName}。技术演示。",
+      "complianceNote": "商品库采集遵守 robots.txt，按域名限速，不做任何反爬规避。"
+    }
+  },
+  "studio": {
+    "page": {
+      "title": "分析工作台",
+      "description": "检测视频或图片中的商品，并在商品库中找到它们。开始前请配置要搜索的类别及分析强度。"
+    },
+    "demoBadge": "演示模式",
+    "technicalPanel": "技术面板（消耗与调用）",
+    "selectFile": "选择文件",
+    "analysisType": {
+      "label": "分析类型",
+      "video": "分析视频",
+      "image": "分析图片"
+    },
+    "urlInput": {
+      "placeholder": "https://www.youtube.com/watch?v=...",
+      "label": "视频链接",
+      "submit": "加载视频",
+      "invalidUrl": "该链接似乎无效。请粘贴 YouTube 链接（watch、youtu.be 或 shorts 格式）。"
+    },
+    "liveStats": {
+      "peopleDetected": "{count, plural, one{<value>#</value> 个人} other{<value>#</value> 个人}}",
+      "tracking": "{count, plural, one{<value>#</value> 个正在追踪} other{<value>#</value> 个正在追踪}}",
+      "uniqueProducts": "{count, plural, one{<value>#</value> 件独立商品} other{<value>#</value> 件独立商品}}",
+      "withMatch": "有匹配结果"
+    },
+    "product": {
+      "fallbackTitle": "对象",
+      "brand": "品牌：{brand}",
+      "seenCount": "出现 {count, plural, one{# 次} other{# 次}}",
+      "imageAlt": "图片"
+    },
+    "loading": {
+      "processing": "正在分析内容"
+    },
+    "cost": {
+      "title": "成本",
+      "heading": "AI 消耗与成本",
+      "demoMode": "演示模式",
+      "real": "真实",
+      "totalCost": "总成本",
+      "apiCalls": "API 调用",
+      "cacheHits": "缓存命中",
+      "itemsDetected": "已检测项目",
+      "openaiVision": "OpenAI Vision",
+      "aiSuggestions": "AI 建议",
+      "reverseSearch": "反向搜索（Lens）",
+      "shopping": "购物搜索",
+      "callsCount": "{count, plural, one{# 次调用} other{# 次调用}}",
+      "fallbacksUsed": "回退次数：{count}",
+      "mockCallsNote": "{count, plural, one{# 次演示模式调用（无成本）} other{# 次演示模式调用（无成本）}}"
+    },
+    "overlayDetail": {
+      "subtitle": "{category} · {color} · {confidence}% 置信度",
+      "matchesTitle": "找到的匹配结果",
+      "searchingMatches": "正在为该对象搜索视觉匹配结果…"
+    },
+    "history": {
+      "title": "已分析的帧",
+      "clear": "清空",
+      "frameAlt": "已分析的帧",
+      "itemCount": "{count, plural, one{# 个对象} other{# 个对象}}",
+      "locatedCount": "{count, plural, one{定位到 # 个对象} other{定位到 # 个对象}}"
+    },
+    "videoAnalyzer": {
+      "phase": {
+        "idle": "未激活",
+        "requestingPermission": "正在请求权限…",
+        "captureActive": "捕获中",
+        "capturingFrame": "正在捕获帧…",
+        "analyzingFrame": "正在分析帧…",
+        "waitingNextInterval": "等待下一个间隔",
+        "skippedSimilarFrame": "已跳过帧（场景相似）",
+        "skippedBusy": "已跳过帧（分析进行中）",
+        "error": "错误",
+        "stopped": "已停止"
+      },
+      "tabs": {
+        "pasteLink": "🔗 粘贴链接",
+        "uploadVideo": "📁 上传视频"
+      },
+      "uploadedVideoDefaultName": "视频",
+      "uploadedReadyNote": "视频已准备好 · 播放时将自动开始分析。",
+      "providerDetectedLabel": "检测到的提供方：",
+      "embedCompatible": "支持嵌入",
+      "notEmbeddable": "不支持嵌入",
+      "requiresScreenShare": "· 需要屏幕共享",
+      "changeVideo": "更换视频",
+      "changeUrl": "更换链接",
+      "youtubeWarning": {
+        "title": "YouTube 需要屏幕捕获",
+        "body": "由于跨域限制，浏览器无法直接读取 iframe 中的帧。要进行分析：",
+        "step1": "点击下方的<b>启用屏幕捕获</b>",
+        "step2": "选择<b>此标签页</b>（而非整个屏幕）",
+        "step3": "启用自动捕获并播放视频",
+        "footer": "如果想避免共享屏幕，可在<b>上传视频</b>标签页上传 MP4 文件。"
+      },
+      "pauseHintNoCapture": "你已暂停视频，但标签页捕获尚未启用。点击「启用屏幕捕获」以便进行分析。",
+      "crossOriginWarning": "<b>{provider}</b> 不允许直接读取帧（跨域限制）。请启用屏幕捕获并选择<b>此标签页</b>。",
+      "directCaptureActive": "直接捕获已启用。",
+      "directCaptureDefaultReason": "分析此视频无需共享屏幕。",
+      "unknownProviderHint": "请切换到<b>上传视频</b>标签页，或使用 .mp4/.m3u8 直链。",
+      "urlPanel": {
+        "title": "粘贴一个视频链接",
+        "subtitle": "YouTube · Dailymotion · Vimeo · .mp4 / .m3u8 直链"
+      },
+      "upload": {
+        "dropHint": "将视频拖放到此处",
+        "uploadHint": "上传一段视频以自动分析其中的商品。",
+        "formatsHint": "MP4、WebM 或 MOV（若浏览器支持播放）· 拖拽或选择文件"
+      },
+      "status": {
+        "lastFrame": "上一帧：{seconds} 秒前",
+        "intervalLabel": "间隔：{seconds} 秒",
+        "captured": "已捕获：",
+        "analyzed": "已分析：",
+        "skipped": "已跳过："
+      },
+      "stopAnalysis": "⏹ 停止分析",
+      "resumeAnalysis": "▶ 恢复分析",
+      "detectingObjectsInline": "正在检测对象…",
+      "analyzingRealtime": "正在实时分析视频 · 场景变化时触发检测",
+      "analysisPaused": "分析已暂停",
+      "technicalOptions": "技术选项",
+      "analyzeOnPause": "暂停时分析",
+      "forceAnalyzeFrame": "强制分析此帧",
+      "autoCapture": "自动捕获",
+      "autoCaptureInterval": "每 {seconds} 秒",
+      "activateScreenCapture": "启用屏幕捕获",
+      "stopCapture": "停止捕获",
+      "analyzeScreenshot": "分析截图",
+      "tooltipActivateFirst": "请先启用屏幕捕获",
+      "tooltipAlreadyAnalyzing": "已有一个分析在进行中",
+      "realtimeIndicator": "正在实时分析商品",
+      "frameCounter": "第 {count} 帧",
+      "fpsSuffix": "· {fps} fps",
+      "statsPersons": "{count, plural, one{# 个人} other{# 个人}}",
+      "statsTracked": "{count, plural, one{# 件追踪中商品} other{# 件追踪中商品}}",
+      "statsUnique": "{count, plural, one{# 件独立} other{# 件独立}}",
+      "statsMatched": "{count, plural, one{# 件已识别} other{# 件已识别}}",
+      "intervalOnlyNewFrames": "每 {seconds} 秒捕获一次 · 仅新帧",
+      "currentPosition": "当前位置：{timestamp}",
+      "debugTitle": "捕获调试",
+      "debugNoEvents": "暂无事件。",
+      "debugFramesSummary": "帧数：{frameCount} · 已分析：{analyzedCount} · 已跳过：{skippedCount}",
+      "debugClear": "清空",
+      "loadingPlayer": "正在加载播放器…",
+      "detectingObjectsOverlay": "正在检测对象…",
+      "analyzeFrameNow": "立即分析此帧",
+      "captureHint": {
+        "idle": "捕获未启用",
+        "active": "捕获中",
+        "denied": "权限被拒绝",
+        "needsSelection": "请选择此标签页或窗口",
+        "error": "捕获出错"
+      },
+      "youtubeCaptureRequired": "要分析 YouTube 视频，需要屏幕捕获权限。这是必要的，因为 YouTube 不允许直接从 iframe 中读取帧。启用时，请选择<b>此标签页或窗口</b>。",
+      "analyzingFrameOverlay": "正在分析帧…"
+    },
+    "localVideo": {
+      "uploadHint": "上传一段视频（.mp4、.mov、.webm）",
+      "uploadSubHint": "适合快速测试——无需屏幕捕获",
+      "defaultTitle": "本地视频"
+    },
+    "imageAnalyzer": {
+      "unsupportedFormat": "不支持的格式：{format}。请使用 JPG、PNG 或 WebP。",
+      "unknownFormat": "未知",
+      "emptyFile": "文件为空。",
+      "tooLarge": "图片超过 {maxMb} MB 的限制。",
+      "readError": "无法读取该图片。",
+      "dropHere": "将图片拖放到此处",
+      "uploadPrompt": "上传、拖拽或粘贴一张图片",
+      "pasteHint": "JPG、PNG、WebP — 最大 {maxMb} MB · <kbd>Ctrl+V</kbd> 粘贴",
+      "analyzingOverlay": "正在分析图片…",
+      "analyzedBadge": "已分析 ✓",
+      "analyzingLabel": "正在分析…",
+      "analyzeAnother": "分析另一张图片",
+      "changeImage": "更换图片",
+      "fileInfo": "{sizeKb} KB · 已上传图片",
+      "previewAlt": "预览"
+    },
+    "configSelector": {
+      "title": "你想找什么？",
+      "subtitle": "只会分析已选择的类别：其余类别不消耗 AI 或搜索资源。",
+      "activeCount": "{count, plural, one{# 个已启用} other{# 个已启用}}",
+      "intensity": {
+        "fast": {
+          "label": "快速",
+          "hint": "更少的处理轮次 · 适合快速测试"
+        },
+        "standard": {
+          "label": "标准",
+          "hint": "精度与成本的平衡"
+        },
+        "exhaustive": {
+          "label": "详尽",
+          "hint": "最高精度 · 适合短视频"
+        }
+      },
+      "intensityLabel": "分析强度",
+      "personCentricNote": "以人物为中心的模式：只分析人物穿着或手持的服装及配饰，忽略场景背景。"
+    },
+    "loadingAnalysis": {
+      "ariaLabel": "正在分析帧",
+      "heading": "正在分析帧…",
+      "stages": {
+        "capture": "正在捕获帧",
+        "detect": "正在检测对象",
+        "crop": "正在裁剪并去重",
+        "search": "正在搜索匹配结果"
+      }
+    },
+    "productCard": {
+      "detectionTooltip": "该对象及其属性在视频中被正确识别的置信度。",
+      "detectionPct": "{pct}% 检测置信度",
+      "matchTooltip": "该网络结果对应同一商品的置信度。",
+      "matchPct": "{pct}% 匹配度",
+      "matchLabel": {
+        "exact": "精确商品",
+        "nearExact": "几乎一致",
+        "similar": "相似"
+      },
+      "evidenceTitle": "匹配依据",
+      "sourcesTitle": "搜索来源",
+      "internalScore": "内部得分：{score} 分 · 引擎：{source}",
+      "debugTitle": "匹配调试信息",
+      "debugReverseSearch": "反向图片搜索：是（已发送截图，先进行纯视觉搜索）",
+      "debugProvider": "提供方：{provider}",
+      "debugFallback": "是否使用回退：{value}",
+      "debugCacheHit": "缓存命中：{value}",
+      "debugLatency": "延迟：{ms} 毫秒",
+      "debugDetail": "详情：{detail}",
+      "debugDataForSeoNote": "DataForSEO：仅用于价格/店铺信息补充（不用于身份判定）",
+      "yes": "是",
+      "no": "否",
+      "sourceLabel": {
+        "searchapiGoogleLens": "Google Lens",
+        "serpapiGoogleLens": "Google Lens（回退）",
+        "serpapiGoogleShopping": "Google Shopping",
+        "dataforseoGoogleShopping": "Google Shopping（DataForSEO）"
+      },
+      "candidateCount": "{count, plural, one{# 个候选} other{# 个候选}}",
+      "confirmedBySources": "✓ 由 {count} 个来源确认",
+      "waitingBetterFrame": "正在等待更清晰的画面…",
+      "searchingByImage": "正在通过图片搜索（Google Lens）…",
+      "statusMessage": {
+        "noMatch": "没有精确匹配——下方展示视觉上最相似的商品。",
+        "budgetExhausted": "未进行外部搜索（已达到消耗上限）。",
+        "providerError": "视觉搜索当前不可用。"
+      },
+      "evidenceVisibleText": "可见文字：“{text}”",
+      "evidenceLogoDesc": "logo：{description}",
+      "evidenceLogoVisible": "商品上可识别的 logo",
+      "brandEvidenceTitle": "根据证据推断的品牌 — {evidence}",
+      "brandGuess": "≈ {brand}？",
+      "logoVisibleBadge": "可见 logo",
+      "visibleTextLabel": "文字：“{text}”",
+      "logoDescLine": "Logo：{description}",
+      "similarLabel": {
+        "withMatch": "同样相似的商品：",
+        "withoutMatch": "视觉上相似的商品："
+      }
+    },
+    "resultsPanel": {
+      "title": "结果",
+      "subtitle": "检测到的对象及其匹配结果",
+      "reanalyzeTooltip": "忽略缓存，重新分析最后一帧",
+      "reanalyzeAction": "重新分析",
+      "scopeAriaLabel": "结果范围",
+      "thisFrame": "当前帧",
+      "wholeVideo": "整段视频",
+      "demoModeNotice": "演示模式（未配置 <code>OPENAI_API_KEY</code>）：展示逼真的示例数据。",
+      "savedInCatalog": "{count, plural, one{# 项已保存到商品库} other{# 项已保存到商品库}}",
+      "view": "查看",
+      "localSaveNotice": "本次会话已启用本地保存，同步将自动重试。",
+      "sessionSummary": "{count, plural, one{视频中共 # 件独立对象，已在多帧间去重。} other{视频中共 # 件独立对象，已在多帧间去重。}}",
+      "analyzeErrorTitle": "分析失败",
+      "technicalDetails": "技术细节",
+      "detectingMore": "正在检测该场景中的更多对象…",
+      "styleDetectedLabel": "检测到的风格：",
+      "noItemsTitle": "没有明确的可购买对象",
+      "noItemsDescription": "该帧中没有足够清晰的商品。请尝试更近或光线更好的帧。",
+      "readyTitle": "准备就绪",
+      "readyDescription": "播放视频并在感兴趣的瞬间暂停，或上传一张图片。一旦有帧可用，分析即会开始。",
+      "privacyNote": "捕获内容仅用于检测可购买对象。我们不识别人物身份，也不在服务器上存储图片。",
+      "memoryFallbackNote": "（数据库不可用——已保存在本次会话中，将自动重试）",
+      "localSessionNote": "（本地会话）",
+      "memoryNote": "（内存中——配置 <code>DATABASE_URL</code> 以实现持久化）",
+      "groups": {
+        "worn": "穿戴的物品",
+        "heldOrUsed": "手持或使用的物品",
+        "nearPerson": "人物附近",
+        "otherObjects": "场景中的其他对象（{count}）",
+        "lowPriority": "低优先级"
+      }
+    }
+  },
+  "analysis": {
+    "processing": "正在分析内容",
+    "queued": "排队中",
+    "done": "已完成",
+    "failed": "失败",
+    "noItemsDetected": "未检测到商品"
+  },
+  "catalog": {
+    "products": "商品",
+    "empty": "没有符合条件的商品",
+    "status": {
+      "active": "已启用",
+      "inactive": "已停用"
+    },
+    "filters": {
+      "searchPlaceholder": "搜索品牌、集团、地区…",
+      "titleSearchPlaceholder": "按标题、品牌搜索…",
+      "sourceAriaLabel": "货源",
+      "allSources": "所有货源",
+      "originAriaLabel": "来源",
+      "allOrigins": "所有来源",
+      "statusAriaLabel": "状态",
+      "allStatuses": "启用与停用",
+      "onlyActive": "仅显示启用",
+      "onlyInactive": "仅显示停用"
+    },
+    "pagination": "共 {count} 件商品 · 第 {page} 页，共 {totalPages} 页",
+    "modeAriaLabel": "浏览模式",
+    "modes": {
+      "browse": "浏览",
+      "text": "文本搜索",
+      "image": "图片搜索"
+    },
+    "viewAriaLabel": "视图",
+    "view": {
+      "grid": "网格",
+      "list": "列表"
+    },
+    "actions": {
+      "refresh": "刷新",
+      "previousPage": "上一页",
+      "nextPage": "下一页"
+    },
+    "origin": {
+      "scraped": "从店铺采集",
+      "external": "外部发现"
+    },
+    "textSearch": {
+      "placeholder": "红色绸缎连衣裙、黑色针织西装外套…"
+    },
+    "imageSearch": {
+      "urlPlaceholder": "https://…/图片.jpg",
+      "searchByUrl": "按 URL 搜索",
+      "dropHint": "拖拽一张图片或点击选择",
+      "dropSubHint": "将以 base64 格式发送到商品库的视觉搜索接口"
+    },
+    "originFilterNotice": "来源过滤器作用于已加载的页面：服务先分页，再按来源过滤。",
+    "errors": {
+      "loadFailed": "无法读取商品库"
+    },
+    "grid": {
+      "emptyTitle": "在当前筛选条件下商品库为空",
+      "emptyDescription": "从连接器页面启动一次同步，或运行测试数据种子命令（在根目录执行 npm run catalog:seed）以获取演示数据。"
+    },
+    "table": {
+      "product": "商品",
+      "source": "货源",
+      "category": "类别",
+      "price": "价格",
+      "indexes": "索引",
+      "lastSeen": "最后出现",
+      "status": "状态",
+      "emptyTitle": "没有商品",
+      "emptyDescription": "调整筛选条件，或从连接器页面采集商品库。"
+    },
+    "badges": {
+      "inactive": "已停用",
+      "external": "外部",
+      "hasImageEmbeddingTooltip": "含视觉嵌入"
+    },
+    "noCategory": "无类别",
+    "card": {
+      "lastSeenPrefix": "最后出现"
+    },
+    "matches": {
+      "countLabel": "{count, plural, one{# 个匹配结果} other{# 个匹配结果}}，按得分排序",
+      "backToBrowse": "返回浏览",
+      "emptyTitle": "没有超过阈值的匹配结果",
+      "emptyDescription": "商品库中没有足够相似的商品。这是正确的行为：我们更倾向于不返回结果，而不是返回一个可疑的结果。",
+      "viewListing": "查看详情"
+    },
+    "drawer": {
+      "fallbackTitle": "商品",
+      "loading": "正在加载详情…",
+      "hasImageEmbeddingBadge": "视觉嵌入",
+      "hasPerceptualHashBadge": "感知哈希",
+      "normalizedDataTitle": "标准化数据",
+      "price": "价格",
+      "originalPrice": "原价",
+      "availability": "库存状态",
+      "category": "类别",
+      "subcategory": "子类别",
+      "gender": "性别",
+      "color": "颜色",
+      "firstSeen": "首次出现",
+      "lastSeen": "最后一次出现",
+      "externalScore": "外部得分",
+      "perceptualHash": "感知哈希",
+      "id": "ID",
+      "extractionTitle": "提取方式",
+      "primaryExtractor": "主提取器",
+      "extractorsUsed": "已使用的提取器",
+      "aiLabel": "AI",
+      "aiUsedAsFallback": "作为回退使用",
+      "aiNotNeeded": "无需使用",
+      "browserLabel": "浏览器",
+      "browserUsedYes": "使用 Playwright 渲染",
+      "browserNotNeeded": "无需使用",
+      "confidence": "置信度",
+      "extractedAt": "提取时间",
+      "evidenceField": "字段",
+      "evidenceSource": "来源",
+      "evidenceSnippet": "证据",
+      "viewInStore": "在店铺中查看",
+      "copyId": "复制 ID"
+    }
+  },
+  "jobs": {
+    "running": "运行中",
+    "queued": "排队中",
+    "completed": "已完成",
+    "failed": "失败",
+    "table": {
+      "job": "任务",
+      "type": "类型",
+      "status": "状态",
+      "progress": "进度",
+      "duration": "耗时",
+      "cost": "成本",
+      "startedAt": "开始时间",
+      "actions": "操作"
+    },
+    "filters": {
+      "statusAriaLabel": "按状态筛选",
+      "sourceAriaLabel": "按货源筛选",
+      "all": "全部",
+      "running": "运行中",
+      "completed": "已完成",
+      "failed": "失败",
+      "allSources": "所有货源"
+    },
+    "actions": {
+      "refresh": "刷新"
+    },
+    "callout": "任务在每次进展时都会持久化其检查点：被取消或崩溃的任务可通过<ink>重试</ink>恢复，无需重新发现商品库。",
+    "empty": {
+      "errorTitle": "无法读取任务",
+      "noneTitle": "没有符合当前筛选条件的任务",
+      "noneDescription": "从连接器页面启动一次同步，或更改状态筛选条件。"
+    },
+    "drawer": {
+      "breakdown": "明细",
+      "discovered": "已发现",
+      "fetched": "已下载",
+      "new": "新增",
+      "updated": "已更新",
+      "duplicates": "重复",
+      "ignored": "已忽略",
+      "errors": "错误",
+      "withoutAi": "未使用 AI",
+      "withAi": "使用 AI",
+      "withBrowser": "使用浏览器",
+      "retries": "重试次数",
+      "aiCostLine": "预估 AI 成本：{cost} · {tokens} tokens",
+      "aiRatioSuffix": "{pct}% 的记录使用了 AI",
+      "checkpoint": "检查点：将从索引 {index} 处恢复",
+      "checkpointUrlsSuffix": "，共 {total} 个 URL",
+      "checkpointStageSuffix": "阶段 {stage}",
+      "errorsTitle": "错误（{count}）",
+      "noErrors": "没有记录到错误。",
+      "activityTitle": "任务活动"
+    }
+  },
+  "connectors": {
+    "kpi": {
+      "registered": "已注册货源",
+      "registeredHint": "注册表中的所有店铺",
+      "syncable": "当前可同步",
+      "syncableHint": "已实现且具备凭据",
+      "verifiedLive": "已实时验证",
+      "verifiedLiveHint": "商品库中已有真实商品",
+      "requireAgreement": "需要合作协议",
+      "requireAgreementHint": "合作伙伴或联盟网络"
+    },
+    "filters": {
+      "searchPlaceholder": "搜索品牌、集团、地区…",
+      "segmentLabel": "店铺细分",
+      "allSegments": "所有细分",
+      "filterAriaLabel": "筛选连接器",
+      "group": {
+        "all": "全部",
+        "syncable": "可同步",
+        "partner": "需要合作协议",
+        "paused": "已暂停",
+        "problem": "存在问题"
+      }
+    },
+    "table": {
+      "source": "货源",
+      "realStatus": "真实状态",
+      "health": "健康状况",
+      "discovery": "发现方式",
+      "compliance": "合规性",
+      "products": "商品数",
+      "extraction": "提取情况",
+      "lastSync": "最后一次同步",
+      "actions": "操作"
+    },
+    "actionLabels": {
+      "test": "测试连接器",
+      "resume": "恢复",
+      "pause": "暂停",
+      "checkHealth": "检查状态"
+    },
+    "actions": {
+      "healthLiveTitle": "实时检查可同步货源的状态（真实请求）",
+      "healthLiveActive": "实时健康检查已启用",
+      "healthLiveCheck": "检查实时健康状态",
+      "refresh": "刷新",
+      "syncFullTitle": "启动一次全量同步（限制为 25 条记录）",
+      "syncShort": "同步",
+      "testTitle": "用一条真实记录测试整个流水线",
+      "resumeTitle": "恢复",
+      "pauseTitle": "暂停"
+    },
+    "badges": {
+      "paused": "已暂停"
+    },
+    "callout": {
+      "title": "如何解读此表",
+      "body": "<muted>真实状态</muted>是诚实的标签：只有当该货源已通过流水线提取到真实商品并进入商品库时,才会标记为<em>已验证</em>——仅有代码存在是不够的。<muted>健康状况</muted>反映店铺此刻的响应情况，<muted>提取情况</muted>衡量有多少比例的记录是在不使用 AI 的情况下解析成功的（依赖结构化数据或 DOM）；AI 只是最后的手段。实时检查不会对所有货源自动执行：那样对店铺不够礼貌。"
+    },
+    "empty": {
+      "noMatchTitle": "没有匹配的货源",
+      "noMatchDescription": "换个搜索词，或清除已启用的筛选条件。",
+      "clearFilters": "清除筛选条件"
+    },
+    "errors": {
+      "loadFailed": "无法读取注册表"
+    },
+    "extraction": {
+      "withoutAiPct": "{pct}% 未使用 AI",
+      "withAiCost": "{count} 条使用 AI · {cost}",
+      "noAiCalls": "0 次 AI 调用"
+    },
+    "footer": {
+      "showingCount": "显示 {total} 个已注册货源中的 {filtered} 个。"
+    },
+    "syncMode": {
+      "full": "全量",
+      "incremental": "增量"
+    },
+    "toast": {
+      "testSucceeded": "{label}：流水线正常",
+      "testSample": "示例记录：{sampleTitle}（{duration}）",
+      "testFailed": "{label}：在「{step}」处失败",
+      "noDetail": "无详情",
+      "healthChecked": "{id}：{label}",
+      "syncQueued": "{mode}同步已加入队列",
+      "syncQueuedDetail": "任务 {jobId} · 可在“任务”标签页跟踪进度"
+    },
+    "drawer": {
+      "checkStatusButton": "检查状态",
+      "testPipelineButton": "测试流水线",
+      "syncIncrementalButton": "增量同步",
+      "syncFullButton": "全量同步",
+      "loading": "正在加载详情…",
+      "sourceStatusTitle": "货源状态",
+      "missingTitle": "启用所需的缺失项",
+      "missingEnvLabel": "缺失的环境变量",
+      "lastErrorTitle": "最近记录的错误",
+      "extractionLabel": "已测量的提取情况",
+      "extractionEmpty": "该货源尚无商品进入商品库：暂无可测量数据。请启动一次同步以获取真实数据。",
+      "productsWithMetadata": "含元数据的商品",
+      "resolvedWithoutAi": "未使用 AI 解析成功",
+      "resolvedWithAi": "使用 AI 解析成功",
+      "neededBrowser": "需要浏览器渲染",
+      "avgConfidence": "平均置信度",
+      "estimatedAiCost": "AI 成本（预估）",
+      "primaryExtractor": "主提取器",
+      "techSheetLabel": "技术资料",
+      "implementation": "实现方式",
+      "robotsPolicy": "robots.txt 策略",
+      "robotsAlwaysRespected": "始终遵守",
+      "crawlDelay": "声明的 crawl-delay：{seconds} 秒",
+      "declaredSelectors": "已声明的选择器",
+      "none": "无",
+      "urlPattern": "详情页 URL 模式",
+      "accessMethod": "访问方式",
+      "verification": "验证",
+      "syncModes": "同步模式",
+      "segments": "细分",
+      "categories": "类别",
+      "markets": "市场",
+      "productsInCatalog": "商品库中的商品数",
+      "healthCheckedAt": "健康检查时间",
+      "store": "店铺",
+      "program": "计划",
+      "sitemapsLabel": "已声明的站点地图",
+      "sitemapsHint": "如果都没有响应，连接器会在店铺的 robots.txt 中查找已声明的站点地图。",
+      "recentJobsLabel": "该货源最近的任务",
+      "noJobs": "该货源尚未执行过任何任务。",
+      "logsLabel": "该货源的日志",
+      "noLogs": "当前缓冲区中没有该货源的事件记录。"
+    }
+  },
+  "settings": {
+    "title": "设置",
+    "keys": "密钥",
+    "storage": "存储",
+    "embeddings": "嵌入",
+    "matching": "匹配",
+    "compliance": "合规",
+    "refresh": "刷新",
+    "empty": {
+      "errorTitle": "无法读取配置"
+    },
+    "banner": {
+      "body": "这些值来自商品库服务的运行环境，以只读方式展示：配置需要在其 <code>.env</code> 文件中修改，并在服务重启后生效。这样可以保证可追溯性，避免各副本之间出现差异。"
+    },
+    "sections": {
+      "keys": {
+        "title": "API 密钥",
+        "description": "服务密钥永不离开服务器：管理后台通过应用的代理与其通信。",
+        "authBadgeOn": "鉴权已启用",
+        "authBadgeOff": "鉴权已禁用",
+        "configured": "已配置 · {count} 个字符",
+        "notConfigured": "未配置",
+        "portLabel": "服务端口",
+        "authWarning": "没有 <code>CATALOG_SERVICE_API_KEY</code> 时，服务会接受任何请求。在本地环境可以接受；在可从外部访问的环境中绝不能这样。"
+      },
+      "storage": {
+        "description": "系统会根据是否存在有效的连接字符串自动选择后端。",
+        "configured": "已配置",
+        "missing": "缺失或不是 postgres:// 格式",
+        "dataDirLabel": "数据目录",
+        "imagesDirLabel": "图片目录",
+        "fileWarning": "文件模式：商品库以 JSON 形式持久化，向量搜索在内存中进行。配置一个 <code>postgres://</code> 连接字符串（Neon 的 <code>-pooler</code> 端点）并运行迁移以启用 pgvector。"
+      },
+      "embeddings": {
+        "reindex": "重建索引",
+        "description": "更换提供方会改变向量维度：必须重建索引，否则旧向量将失去可比性。",
+        "imageProviderLabel": "图片提供方",
+        "imageModelLabel": "图片模型",
+        "textProviderLabel": "文本提供方",
+        "activeNowLabel": "当前生效",
+        "hashWarning": "<code>hash</code> 提供方：用于演示和测试的 64 维确定性向量，不进行真正的视觉相似度计算——请在 catalog-scraper 中运行 <code>npm run embeddings:install</code> 安装本地提供方，并设置 <code>CATALOG_IMAGE_EMBEDDING_PROVIDER=local</code>。",
+        "reindexSuccessTitle": "重建索引已加入队列",
+        "reindexSuccessBody": "任务 {jobId}",
+        "reindexErrorTitle": "无法启动重建索引"
+      },
+      "matching": {
+        "title": "匹配与去重阈值",
+        "description": "低于最低得分的结果不会被发布：我们更倾向于不返回结果，而不是返回一个可疑的结果。",
+        "minImageScoreLabel": "图片最低得分",
+        "perceptualHashLabel": "感知哈希最大距离",
+        "dedupThresholdLabel": "基于嵌入的去重阈值",
+        "jobsWorkersLabel": "任务工作进程数"
+      },
+      "compliance": {
+        "title": "采集限制与合规",
+        "description": "默认值刻意设置得较为保守：宁可花更多时间，也不打扰店铺。",
+        "robotsBadge": "遵守 robots.txt",
+        "rateLimitLabel": "每域名最小间隔",
+        "concurrencyLabel": "全局并发数",
+        "timeoutLabel": "每次请求超时",
+        "retriesLabel": "重试次数",
+        "circuitBreakerLabel": "断路器阈值",
+        "circuitBreakerSuffix": "次连续失败",
+        "userAgentLabel": "User-Agent",
+        "policyTitle": "已应用的策略",
+        "policyBody": "{policy}。此外：当店铺声明时遵守 <code>Crawl-delay</code>，使用带联系方式的可识别 User-Agent，并配备断路器，在遭遇持续封锁时停止重试。要求合作伙伴协议或联盟关系的货源，在获得授权前不会被采集。"
+      },
+      "observability": {
+        "title": "可观测性与缓存",
+        "logsLabel": "日志",
+        "logsValue": "内存中的环形缓冲区（750 条事件）+ 输出到 stdout 的结构化 JSON",
+        "healthCacheLabel": "连接器健康状态缓存",
+        "healthCacheValue": "每个货源 10 分钟；实时检查为手动触发",
+        "metricsLabel": "指标",
+        "metricsValue": "内存计数器，通过 <code>/stats</code> 和 <code>/overview</code> 暴露",
+        "footnote": "所有可观测状态都属于进程级别：服务重启后计数器和日志缓冲区都会重置。要获取真实的历史数据，请收集 stdout 并使用 Postgres 后端。"
+      }
+    }
+  },
+  "overview": {
+    "title": "概览",
+    "recentActivity": "最近活动",
+    "sectionLabel": {
+      "status": "总体状态"
+    },
+    "status": {
+      "updated": "{time}更新",
+      "loading": "加载中…"
+    },
+    "errorState": {
+      "title": "无法读取商品库服务",
+      "description": "{message}。商品库引擎与本应用集成运行：请检查 <code>DATABASE_URL</code> 是否指向有效的 Postgres，并确认迁移已应用（<code>npm run db:migrate</code>）。"
+    },
+    "kpi": {
+      "products": "商品",
+      "productsHint": "{active} 个已启用 · {withImages} 个含图片",
+      "connectors": "连接器",
+      "connectorsHint": "{syncable} 个可同步 · {paused} 个已暂停",
+      "throughput": "吞吐量",
+      "throughputValue": "{perMinute}/分钟",
+      "throughputHint": "{minutes} 分钟内新增 {products} 件商品",
+      "errorRate": "错误率",
+      "errorRateHint": "最近任务中失败请求占总尝试次数的比例"
+    },
+    "degraded": {
+      "title": "持久化处于降级模式",
+      "body": "由于没有有效的 Postgres <code>DATABASE_URL</code>，服务正在使用文件存储。所有功能都可用，但向量搜索没有 pgvector 支持，只能在内存中进行，无法扩展。"
+    },
+    "embeddings": {
+      "title": "嵌入",
+      "indexedOf": "已索引 {indexed} / {total} 件商品",
+      "dimensions": "{count} 维",
+      "coverageLabel": "嵌入覆盖率",
+      "hashNote": "<code>hash</code> 提供方：64 维确定性向量，适用于演示和测试，但不适用于真实的视觉相似度计算。请安装本地提供方（CLIP）并重建索引以用于生产环境。"
+    },
+    "queue": {
+      "title": "采集队列",
+      "viewAll": "查看全部",
+      "noJobsYet": "尚未执行任何任务。",
+      "progressLine": "{new} 新增 · {updated} 已更新 · {duplicates} 重复 · {errors} 错误",
+      "emptyTitle": "暂无任务",
+      "emptyDescription": "从连接器页面启动一次同步以填充商品库。",
+      "goToConnectors": "前往连接器 →"
+    },
+    "registry": {
+      "title": "货源注册表成熟度",
+      "lastSync": "最后一次同步"
+    },
+    "logs": {
+      "viewAll": "查看日志",
+      "emptyTitle": "没有记录的活动",
+      "emptyDescription": "当服务开始工作时，日志缓冲区将开始填充。"
+    },
+    "misc": {
+      "duplicatesDetected": "检测到的重复项",
+      "externalOrigin": "外部来源",
+      "serviceUptime": "服务运行时长"
+    }
+  },
+  "logs": {
+    "title": "事件日志",
+    "level": {
+      "error": "错误",
+      "warn": "警告",
+      "info": "信息",
+      "debug": "调试"
+    },
+    "ariaLabels": {
+      "logType": "日志类型",
+      "minLevel": "最低级别",
+      "source": "货源",
+      "refresh": "刷新"
+    },
+    "views": {
+      "ingest": "采集",
+      "process": "处理"
+    },
+    "status": {
+      "aiExtractor": "AI 提取器",
+      "disabled": "已禁用",
+      "aiDetailFallback": "仅作为回退使用 · 缓存 {cache}",
+      "cachePersistent": "持久化",
+      "cacheInMemory": "内存中",
+      "browser": "浏览器",
+      "connected": "已连接",
+      "available": "可用",
+      "browserDetail": "{contexts} 个上下文 · {pages} 个页面打开",
+      "catalog": "商品库",
+      "productionPersistence": "生产级持久化",
+      "fileStoreWarning": "文件存储：不是生产级持久化方案",
+      "respected": "已遵守",
+      "rateLimitDetail": "每次请求间隔 {delay} 毫秒 · 并发数 {concurrency}",
+      "circuitBreakersOpen": "已打开的断路器",
+      "subsystemWarnings": "子系统警告"
+    },
+    "about": {
+      "title": "关于这些日志",
+      "defaultRetention": "服务内存中的环形缓冲区。",
+      "minLevelLabel": "输出的最低级别：",
+      "configuredVia": "（配置项为",
+      "stdoutNote": "）。要获取真实的历史数据，请用你的日志平台收集服务的 stdout。"
+    },
+    "filters": {
+      "all": "全部",
+      "infoPlus": "信息及以上",
+      "warnPlus": "警告及以上",
+      "errors": "错误",
+      "searchPlaceholder": "按消息或上下文筛选…",
+      "sourceLabel": "货源",
+      "allSources": "所有货源"
+    },
+    "actions": {
+      "pauseStream": "暂停流"
+    },
+    "table": {
+      "eventsCount": "{count} 个事件 · 最新在前",
+      "live": "实时"
+    },
+    "empty": {
+      "errorTitle": "无法读取日志",
+      "noEventsTitle": "没有符合当前筛选条件的事件",
+      "noEventsDescription": "缓冲区只保留服务上次启动以来发生的内容。启动一次同步以产生活动。"
+    },
+    "console": {
+      "filterPlaceholder": "按消息或 URL 筛选…",
+      "levelAriaLabel": "最低级别",
+      "levels": {
+        "all": "全部",
+        "debug": "调试及以上",
+        "info": "信息及以上",
+        "success": "成功及以上",
+        "warn": "警告及以上",
+        "error": "错误"
+      },
+      "stageAriaLabel": "阶段",
+      "allStages": "所有阶段",
+      "sourceAriaLabel": "货源",
+      "allSources": "所有货源",
+      "copyAriaLabel": "复制日志",
+      "downloadAriaLabel": "下载日志",
+      "reloadAriaLabel": "重新加载",
+      "copyError": "浏览器未允许复制到剪贴板",
+      "lineCount": "{count, plural, one{# 行} other{# 行}}",
+      "errorCount": "{count, plural, one{# 个错误} other{# 个错误}}",
+      "warnCount": "{count, plural, one{# 个警告} other{# 个警告}}",
+      "aiCost": "AI ≈ {cost}",
+      "autoScroll": "自动滚动",
+      "status": {
+        "streaming": "流式传输中",
+        "polling": "轮询中，间隔 {seconds} 秒",
+        "connecting": "正在连接…",
+        "paused": "已暂停",
+        "memoryAndDb": "内存 + 数据库",
+        "memoryOnly": "仅内存"
+      },
+      "readErrorTitle": "无法读取日志",
+      "emptyTitle": "没有符合当前筛选条件的活动",
+      "emptyDescription": "从连接器页面启动一次同步，逐阶段查看流水线运行情况。",
+      "detail": {
+        "closeAriaLabel": "关闭详情",
+        "moment": "时刻",
+        "duration": "耗时",
+        "job": "任务",
+        "product": "商品",
+        "retry": "重试",
+        "url": "URL",
+        "metadata": "元数据"
+      },
+      "transportNote": {
+        "title": "这些日志的范围",
+        "persistentBody": "事件已持久化到数据库：控制台也会显示以往任务的历史记录。SSE 流仅传输<strong>本次调用</strong>产生的事件，其余部分通过轮询获取。",
+        "ephemeralBody": "未配置数据库，因此日志<strong>仅存在于内存中</strong>，进程重启后会丢失。配置 <code>DATABASE_URL</code>（<code>postgres://</code> 格式的连接字符串）并运行 <code>npm run db:migrate</code> 以获取历史记录。"
+      }
+    }
+  },
+  "admin": {
+    "shell": {
+      "operationsLabel": "运营",
+      "sectionsNav": "管理后台分区",
+      "closeNav": "关闭导航",
+      "openNav": "打开导航",
+      "backToProduct": "返回产品页",
+      "nav": {
+        "overview": "概览",
+        "connectors": "连接器",
+        "jobs": "任务",
+        "catalog": "商品库",
+        "logs": "监控",
+        "settings": "设置"
+      },
+      "servicePill": {
+        "unavailable": "服务不可用",
+        "checking": "正在检查…",
+        "postgres": "Postgres + pgvector",
+        "fileStore": "文件存储",
+        "productsSummary": "{count} 件商品 · {provider} {dimension} 维"
+      }
+    },
+    "overview": {
+      "title": "运营概览",
+      "description": "商品库状态、连接器、采集队列与最近活动"
+    },
+    "connectors": {
+      "title": "商品库连接器",
+      "description": "时尚货源注册表，含其实现成熟度与真实运行状态"
+    },
+    "settings": {
+      "title": "服务设置",
+      "description": "密钥、存储、嵌入、匹配与合规的当前生效配置"
+    },
+    "catalog": {
+      "title": "商品库浏览器",
+      "description": "标准化商品、索引状态、文本或图片搜索"
+    },
+    "logs": {
+      "title": "监控",
+      "description": "商品库服务事件，支持按级别、货源和文本筛选"
+    },
+    "jobs": {
+      "title": "采集任务",
+      "description": "每个服务任务的进度、错误与从检查点重试"
+    }
+  },
+  "publicCatalog": {
+    "meta": {
+      "title": "目录",
+      "description": "分析视频时检测到的元素内部目录：服装、配饰和可购买物品及其商品匹配结果。"
+    },
+    "page": {
+      "heading": "检测到的元素目录",
+      "description": "分析在你的视频和图片中检测到的所有内容。筛选、查看并搜索匹配的商品。",
+      "openScraper": "打开采集器",
+      "ingestedCatalog": "已采集目录"
+    },
+    "empty": {
+      "filtered": "没有符合筛选条件的元素。请尝试调整或清除筛选条件。",
+      "noItems": "你的目录为空。在 {appName} 中暂停一段视频以开始检测元素。",
+      "cta": "前往分析视频"
+    },
+    "errors": {
+      "network": "网络错误。"
+    },
+    "filters": {
+      "searchPlaceholder": "按名称、描述、风格搜索…",
+      "typeAriaLabel": "类型",
+      "allTypes": "所有类型",
+      "statusAriaLabel": "状态",
+      "anyStatus": "任意状态",
+      "originAriaLabel": "来源",
+      "anyOrigin": "任意来源",
+      "categoryPlaceholder": "类别",
+      "colorPlaceholder": "颜色",
+      "itemCount": "{count, plural, one{# 个元素} other{# 个元素}}",
+      "localSaveTitle": "数据库当前不可用：元素及其图片会在本次会话中保留，连接恢复后将自动同步。",
+      "localSaveBadge": "已保存在本次会话 · 同步待处理",
+      "videoBadge": "视频：{id}…",
+      "clearFilters": "清除筛选"
+    },
+    "sourceTypes": {
+      "youtube": "YouTube",
+      "dailymotion": "Dailymotion",
+      "vimeo": "Vimeo",
+      "directMp4": "MP4 直链",
+      "hls": "HLS / 流媒体",
+      "uploaded": "本地视频",
+      "imageUpload": "已上传图片",
+      "screenCapture": "屏幕捕获"
+    },
+    "itemTypes": {
+      "clothing": "服装",
+      "footwear": "鞋类",
+      "accessory": "配饰",
+      "electronics": "电子产品",
+      "home": "家居",
+      "beauty": "美妆",
+      "other": "其他"
+    },
+    "itemStatus": {
+      "detected": "已检测",
+      "reviewed": "已查看",
+      "matched": "已匹配商品",
+      "ignored": "已忽略"
+    },
+    "matchType": {
+      "exact": "精确匹配",
+      "nearExact": "几乎一致",
+      "similar": "相似"
+    },
+    "card": {
+      "viewDetailTitle": "查看详情与推荐",
+      "detectedInVideo": "📸 在视频中检测到",
+      "foundProductTitle": "找到商品：{title}",
+      "matchPct": "{pct}% 匹配度",
+      "matchScoreTooltip": "该网络结果对应同一商品的置信度。",
+      "searchingMatches": "正在搜索视觉匹配结果…",
+      "localOnlyNotice": "本次会话中可用 · 同步待处理",
+      "brandPrefix": "品牌：{brand}",
+      "viewDetail": "查看详情",
+      "viewProduct": "查看商品 ↗",
+      "markReviewed": "标记为已查看",
+      "ignore": "忽略",
+      "reactivate": "重新启用",
+      "originImage": "🖼️ 已上传图片",
+      "originScreen": "🖥️ 屏幕捕获"
+    },
+    "drawer": {
+      "ariaLabel": "元素详情",
+      "title": "元素详情",
+      "loading": "正在加载…",
+      "selectItem": "请选择一个元素。",
+      "sectionDetected": "📸 在视频中检测到",
+      "noCaptureYet": "该对象暂无截图——将在视觉匹配时生成。",
+      "seenCount": "出现 ×{count}",
+      "specs": {
+        "moment": "视频中的时刻",
+        "subcategory": "子类别",
+        "color": "颜色",
+        "otherColors": "其他颜色",
+        "style": "风格",
+        "pattern": "图案",
+        "materialGuess": "材质（推测）",
+        "genderFit": "版型 / 性别",
+        "visibleBrand": "可见品牌"
+      },
+      "viewOriginalFrame": "查看场景原始帧",
+      "originalFrameAlt": "{name} 的来源帧",
+      "sectionBestMatch": "🛒 在网上找到的商品",
+      "searchingBestMatch": "正在搜索视觉匹配结果…",
+      "noReliableMatch": "暂无可靠匹配。请尝试「搜索商品」。",
+      "searchProducts": "🔎 搜索商品",
+      "searching": "正在搜索…",
+      "markReviewed": "标记为已查看",
+      "ignore": "忽略",
+      "reactivate": "重新启用",
+      "alternativesTitle": "备选商品（{count}）",
+      "searchingProducts": "正在搜索商品…",
+      "noMoreResults": "没有更多结果。",
+      "auditTitle": "🔍 技术审计",
+      "audit": {
+        "detectedImage": "检测到的图片",
+        "localCrop": "本地裁剪图（会话中）——存储待处理",
+        "storedCrop": "已存储的裁剪图",
+        "noCrop": "无裁剪图",
+        "originFrame": "来源帧",
+        "saved": "已保存",
+        "notSaved": "未保存",
+        "matchProvider": "匹配提供方",
+        "matchScore": "匹配得分",
+        "candidateCount": "候选数量",
+        "detectionCount": "累计检测次数",
+        "createdAt": "创建时间",
+        "updatedAt": "更新时间",
+        "searchQuery": "搜索查询",
+        "marketplaceKeywords": "市场平台关键词"
+      },
+      "bestMatch": {
+        "matchScoreTooltip": "该网络结果对应同一商品的置信度。",
+        "matchPct": "{pct}% 匹配度",
+        "viewProduct": "查看商品 ↗"
+      },
+      "recommendation": {
+        "affinityPct": "{pct}% 相关度"
+      }
+    }
+  },
+  "demo": {
+    "page": {
+      "title": "完整视频演示",
+      "description": "对上传视频的异步分析：带检查点的任务、场景检测、追踪以及商品的全局去重。",
+      "goToStudio": "前往交互式工作室 →"
+    },
+    "upload": {
+      "title": "上传视频（最长 {seconds} 秒）",
+      "description": "浏览器负责提取帧；服务器维护一个带检查点、场景、追踪和全局去重的异步任务。高成本搜索针对每个独立商品只支付一次。",
+      "notVideoError": "该文件必须是视频格式（mp4、webm 等）。",
+      "durationError": "该视频时长为 {seconds} 秒；演示的最大时长为 {maxSeconds} 秒。"
+    },
+    "matchingMode": {
+      "title": "匹配模式",
+      "catalogOnly": {
+        "label": "仅目录",
+        "hint": "不进行外部搜索"
+      },
+      "catalogFirst": {
+        "label": "目录优先",
+        "hint": "仅在目录无法解决时使用外部搜索"
+      },
+      "externalOnly": {
+        "label": "仅外部搜索",
+        "hint": "经典 Lens 流程"
+      },
+      "hybrid": {
+        "label": "混合",
+        "hint": "两者结合，统一排序"
+      }
+    },
+    "actions": {
+      "analyze": "分析视频",
+      "analyzing": "正在分析…",
+      "cancel": "取消",
+      "boundingBoxes": "边界框"
+    },
+    "errors": {
+      "createJobFailed": "无法创建任务。",
+      "frameBatchFailed": "处理帧批次时出错。",
+      "finalizeFailed": "完成任务时出错。",
+      "unknown": "未知错误。"
+    },
+    "job": {
+      "title": "分析任务",
+      "idLabel": "id：{jobId}",
+      "stats": {
+        "framesReceived": "已接收帧数",
+        "framesAnalyzed": "已分析帧数",
+        "scenes": "场景数",
+        "tracks": "追踪数",
+        "uniqueProducts": "独立商品数",
+        "externalSearches": "外部搜索次数"
+      }
+    },
+    "savings": {
+      "title": "已避免的高成本调用",
+      "framesDedup": "帧去重（哈希）",
+      "tracksMerged": "已合并追踪",
+      "cacheHits": "缓存命中",
+      "catalogHits": "目录命中"
+    },
+    "timings": {
+      "title": "各阶段耗时",
+      "hashScenes": "哈希/场景",
+      "detection": "检测",
+      "tracking": "追踪",
+      "globalDedup": "全局去重",
+      "matching": "匹配",
+      "total": "总计"
+    },
+    "status": {
+      "notStarted": "未开始",
+      "creatingJob": "正在创建任务…",
+      "scanningFrames": "正在提取帧…",
+      "matchingProducts": "正在按商品匹配…"
+    },
+    "products": {
+      "title": "独立商品（{count}）",
+      "tracksMerged": "已合并 {count} 个追踪",
+      "scoreLine": "得分 {score} · 来源 {source}（{provider}）",
+      "matchingSkipped": "跳过匹配：{reason}",
+      "noProductsDetected": "在所选类别中未检测到商品。",
+      "segmentTooltip": "{start} – {end}"
+    },
+    "check": {
+      "title": "演示预检",
+      "description": "在开始前检查外部服务、数据库和浏览器权限。不会显示密钥。",
+      "back": "← 返回",
+      "runButton": "运行完整检查",
+      "running": "正在检查…",
+      "runError": "无法运行检查（超时或服务器宕机）。",
+      "overall": {
+        "ok": "演示已准备就绪。",
+        "warning": "演示可以进行，但存在提示：请查看建议的操作。",
+        "error": "存在影响演示的错误：请解决这些问题，或使用运行手册中的备选方案。"
+      },
+      "emptyHint": "点击按钮以运行所有检查。",
+      "status": {
+        "ok": "正常",
+        "warning": "提示",
+        "error": "错误"
+      },
+      "browserChecks": {
+        "displayMedia": {
+          "label": "标签页捕获（getDisplayMedia）",
+          "okDetail": "浏览器支持用于 YouTube 的标签页捕获。",
+          "errorDetail": "该浏览器不支持 getDisplayMedia：YouTube 流程将无法使用。",
+          "action": "请使用桌面版 Chrome/Edge。"
+        },
+        "clipboard": {
+          "label": "剪贴板（粘贴图片）",
+          "okDetail": "支持使用 Ctrl+V 粘贴。",
+          "warningDetail": "剪贴板 API 受限；请使用拖放。"
+        }
+      }
+    }
+  }
+}

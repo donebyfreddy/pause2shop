@@ -10,6 +10,7 @@ import {
   RotateCcw,
   Sparkles,
 } from "lucide-react";
+import { useFormatter, useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
 import {
   Badge,
@@ -45,21 +46,30 @@ import { ScraperConsole } from "./ScraperConsole";
 
 const POLL_MS = 5000;
 
-const STATUS_FILTERS = [
-  { value: "all" as const, label: "Todos" },
-  { value: "running" as const, label: "En curso" },
-  { value: "completed" as const, label: "Completados" },
-  { value: "failed" as const, label: "Con fallo" },
-];
+const STATUS_FILTER_VALUES = ["all", "running", "completed", "failed"] as const;
 
-type StatusFilter = (typeof STATUS_FILTERS)[number]["value"];
+type StatusFilter = (typeof STATUS_FILTER_VALUES)[number];
 
 export function JobsView() {
+  const t = useTranslations("jobs");
+  const tToast = useTranslations("toast.jobs");
+  const tActions = useTranslations("actions");
+  const tCommon = useTranslations("common");
+  const format = useFormatter();
   const toast = useToast();
   const [status, setStatus] = useState<StatusFilter>("all");
   const [source, setSource] = useState("all");
   const [expanded, setExpanded] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
+
+  const STATUS_FILTERS = useMemo(
+    () =>
+      STATUS_FILTER_VALUES.map((value) => ({
+        value,
+        label: t(`filters.${value}`),
+      })),
+    [t]
+  );
 
   const { data, error, loading, refreshing, reload } = useAdminResource<{
     jobs: JobRecord[];
@@ -87,13 +97,16 @@ export function JobsView() {
     const res = await adminPost<{ jobId: string }>(`jobs/${jobId}/${action}`);
     setBusy(null);
     if (!res.ok) {
-      toast.error(action === "cancel" ? "No se pudo cancelar" : "No se pudo reintentar", res.error.message);
+      toast.error(
+        action === "cancel" ? tToast("cancelFailed") : tToast("retryFailed"),
+        res.error.message
+      );
       return;
     }
     toast.success(
-      action === "cancel" ? "Cancelación solicitada" : "Reintento encolado",
+      action === "cancel" ? tToast("cancelRequested") : tToast("retryQueued"),
       action === "retry"
-        ? `Nuevo job ${res.data.jobId.slice(0, 8)} — reanuda desde el checkpoint`
+        ? tToast("retryQueuedDetail", { jobId: res.data.jobId.slice(0, 8) })
         : undefined
     );
     reload();
@@ -104,10 +117,13 @@ export function JobsView() {
     const res = await adminPost<{ jobId: string }>("products/reindex");
     setBusy(null);
     if (!res.ok) {
-      toast.error("No se pudo lanzar el reindexado", res.error.message);
+      toast.error(tToast("reindexFailed"), res.error.message);
       return;
     }
-    toast.success("Reindexado de embeddings encolado", `Job ${res.data.jobId.slice(0, 8)}`);
+    toast.success(
+      tToast("reindexQueued"),
+      tToast("reindexQueuedDetail", { jobId: res.data.jobId.slice(0, 8) })
+    );
     reload();
   };
 
@@ -116,7 +132,7 @@ export function JobsView() {
       <div className="flex flex-wrap items-center gap-3">
         <Segmented
           size="sm"
-          ariaLabel="Filtrar por estado"
+          ariaLabel={t("filters.statusAriaLabel")}
           value={status}
           onChange={setStatus}
           options={STATUS_FILTERS}
@@ -125,9 +141,9 @@ export function JobsView() {
           value={source}
           onChange={(e) => setSource(e.target.value)}
           className="w-auto min-w-44"
-          aria-label="Filtrar por fuente"
+          aria-label={t("filters.sourceAriaLabel")}
         >
-          <option value="all">Todas las fuentes</option>
+          <option value="all">{t("filters.allSources")}</option>
           {syncable.map((id) => (
             <option key={id} value={id}>
               {id}
@@ -137,17 +153,24 @@ export function JobsView() {
         <div className="ml-auto flex items-center gap-2">
           <Button variant="secondary" size="sm" loading={busy === "reindex"} onClick={reindex}>
             <Sparkles className="size-3.5" aria-hidden />
-            Reindexar embeddings
+            {tActions("reindex")}
           </Button>
-          <Button variant="ghost" size="sm" icon onClick={reload} aria-label="Refrescar">
+          <Button
+            variant="ghost"
+            size="sm"
+            icon
+            onClick={reload}
+            aria-label={t("actions.refresh")}
+          >
             <RefreshCw className={refreshing ? "size-4 animate-spin" : "size-4"} aria-hidden />
           </Button>
         </div>
       </div>
 
       <Callout tone="info">
-        Los jobs persisten su checkpoint en cada avance: un job cancelado o caído se reanuda con{" "}
-        <span className="text-ink">Reintentar</span> sin volver a descubrir el catálogo.
+        {t.rich("callout", {
+          ink: (chunks) => <span className="text-ink">{chunks}</span>,
+        })}
       </Callout>
 
       <Card className="overflow-hidden">
@@ -155,13 +178,13 @@ export function JobsView() {
           <Table className="min-w-[1000px]">
             <THead>
               <TR>
-                <TH>Job</TH>
-                <TH>Tipo</TH>
-                <TH>Estado</TH>
-                <TH className="w-56">Progreso</TH>
-                <TH>Duración</TH>
-                <TH>Inicio</TH>
-                <TH className="text-right">Acciones</TH>
+                <TH>{t("table.job")}</TH>
+                <TH>{t("table.type")}</TH>
+                <TH>{t("table.status")}</TH>
+                <TH className="w-56">{t("table.progress")}</TH>
+                <TH>{t("table.duration")}</TH>
+                <TH>{t("table.startedAt")}</TH>
+                <TH className="text-right">{t("table.actions")}</TH>
               </TR>
             </THead>
             <TBody>
@@ -171,11 +194,11 @@ export function JobsView() {
                 <TableEmpty colSpan={7}>
                   <EmptyState
                     icon={CircleAlert}
-                    title="No se pudieron leer los jobs"
+                    title={t("empty.errorTitle")}
                     description={error.message}
                     action={
                       <Button variant="secondary" size="sm" onClick={reload}>
-                        Reintentar
+                        {tCommon("retry")}
                       </Button>
                     }
                   />
@@ -186,8 +209,8 @@ export function JobsView() {
                 <TableEmpty colSpan={7}>
                   <EmptyState
                     icon={ListChecks}
-                    title="Ningún job con estos filtros"
-                    description="Lanza un sync desde Conectores o cambia el filtro de estado."
+                    title={t("empty.noneTitle")}
+                    description={t("empty.noneDescription")}
                   />
                 </TableEmpty>
               )}
@@ -224,6 +247,9 @@ function JobRow({
   busy: string | null;
   onAct: (jobId: string, action: "cancel" | "retry") => void;
 }) {
+  const t = useTranslations("jobs");
+  const tActions = useTranslations("actions");
+  const format = useFormatter();
   const meta = metaFor(JOB_META, job.status);
   const p = job.progress;
   // `processed`, `percent` y `productsPerMinute` los calcula el servidor: si la
@@ -291,7 +317,7 @@ function JobRow({
                 onClick={() => onAct(job.jobId, "cancel")}
               >
                 <Ban className="size-3.5" aria-hidden />
-                Cancelar
+                {tActions("cancelJob")}
               </Button>
             )}
             {retryable && (
@@ -302,7 +328,7 @@ function JobRow({
                 onClick={() => onAct(job.jobId, "retry")}
               >
                 <RotateCcw className="size-3.5" aria-hidden />
-                Reintentar
+                {tActions("retryJob")}
               </Button>
             )}
           </div>
@@ -323,22 +349,22 @@ function JobRow({
                 <div className="grid gap-5 px-5 py-4 lg:grid-cols-2">
                   <div>
                     <p className="text-[10px] font-semibold tracking-[0.12em] text-ink-faint uppercase">
-                      Desglose
+                      {t("drawer.breakdown")}
                     </p>
                     <dl className="mt-2 grid grid-cols-3 gap-2">
                       {(
                         [
-                          ["Descubiertos", job.progress.discovered],
-                          ["Descargados", job.progress.fetched],
-                          ["Nuevos", job.progress.new],
-                          ["Actualizados", job.progress.updated],
-                          ["Duplicados", job.progress.duplicates],
-                          ["Ignorados", job.progress.ignored],
-                          ["Errores", job.progress.errors],
-                          ["Sin IA", job.progress.withoutAi],
-                          ["Con IA", job.progress.withAi],
-                          ["Con navegador", job.progress.withBrowser],
-                          ["Reintentos", job.progress.retries],
+                          [t("drawer.discovered"), job.progress.discovered],
+                          [t("drawer.fetched"), job.progress.fetched],
+                          [t("drawer.new"), job.progress.new],
+                          [t("drawer.updated"), job.progress.updated],
+                          [t("drawer.duplicates"), job.progress.duplicates],
+                          [t("drawer.ignored"), job.progress.ignored],
+                          [t("drawer.errors"), job.progress.errors],
+                          [t("drawer.withoutAi"), job.progress.withoutAi],
+                          [t("drawer.withAi"), job.progress.withAi],
+                          [t("drawer.withBrowser"), job.progress.withBrowser],
+                          [t("drawer.retries"), job.progress.retries],
                         ] as const
                       ).map(([label, value]) => (
                         <div
@@ -353,25 +379,30 @@ function JobRow({
                       ))}
                     </dl>
                     <p className="mt-2.5 font-mono text-[10px] text-ink-faint">
-                      coste de IA estimado: {job.progress.aiCostUsd.toFixed(6)} USD ·{" "}
-                      {job.progress.aiTokens.toLocaleString("es-ES")} tokens
-                      {job.aiRatio != null && ` · ${Math.round(job.aiRatio * 100)}% de fichas con IA`}
+                      {t("drawer.aiCostLine", {
+                        cost: format.number(job.progress.aiCostUsd, "usdCost"),
+                        tokens: format.number(job.progress.aiTokens),
+                      })}
+                      {job.aiRatio != null &&
+                        ` · ${t("drawer.aiRatioSuffix", { pct: Math.round(job.aiRatio * 100) })}`}
                     </p>
                     {job.resumeIndex != null && (
                       <p className="mt-1 font-mono text-[10px] text-ink-faint">
                         {/* El checkpoint es lo que hace el job reanudable: se muestra
                             para que el operador sepa qué pasaría al reintentar. */}
-                        checkpoint: reanudaría en el índice {job.resumeIndex}
+                        {t("drawer.checkpoint", { index: job.resumeIndex })}
                         {Array.isArray(job.checkpoint.urls) &&
-                          ` de ${(job.checkpoint.urls as unknown[]).length} URLs`}
-                        {job.stage ? ` · etapa ${job.stage}` : ""}
+                          ` ${t("drawer.checkpointUrlsSuffix", {
+                            total: (job.checkpoint.urls as unknown[]).length,
+                          })}`}
+                        {job.stage ? ` · ${t("drawer.checkpointStageSuffix", { stage: job.stage })}` : ""}
                       </p>
                     )}
                   </div>
 
                   <div className="min-w-0">
                     <p className="text-[10px] font-semibold tracking-[0.12em] text-ink-faint uppercase">
-                      Errores ({job.errors.length})
+                      {t("drawer.errorsTitle", { count: job.errors.length })}
                     </p>
                     {job.errors.length > 0 ? (
                       <pre className="mt-2 max-h-40 overflow-auto rounded-lg border border-line bg-black/40 p-3 font-mono text-[10px] leading-relaxed text-ink-muted">
@@ -381,14 +412,14 @@ function JobRow({
                           .join("\n")}
                       </pre>
                     ) : (
-                      <p className="mt-2 text-xs text-ink-subtle">Sin errores registrados.</p>
+                      <p className="mt-2 text-xs text-ink-subtle">{t("drawer.noErrors")}</p>
                     )}
                   </div>
 
                   {/* Consola del job: las etapas de cada ficha, sin salir de aquí. */}
                   <div className="min-w-0 lg:col-span-2">
                     <p className="mb-2 text-[10px] font-semibold tracking-[0.12em] text-ink-faint uppercase">
-                      Actividad del job
+                      {t("drawer.activityTitle")}
                     </p>
                     <ScraperConsole jobId={job.jobId} maxHeightClass="max-h-72" />
                   </div>

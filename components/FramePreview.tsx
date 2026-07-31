@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { motion } from "motion/react";
 import type { DetectedItem } from "@/lib/types";
 
@@ -13,9 +14,11 @@ type Props = {
 /** Preview del último frame capturado, con las cajas de detección superpuestas. */
 export default function FramePreview({
   dataUrl,
-  label = "Frame analizado",
+  label,
   items = [],
 }: Props) {
+  const t = useTranslations("studio.history");
+  const resolvedLabel = label ?? t("frameAlt");
   if (!dataUrl) return null;
   const boxed = items.filter((i) => i.bounding_box);
 
@@ -24,7 +27,7 @@ export default function FramePreview({
       <div className="relative w-full">
         {/* Frame en data URL: <img> plano evita pasar base64 por el optimizador. */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={dataUrl} alt={label} className="h-auto w-full" />
+        <img src={dataUrl} alt={resolvedLabel} className="h-auto w-full" />
 
         {boxed.map((item, idx) => {
           const b = item.bounding_box!;
@@ -52,11 +55,10 @@ export default function FramePreview({
 
       <div className="flex items-center gap-2 border-t border-line px-3 py-2 text-[11px] text-ink-subtle">
         <span className="size-1.5 rounded-full bg-accent" />
-        {label}
+        {resolvedLabel}
         {boxed.length > 0 && (
           <span className="text-ink-faint">
-            · {boxed.length} objeto{boxed.length === 1 ? "" : "s"} localizado
-            {boxed.length === 1 ? "" : "s"}
+            · {t("locatedCount", { count: boxed.length })}
           </span>
         )}
       </div>

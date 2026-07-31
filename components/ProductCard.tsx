@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect, useRef } from "react";
+import { useFormatter, useTranslations } from "next-intl";
 import type { DetectedItem, ProductLink } from "@/lib/types";
 import type { VisualMatch } from "@/lib/visualSearch/types";
 import { cn } from "@/lib/utils";
@@ -12,10 +14,15 @@ type Props = {
   onLinkClick: (item: DetectedItem, link: ProductLink) => void;
   /** Frame del que salió el item, para mostrar el recorte del producto. */
   frameUrl?: string | null;
+  /** Resaltado por sincronización con el hotspot de la imagen analizada. */
+  selected?: boolean;
+  /** Clic en la card: resalta su hotspot correspondiente en la imagen. */
+  onSelect?: (item: DetectedItem) => void;
 };
 
 /** Confianza de DETECCIÓN: el objeto y sus atributos, NO el producto web. */
 function DetectionBadge({ value }: { value: number }) {
+  const t = useTranslations("studio.productCard");
   const pct = Math.round(value * 100);
   const tone =
     pct >= 75
@@ -25,23 +32,24 @@ function DetectionBadge({ value }: { value: number }) {
         : "bg-ink-subtle/15 text-ink-muted border-ink-subtle/30";
   return (
     <span
-      title="Confianza en que el objeto y sus atributos han sido identificados correctamente en el vídeo."
+      title={t("detectionTooltip")}
       className={cn("rounded-full border px-2 py-0.5 text-[11px] font-semibold", tone)}
     >
-      {pct}% detección
+      {t("detectionPct", { pct })}
     </span>
   );
 }
 
 /** Confianza de MATCHING: que el resultado web sea el mismo producto. */
 function MatchConfidenceBadge({ value }: { value: number }) {
+  const t = useTranslations("studio.productCard");
   const pct = Math.round(value * 100);
   return (
     <span
-      title="Confianza en que el resultado web corresponde al mismo producto."
+      title={t("matchTooltip")}
       className="rounded-full border border-accent/30 bg-accent/15 px-2 py-0.5 text-[11px] font-semibold text-accent"
     >
-      {pct}% coincidencia
+      {t("matchPct", { pct })}
     </span>
   );
 }
@@ -54,11 +62,12 @@ function Chip({ children }: { children: React.ReactNode }) {
   );
 }
 
-const MATCH_LABEL: Record<VisualMatch["match_type"], string> = {
-  exact: "Producto exacto",
-  near_exact: "Casi exacto",
-  similar: "Similar",
-};
+/** Claves de mensajes (namespace studio.productCard.matchLabel) por tipo de match. */
+const MATCH_LABEL_KEY = {
+  exact: "matchLabel.exact",
+  near_exact: "matchLabel.nearExact",
+  similar: "matchLabel.similar",
+} as const satisfies Record<VisualMatch["match_type"], string>;
 
 /**
  * Match del Visual Matching Engine: producto real encontrado por reverse
@@ -73,6 +82,8 @@ function VisualMatchBlock({
   match: VisualMatch;
   onLinkClick: Props["onLinkClick"];
 }) {
+  const t = useTranslations("studio.productCard");
+  const format = useFormatter();
   const tone = match.exact_match_found
     ? "border-success/30 bg-success/10"
     : "border-info/20 bg-info/[0.07]";
@@ -87,7 +98,7 @@ function VisualMatchBlock({
         <span className="flex flex-wrap items-center gap-1.5">
           <span className={cn("rounded-full border px-2 py-0.5 text-[11px] font-bold", badgeTone)}>
             {match.exact_match_found ? "🎯 " : "≈ "}
-            {MATCH_LABEL[match.match_type]}
+            {t(MATCH_LABEL_KEY[match.match_type])}
           </span>
           <MatchConfidenceBadge value={match.match_confidence} />
         </span>
@@ -136,7 +147,7 @@ function VisualMatchBlock({
                 {link.store}
                 {link.price != null && (
                   <span className="font-normal opacity-90">
-                    · {link.price.toLocaleString("es-ES")} {link.currency === "USD" ? "$" : "€"}
+                    · {format.number(link.price)} {link.currency === "USD" ? "$" : "€"}
                   </span>
                 )}
                 {" ↗"}
@@ -150,7 +161,7 @@ function VisualMatchBlock({
       {match.evidence.length > 0 && (
         <div className="mt-2 rounded-lg border border-line bg-black/20 px-2.5 py-1.5">
           <p className="mb-0.5 text-[10px] font-semibold uppercase tracking-wider text-ink-subtle">
-            Coincide en
+            {t("evidenceTitle")}
           </p>
           <ul className="space-y-0.5 text-[11px] text-ink-muted">
             {match.evidence.slice(0, 5).map((line) => (
@@ -163,11 +174,11 @@ function VisualMatchBlock({
       {/* Panel técnico plegable: qué fuentes respaldan el match */}
       <details className="mt-2 text-[10px] text-ink-subtle">
         <summary className="cursor-pointer select-none transition hover:text-ink-muted">
-          Fuentes de búsqueda
+          {t("sourcesTitle")}
         </summary>
         {!IS_PRESENTATION && (
           <p className="mt-1">
-            Score interno: {match.best_match_score} pts · motor: {match.best_match_source}
+            {t("internalScore", { score: match.best_match_score, source: match.best_match_source })}
           </p>
         )}
         <SourcesBreakdown match={match} />
@@ -181,37 +192,41 @@ function VisualMatchBlock({
  * latencia). Oculto en modo presentación; sin secretos.
  */
 function MatchingDebugPanel({ debug }: { debug: DetectedItem["matching_debug"] }) {
+  const t = useTranslations("studio.productCard");
   if (!debug || IS_PRESENTATION) return null;
   return (
     <details className="mt-2 text-[10px] text-ink-faint">
       <summary className="cursor-pointer select-none transition hover:text-ink-muted">
-        Debug del matching
+        {t("debugTitle")}
       </summary>
       <div className="mt-1 space-y-0.5">
-        <p>Reverse image search: sí (crop enviado, búsqueda visual pura primero)</p>
-        <p>Proveedor: {debug.providerUsed ?? "—"}</p>
-        <p>Fallback usado: {debug.fallbackUsed ? "sí" : "no"}</p>
-        <p>Cache hit: {debug.cached ? "sí" : "no"}</p>
-        {debug.totalMs != null && <p>Latencia: {debug.totalMs} ms</p>}
-        {debug.detail && <p>Detalle: {debug.detail}</p>}
-        <p>DataForSEO: solo enriquecimiento de precio/tiendas (no identidad)</p>
+        <p>{t("debugReverseSearch")}</p>
+        <p>{t("debugProvider", { provider: debug.providerUsed ?? "—" })}</p>
+        <p>{t("debugFallback", { value: debug.fallbackUsed ? t("yes") : t("no") })}</p>
+        <p>{t("debugCacheHit", { value: debug.cached ? t("yes") : t("no") })}</p>
+        {debug.totalMs != null && <p>{t("debugLatency", { ms: debug.totalMs })}</p>}
+        {debug.detail && <p>{t("debugDetail", { detail: debug.detail })}</p>}
+        <p>{t("debugDataForSeoNote")}</p>
       </div>
     </details>
   );
 }
 
+/** Claves de mensajes (namespace studio.productCard.sourceLabel) por proveedor. */
+const SOURCE_LABEL_KEY: Record<string, string> = {
+  searchapi_google_lens: "sourceLabel.searchapiGoogleLens",
+  serpapi_google_lens: "sourceLabel.serpapiGoogleLens",
+  serpapi_google_shopping: "sourceLabel.serpapiGoogleShopping",
+  dataforseo_google_shopping: "sourceLabel.dataforseoGoogleShopping",
+};
+
 /** Desglose de proveedores que aportaron candidatos (sin datos sensibles). */
 function SourcesBreakdown({ match }: { match: VisualMatch }) {
+  const t = useTranslations("studio.productCard");
   const bySource = new Map<string, number>();
   for (const c of match.ranked_candidates) {
     bySource.set(c.source, (bySource.get(c.source) ?? 0) + 1);
   }
-  const LABEL: Record<string, string> = {
-    searchapi_google_lens: "Google Lens",
-    serpapi_google_lens: "Google Lens (fallback)",
-    serpapi_google_shopping: "Google Shopping",
-    dataforseo_google_shopping: "Google Shopping (DataForSEO)",
-  };
   // "Confirmado por N fuentes" solo si el MISMO dominio del mejor candidato
   // aparece respaldado por más de un proveedor — sin falsear consenso.
   const best = match.ranked_candidates[0];
@@ -226,11 +241,12 @@ function SourcesBreakdown({ match }: { match: VisualMatch }) {
     <div className="mt-1.5 space-y-0.5">
       {[...bySource.entries()].map(([source, count]) => (
         <p key={source}>
-          {LABEL[source] ?? source}: {count} candidato{count === 1 ? "" : "s"}
+          {SOURCE_LABEL_KEY[source] ? t(SOURCE_LABEL_KEY[source] as Parameters<typeof t>[0]) : source}
+          : {t("candidateCount", { count })}
         </p>
       ))}
       {confirmingSources >= 2 && (
-        <p className="text-success">✓ Confirmado por {confirmingSources} fuentes</p>
+        <p className="text-success">{t("confirmedBySources", { count: confirmingSources })}</p>
       )}
     </div>
   );
@@ -241,49 +257,94 @@ function SourcesBreakdown({ match }: { match: VisualMatch }) {
  * detección y este bloque se actualiza cuando la cola de matching resuelve.
  */
 function MatchingStatusLine({ status }: { status?: DetectedItem["matchingStatus"] }) {
+  const t = useTranslations("studio.productCard");
   if (!status || status === "matched" || status === "similar_only") return null;
   if (status === "searching" || status === "pending") {
     return (
       <div className="mb-3 flex items-center gap-2 rounded-lg border border-info/15 bg-info/[0.06] px-3 py-2 text-[11px] text-info">
         <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-info" />
-        {status === "pending"
-          ? "Esperando un encuadre mejor…"
-          : "Buscando por imagen (Google Lens)…"}
+        {status === "pending" ? t("waitingBetterFrame") : t("searchingByImage")}
       </div>
     );
   }
-  const MSG: Record<string, string> = {
-    no_match:
-      "Sin coincidencia exacta — abajo se muestran los productos visualmente más parecidos.",
-    budget_exhausted: "Sin búsqueda externa (límite de consumo alcanzado).",
-    provider_error: "Búsqueda visual no disponible ahora mismo.",
+  const MSG_KEY: Record<string, string> = {
+    no_match: "statusMessage.noMatch",
+    budget_exhausted: "statusMessage.budgetExhausted",
+    provider_error: "statusMessage.providerError",
   };
+  const key = MSG_KEY[status];
   return (
     <p className="mb-3 rounded-lg border border-line bg-white/[0.02] px-3 py-2 text-[11px] text-ink-subtle">
-      {MSG[status] ?? status}
+      {key ? t(key as Parameters<typeof t>[0]) : status}
     </p>
   );
 }
 
 /** Evidencia que justifica la marca mostrada (nunca se afirma sin evidencia). */
-function brandEvidence(item: DetectedItem): string | null {
+function useBrandEvidence(item: DetectedItem): string | null {
+  const t = useTranslations("studio.productCard");
   if (!item.visible_brand) return null;
-  if (item.visible_text) return `texto visible: “${item.visible_text}”`;
-  if (item.logo_description) return `logo: ${item.logo_description}`;
-  if (item.logo_visible) return "logo reconocible en el producto";
+  if (item.visible_text) return t("evidenceVisibleText", { text: item.visible_text });
+  if (item.logo_description) return t("evidenceLogoDesc", { description: item.logo_description });
+  if (item.logo_visible) return t("evidenceLogoVisible");
   return null;
 }
 
-export default function ProductCard({ item, rank, onLinkClick, frameUrl }: Props) {
-  const evidence = brandEvidence(item);
+export default function ProductCard({
+  item,
+  rank,
+  onLinkClick,
+  frameUrl,
+  selected = false,
+  onSelect,
+}: Props) {
+  const t = useTranslations("studio.productCard");
+  const tProduct = useTranslations("studio.product");
+  const format = useFormatter();
+  const evidence = useBrandEvidence(item);
   // Similares del reverse image search que no están ya en el match principal.
   const bestLink = item.visual_match?.ranked_candidates?.[0]?.link;
   const similars = (item.similar_candidates ?? []).filter((c) => c.link !== bestLink);
+  const cardRef = useRef<HTMLElement | null>(null);
+
+  // Sincronización desde el hotspot de la imagen: al seleccionarse desde el
+  // overlay, la card se desplaza a la vista dentro del panel de resultados.
+  useEffect(() => {
+    if (selected) {
+      cardRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }
+  }, [selected]);
 
   return (
-    <article className="group rounded-2xl border border-line bg-white/[0.04] p-4 transition hover:border-line-strong hover:bg-white/[0.06]">
+    <article
+      ref={cardRef}
+      className={cn(
+        "group rounded-2xl border p-4 transition",
+        selected
+          ? "border-brand-bright/70 bg-brand/10 shadow-lg shadow-brand/20 ring-1 ring-brand-bright/40"
+          : "border-line bg-white/[0.04] hover:border-line-strong hover:bg-white/[0.06]"
+      )}
+    >
       <div className="mb-2 flex items-start justify-between gap-3">
-        <div className="flex items-start gap-2.5">
+        <div
+          className={cn(
+            "flex items-start gap-2.5 rounded-lg",
+            onSelect && "-m-1 cursor-pointer p-1 outline-none focus-visible:ring-2 focus-visible:ring-brand-bright/50"
+          )}
+          role={onSelect ? "button" : undefined}
+          tabIndex={onSelect ? 0 : undefined}
+          onClick={onSelect ? () => onSelect(item) : undefined}
+          onKeyDown={
+            onSelect
+              ? (e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    onSelect(item);
+                  }
+                }
+              : undefined
+          }
+        >
           {frameUrl && item.bounding_box ? (
             <ItemCrop
               frameUrl={frameUrl}
@@ -309,7 +370,7 @@ export default function ProductCard({ item, rank, onLinkClick, frameUrl }: Props
         {item.color && <Chip>{item.color}</Chip>}
         {item.visible_brand && (
           <span
-            title={evidence ? `Marca afirmada por evidencia — ${evidence}` : undefined}
+            title={evidence ? t("brandEvidenceTitle", { evidence }) : undefined}
             className="rounded-full border border-brand-bright/30 bg-brand/15 px-2 py-0.5 text-[11px] font-medium text-brand-bright"
           >
             🏷 {item.visible_brand}
@@ -318,17 +379,17 @@ export default function ProductCard({ item, rank, onLinkClick, frameUrl }: Props
         )}
         {!item.visible_brand && item.brand_guess && (
           <span className="rounded-full border border-ink-muted/20 bg-ink-subtle/10 px-2 py-0.5 text-[11px] text-ink-muted">
-            ≈ {item.brand_guess}?
+            {t("brandGuess", { brand: item.brand_guess })}
           </span>
         )}
         {item.logo_visible && !item.visible_brand && !item.brand_guess && (
           <span className="rounded-full border border-warning/20 bg-warning/10 px-2 py-0.5 text-[11px] text-warning">
-            logo visible
+            {t("logoVisibleBadge")}
           </span>
         )}
         {item.seenCount != null && item.seenCount > 1 && (
           <span className="rounded-full border border-success/20 bg-success/10 px-2 py-0.5 text-[11px] text-success">
-            ×{item.seenCount} visto
+            {tProduct("seenCount", { count: item.seenCount })}
           </span>
         )}
       </div>
@@ -345,13 +406,13 @@ export default function ProductCard({ item, rank, onLinkClick, frameUrl }: Props
 
       {item.visible_text && (
         <p className="mb-2 rounded-md border border-line bg-white/[0.03] px-2.5 py-1.5 font-mono text-[11px] text-ink-muted">
-          Texto: &ldquo;{item.visible_text}&rdquo;
+          {t("visibleTextLabel", { text: item.visible_text })}
         </p>
       )}
 
       {item.logo_description && !item.visible_text && (
         <p className="mb-2 text-[11px] italic text-ink-subtle">
-          Logo: {item.logo_description}
+          {t("logoDescLine", { description: item.logo_description })}
         </p>
       )}
 
@@ -366,7 +427,7 @@ export default function ProductCard({ item, rank, onLinkClick, frameUrl }: Props
       {similars.length > 0 && (
         <div className="mt-1">
           <p className="mb-1.5 text-[11px] font-medium text-ink-subtle">
-            {item.visual_match ? "También similares:" : "Productos visualmente similares:"}
+            {item.visual_match ? t("similarLabel.withMatch") : t("similarLabel.withoutMatch")}
           </p>
           <div className="flex gap-2 overflow-x-auto pb-1">
             {similars.slice(0, 5).map((c) => (
@@ -404,7 +465,7 @@ export default function ProductCard({ item, rank, onLinkClick, frameUrl }: Props
                     {c.store ?? ""}
                     {c.price != null && (
                       <span className="ml-1 font-semibold text-success">
-                        {c.price.toLocaleString("es-ES")} {c.currency === "USD" ? "$" : "€"}
+                        {format.number(c.price)} {c.currency === "USD" ? "$" : "€"}
                       </span>
                     )}
                   </p>

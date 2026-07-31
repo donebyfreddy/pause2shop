@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { motion } from "motion/react";
 import {
   Armchair,
@@ -50,14 +51,19 @@ const CATEGORY_ICONS: Record<AnalysisCategory, LucideIcon> = {
   all: Layers,
 };
 
-const INTENSITY: Record<
-  AnalysisIntensity,
-  { label: string; hint: string; icon: LucideIcon }
-> = {
-  fast: { label: "Rápida", hint: "Menos pasadas · ideal para probar", icon: Zap },
-  standard: { label: "Estándar", hint: "Equilibrio precisión / coste", icon: Gauge },
-  exhaustive: { label: "Exhaustiva", hint: "Máxima precisión · vídeos cortos", icon: Sparkles },
+/** Icono por nivel de intensidad; label/hint se resuelven con i18n en el componente. */
+const INTENSITY_ICON: Record<AnalysisIntensity, LucideIcon> = {
+  fast: Zap,
+  standard: Gauge,
+  exhaustive: Sparkles,
 };
+
+/** Claves de mensajes (namespace studio.configSelector.intensity) por nivel. */
+const INTENSITY_KEY = {
+  fast: { label: "intensity.fast.label", hint: "intensity.fast.hint" },
+  standard: { label: "intensity.standard.label", hint: "intensity.standard.hint" },
+  exhaustive: { label: "intensity.exhaustive.label", hint: "intensity.exhaustive.hint" },
+} as const;
 
 type Props = {
   config: VideoAnalysisConfig;
@@ -67,6 +73,7 @@ type Props = {
 };
 
 export default function AnalysisConfigSelector({ config, onChange, locked }: Props) {
+  const t = useTranslations("studio.configSelector");
   const selected = useMemo(() => new Set(config.categories), [config.categories]);
   const allSelected = selected.has("all");
 
@@ -101,14 +108,14 @@ export default function AnalysisConfigSelector({ config, onChange, locked }: Pro
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h3 className="text-sm font-semibold text-ink">
-            ¿Qué quieres encontrar?
+            {t("title")}
           </h3>
           <p className="mt-1 text-xs text-ink-subtle">
-            Solo se analizan las categorías elegidas: el resto no consume IA ni búsquedas.
+            {t("subtitle")}
           </p>
         </div>
         <span className="rounded-full border border-line bg-white/[0.03] px-2.5 py-1 text-[11px] text-ink-muted tabular-nums">
-          {activeCount} activa{activeCount === 1 ? "" : "s"}
+          {t("activeCount", { count: activeCount })}
         </span>
       </div>
 
@@ -149,11 +156,13 @@ export default function AnalysisConfigSelector({ config, onChange, locked }: Pro
       </div>
 
       <div className="mt-5">
-        <SectionLabel>Intensidad del análisis</SectionLabel>
+        <SectionLabel>{t("intensityLabel")}</SectionLabel>
         <div className="mt-2 grid gap-2 sm:grid-cols-3">
-          {(Object.keys(INTENSITY) as AnalysisIntensity[]).map((intensity) => {
+          {(Object.keys(INTENSITY_ICON) as AnalysisIntensity[]).map((intensity) => {
             const active = config.analysisIntensity === intensity;
-            const { label, hint, icon: Icon } = INTENSITY[intensity];
+            const Icon = INTENSITY_ICON[intensity];
+            const label = t(INTENSITY_KEY[intensity].label);
+            const hint = t(INTENSITY_KEY[intensity].hint);
             return (
               <button
                 key={intensity}

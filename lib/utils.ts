@@ -1,7 +1,19 @@
-import type { StyleVibe } from "./types";
+import type { DetectedItem, StyleVibe } from "./types";
 
 export function cn(...classes: Array<string | false | null | undefined>): string {
   return classes.filter(Boolean).join(" ");
+}
+
+/**
+ * Identidad estable de un DetectedItem dentro de UN frame: sincroniza la
+ * selección entre el overlay visual (hotspot/box) y su card en el panel de
+ * resultados, sea cual sea el orden/filtrado en cada lista. Basada en
+ * contenido (no en índice) para no depender del orden de renderizado.
+ * No es un id persistente entre frames, solo dentro del render actual.
+ */
+export function itemKey(item: DetectedItem): string {
+  const box = item.bounding_box;
+  return `${item.name}|${item.category ?? ""}|${box?.x ?? ""}|${box?.y ?? ""}|${box?.width ?? ""}|${box?.height ?? ""}`;
 }
 
 export function clamp(n: number, min: number, max: number): number {

@@ -1,12 +1,11 @@
+import { getTranslations } from "next-intl/server";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { OverviewView } from "@/components/admin/OverviewView";
 
-export default function AdminOverviewPage() {
+export default async function AdminOverviewPage() {
+  const t = await getTranslations("admin.overview");
   return (
-    <AdminShell
-      title="Resumen de operaciones"
-      description="Estado del catálogo, conectores, cola de ingesta y actividad reciente"
-    >
+    <AdminShell title={t("title")} description={t("description")}>
       <OverviewView />
     </AdminShell>
   );

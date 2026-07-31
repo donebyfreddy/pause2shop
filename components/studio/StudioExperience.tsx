@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useFormatter, useTranslations } from "next-intl";
 import { AnimatePresence, motion } from "motion/react";
 import {
   Activity, Boxes, ExternalLink, History, ImageIcon, Trash2, Users, Video,
@@ -35,7 +36,7 @@ import type {
 import { defaultAnalysisConfig, isCategoryAllowed } from "@/lib/analysis/categories";
 import type { FrameMeta } from "@/lib/api/types";
 import { IS_PRESENTATION } from "@/lib/presentation";
-import { formatTimestamp } from "@/lib/utils";
+import { formatTimestamp, itemKey } from "@/lib/utils";
 import { Badge, Button, Drawer, SectionLabel, Segmented } from "@/components/ui";
 
 /**
@@ -100,11 +101,14 @@ export default function StudioExperience({
   /** `embedded` se usa dentro de la landing: sin cabecera propia de página. */
   variant?: "page" | "embedded";
 }) {
+  const t = useTranslations("studio");
   const [mode, setMode] = useState<Mode>("video");
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [prefs, setPrefs] = useState<Preferences>({ categoryClicks: {}, styleClicks: {} });
   const [sessionItems, setSessionItems] = useState<DetectedItem[]>([]);
   const [selectedOverlayItem, setSelectedOverlayItem] = useState<DetectedItem | null>(null);
+  // Sincroniza el hotspot de la imagen analizada con su card en el panel lateral.
+  const [selectedImageItemKey, setSelectedImageItemKey] = useState<string | null>(null);
   const [costs, setCosts] = useState<CostData | null>(null);
   const currentVideoKeyRef = useRef<string | null>(null);
   // Tracker de productos entre pasadas de detección: trackIds persistentes.
@@ -121,7 +125,7 @@ export default function StudioExperience({
   const analysisHook = useFrameAnalysis();
   const matching = useObjectMatching();
   const {
-    analyze, analysis, loading, error, warning, mock, frameDataUrl,
+    analyze, analysis, loading, error, errorDetail, warning, mock, frameDataUrl,
     videoId: analyzedVideoId, savedItems, persisted, persistence,
   } = analysisHook;
   const [lastFrame, setLastFrame] = useState<{ url: string; meta: FrameMeta } | null>(null);
@@ -156,6 +160,7 @@ export default function StudioExperience({
   const handleRequestAnalysis = useCallback(
     async (dataUrl: string, meta: FrameMeta) => {
       setLastFrame({ url: dataUrl, meta });
+      setSelectedImageItemKey(null);
 
       // Cambio de fuente de vídeo: se reinicia la sesión de detección.
       if (currentVideoKeyRef.current !== meta.videoKey) {
@@ -293,6 +298,7 @@ export default function StudioExperience({
     currentVideoKeyRef.current = null;
     trackerRef.current = createTrackerState();
     setTrackedObjects(0);
+    setSelectedImageItemKey(null);
   };
 
   const overlayItems = analysis?.items ?? [];
@@ -309,31 +315,44 @@ export default function StudioExperience({
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div className="flex flex-wrap items-center gap-3">
           <Segmented
-            ariaLabel="Tipo de análisis"
+            ariaLabel={t("analysisType.label")}
             value={mode}
             onChange={switchMode}
             options={[
-              { value: "video", label: "Analizar vídeo", icon: Video },
-              { value: "image", label: "Analizar imagen", icon: ImageIcon },
+              { value: "video", label: t("analysisType.video"), icon: Video },
+              { value: "image", label: t("analysisType.image"), icon: ImageIcon },
             ]}
           />
           {IS_DEMO && (
             <Badge tone="warning" size="md" dot pulse>
-              Modo demo
+              {t("demoBadge")}
             </Badge>
           )}
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <LiveStat icon={Users} label="personas" value={personCount} />
-          <LiveStat icon={Activity} label="en seguimiento" value={trackedObjects} />
-          <LiveStat icon={Boxes} label="productos únicos" value={sessionItems.length} />
-          <LiveStat
-            icon={ExternalLink}
-            label="con coincidencia"
-            value={matchedCount}
-            tone={matchedCount > 0 ? "success" : "neutral"}
-          />
+          <LiveStat icon={Users}>
+            {t.rich("liveStats.peopleDetected", {
+              count: personCount,
+              value: (chunks) => <AnimatedCount>{chunks}</AnimatedCount>,
+            })}
+          </LiveStat>
+          <LiveStat icon={Activity}>
+            {t.rich("liveStats.tracking", {
+              count: trackedObjects,
+              value: (chunks) => <AnimatedCount>{chunks}</AnimatedCount>,
+            })}
+          </LiveStat>
+          <LiveStat icon={Boxes}>
+            {t.rich("liveStats.uniqueProducts", {
+              count: sessionItems.length,
+              value: (chunks) => <AnimatedCount>{chunks}</AnimatedCount>,
+            })}
+          </LiveStat>
+          <LiveStat icon={ExternalLink} tone={matchedCount > 0 ? "success" : "neutral"}>
+            <AnimatedCount>{matchedCount}</AnimatedCount>
+            <span className="text-[11px] text-ink-subtle">{t("liveStats.withMatch")}</span>
+          </LiveStat>
         </div>
       </div>
 
@@ -369,7 +388,13 @@ export default function StudioExperience({
                 <ImageAnalyzer
                   onRequestAnalysis={handleRequestAnalysis}
                   analyzing={loading}
-                  onReset={analysisHook.reset}
+                  onReset={() => {
+                    analysisHook.reset();
+                    setSelectedImageItemKey(null);
+                  }}
+                  items={personalizedItems}
+                  selectedKey={selectedImageItemKey}
+                  onItemClick={(item) => setSelectedImageItemKey(itemKey(item))}
                 />
               )}
             </motion.div>
@@ -393,7 +418,7 @@ export default function StudioExperience({
           {IS_PRESENTATION ? (
             <details className="panel px-4 py-3">
               <summary className="cursor-pointer text-xs font-medium text-ink-muted select-none">
-                Panel técnico (consumo y llamadas)
+                {t("technicalPanel")}
               </summary>
               <div className="mt-3">
                 <CostPanel costs={costs} itemsDetected={sessionItems.length} />
@@ -416,6 +441,7 @@ export default function StudioExperience({
             loading={loading}
             streaming={analysisHook.streaming}
             error={error}
+            errorDetail={errorDetail}
             warning={warning}
             analysis={analysis}
             items={personalizedItems}
@@ -429,6 +455,8 @@ export default function StudioExperience({
             onLinkClick={handleLinkClick}
             onReanalyze={handleReanalyze}
             canReanalyze={Boolean(lastFrame)}
+            selectedKey={mode === "image" ? selectedImageItemKey : null}
+            onSelectItem={mode === "image" ? (item) => setSelectedImageItemKey(itemKey(item)) : undefined}
           />
         </div>
       </div>
@@ -437,12 +465,14 @@ export default function StudioExperience({
       <Drawer
         open={Boolean(selectedOverlayItem)}
         onClose={() => setSelectedOverlayItem(null)}
-        title={selectedOverlayItem?.name ?? "Objeto"}
+        title={selectedOverlayItem?.name ?? t("product.fallbackTitle")}
         subtitle={
           selectedOverlayItem
-            ? `${selectedOverlayItem.category ?? "—"} · ${selectedOverlayItem.color ?? "—"} · ${Math.round(
-                selectedOverlayItem.confidence * 100
-              )}% de confianza`
+            ? t("overlayDetail.subtitle", {
+                category: selectedOverlayItem.category ?? "—",
+                color: selectedOverlayItem.color ?? "—",
+                confidence: Math.round(selectedOverlayItem.confidence * 100),
+              })
             : undefined
         }
       >
@@ -456,14 +486,12 @@ export default function StudioExperience({
 
 function LiveStat({
   icon: Icon,
-  label,
-  value,
   tone = "neutral",
+  children,
 }: {
   icon: typeof Users;
-  label: string;
-  value: number;
   tone?: "neutral" | "success";
+  children: React.ReactNode;
 }) {
   return (
     <span className="inline-flex items-center gap-1.5 rounded-lg border border-line bg-white/[0.02] px-2.5 py-1.5">
@@ -471,17 +499,23 @@ function LiveStat({
         className={tone === "success" ? "size-3.5 text-success" : "size-3.5 text-ink-faint"}
         aria-hidden
       />
-      <motion.span
-        key={value}
-        initial={{ scale: 1.25, color: "rgb(139 127 255)" }}
-        animate={{ scale: 1, color: "rgb(242 243 247)" }}
-        transition={{ duration: 0.4 }}
-        className="text-[13px] font-semibold tabular-nums"
-      >
-        {value}
-      </motion.span>
-      <span className="text-[11px] text-ink-subtle">{label}</span>
+      {children}
     </span>
+  );
+}
+
+/** Número animado (destaca al cambiar) usado dentro de un LiveStat. */
+function AnimatedCount({ children }: { children: React.ReactNode }) {
+  return (
+    <motion.span
+      key={String(children)}
+      initial={{ scale: 1.25, color: "rgb(139 127 255)" }}
+      animate={{ scale: 1, color: "rgb(242 243 247)" }}
+      transition={{ duration: 0.4 }}
+      className="text-[13px] font-semibold tabular-nums"
+    >
+      {children}
+    </motion.span>
   );
 }
 
@@ -492,6 +526,8 @@ function OverlayItemDetail({
   item: DetectedItem;
   onLinkClick: (item: DetectedItem, link: ProductLink) => void;
 }) {
+  const t = useTranslations("studio");
+  const format = useFormatter();
   const similars = item.similar_candidates ?? [];
 
   return (
@@ -501,13 +537,17 @@ function OverlayItemDetail({
       )}
 
       <div className="flex flex-wrap gap-2">
-        {item.visible_brand && <Badge tone="brand" size="md">Marca: {item.visible_brand}</Badge>}
+        {item.visible_brand && (
+          <Badge tone="brand" size="md">{t("product.brand", { brand: item.visible_brand })}</Badge>
+        )}
         {item.relationship && <Badge size="md">{item.relationship}</Badge>}
-        {item.seenCount != null && <Badge size="md">Visto {item.seenCount}×</Badge>}
+        {item.seenCount != null && (
+          <Badge size="md">{t("product.seenCount", { count: item.seenCount })}</Badge>
+        )}
       </div>
 
       <div>
-        <SectionLabel>Coincidencias encontradas</SectionLabel>
+        <SectionLabel>{t("overlayDetail.matchesTitle")}</SectionLabel>
         {similars.length > 0 ? (
           <ul className="mt-3 space-y-2">
             {similars.slice(0, 6).map((candidate) => (
@@ -540,7 +580,7 @@ function OverlayItemDetail({
                   <span className="flex shrink-0 items-center gap-2">
                     {candidate.price != null && (
                       <span className="text-[13px] font-semibold text-ink tabular-nums">
-                        {candidate.price.toLocaleString("es-ES")} €
+                        {format.number(candidate.price)} €
                       </span>
                     )}
                     <ExternalLink className="size-3.5 text-ink-faint" aria-hidden />
@@ -551,7 +591,7 @@ function OverlayItemDetail({
           </ul>
         ) : (
           <p className="mt-3 text-xs text-ink-subtle">
-            Buscando coincidencias visuales de este objeto…
+            {t("overlayDetail.searchingMatches")}
           </p>
         )}
       </div>
@@ -568,16 +608,17 @@ function HistoryStrip({
   onSelect: (entry: HistoryEntry) => void;
   onClear: () => void;
 }) {
+  const t = useTranslations("studio");
   return (
     <div className="panel p-4">
       <div className="mb-3 flex items-center justify-between">
         <SectionLabel className="flex items-center gap-1.5">
           <History className="size-3" aria-hidden />
-          Frames analizados
+          {t("history.title")}
         </SectionLabel>
         <Button variant="ghost" size="xs" onClick={onClear}>
           <Trash2 className="size-3" aria-hidden />
-          Limpiar
+          {t("history.clear")}
         </Button>
       </div>
       <div className="flex gap-3 overflow-x-auto pb-1">
@@ -594,7 +635,7 @@ function HistoryStrip({
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
                   src={entry.frameDataUrl}
-                  alt="frame analizado"
+                  alt={t("history.frameAlt")}
                   className="size-full object-cover transition-transform duration-300 group-hover:scale-105"
                 />
               ) : (
@@ -603,12 +644,11 @@ function HistoryStrip({
             </div>
             <div className="px-2 py-1.5">
               <p className="truncate text-[11px] font-medium text-ink-muted">
-                {entry.analysis.items.length} objeto
-                {entry.analysis.items.length === 1 ? "" : "s"}
+                {t("history.itemCount", { count: entry.analysis.items.length })}
               </p>
               <p className="text-[10px] text-ink-faint">
                 {entry.videoKey.startsWith("img:")
-                  ? "imagen"
+                  ? t("product.imageAlt")
                   : formatTimestamp(entry.timestampSeconds)}
               </p>
             </div>

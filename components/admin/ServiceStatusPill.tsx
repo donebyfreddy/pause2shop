@@ -1,6 +1,7 @@
 "use client";
 
 import { Database, HardDrive, WifiOff } from "lucide-react";
+import { useFormatter, useTranslations } from "next-intl";
 import { useAdminResource } from "@/lib/admin/client";
 
 type Health = {
@@ -17,6 +18,8 @@ type Health = {
  * como aviso, no como "todo bien".
  */
 export function ServiceStatusPill() {
+  const t = useTranslations("admin.shell.servicePill");
+  const format = useFormatter();
   const { data, error } = useAdminResource<Health>("health", { pollMs: 20_000 });
 
   if (error || !data) {
@@ -24,9 +27,9 @@ export function ServiceStatusPill() {
       <div className="flex items-center gap-2 rounded-lg border border-danger/25 bg-danger/8 px-3 py-2">
         <WifiOff className="size-3.5 shrink-0 text-danger" aria-hidden />
         <div className="min-w-0">
-          <p className="text-[11px] font-medium text-danger">Servicio no disponible</p>
+          <p className="text-[11px] font-medium text-danger">{t("unavailable")}</p>
           <p className="truncate text-[10px] text-ink-faint">
-            {error?.message ?? "comprobando…"}
+            {error?.message ?? t("checking")}
           </p>
         </div>
       </div>
@@ -55,11 +58,14 @@ export function ServiceStatusPill() {
             "text-[11px] font-medium " + (isPostgres ? "text-success" : "text-warning")
           }
         >
-          {isPostgres ? "Postgres + pgvector" : "Store en fichero"}
+          {isPostgres ? t("postgres") : t("fileStore")}
         </p>
         <p className="truncate text-[10px] text-ink-faint">
-          {data.products.toLocaleString("es-ES")} productos ·{" "}
-          {data.embeddings.provider} {data.embeddings.dimension}d
+          {t("productsSummary", {
+            count: format.number(data.products),
+            provider: data.embeddings.provider,
+            dimension: data.embeddings.dimension,
+          })}
         </p>
       </div>
     </div>

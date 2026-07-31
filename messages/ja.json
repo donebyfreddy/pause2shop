@@ -1,0 +1,1467 @@
+{
+  "common": {
+    "loading": "読み込み中…",
+    "error": "エラー",
+    "retry": "再試行",
+    "cancel": "キャンセル",
+    "save": "保存",
+    "close": "閉じる",
+    "search": "検索",
+    "noResults": "結果はありません",
+    "comingSoon": "近日公開",
+    "seeMore": "もっと見る",
+    "seeLess": "折りたたむ",
+    "page": "{page} / {totalPages} ページ"
+  },
+  "navigation": {
+    "studio": "スタジオ",
+    "catalog": "カタログ",
+    "demoVideo": "デモ動画",
+    "admin": "管理",
+    "openMenu": "メニューを開く",
+    "closeMenu": "メニューを閉じる",
+    "mainNav": "メインナビゲーション",
+    "mobileNav": "モバイルナビゲーション"
+  },
+  "actions": {
+    "tryNow": "今すぐ試す",
+    "viewCatalogPanel": "カタログ運用パネル",
+    "analyzeVideo": "動画を解析",
+    "analyzeImage": "画像を解析",
+    "upload": "アップロード",
+    "export": "エクスポート",
+    "sync": "同期",
+    "pause": "一時停止",
+    "resume": "再開",
+    "viewDetails": "詳細を見る",
+    "viewCatalog": "カタログを見る",
+    "viewDemo": "デモを見る",
+    "activate": "有効化",
+    "deactivate": "無効化",
+    "cancelJob": "キャンセル",
+    "retryJob": "再試行",
+    "reindex": "埋め込みを再インデックス"
+  },
+  "languageSelector": {
+    "trigger": "言語: {language}",
+    "searchPlaceholder": "言語を検索…",
+    "noMatches": "一致する言語がありません",
+    "currentLanguage": "現在の言語: {language}",
+    "listLabel": "言語セレクター"
+  },
+  "toast": {
+    "dismiss": "通知を閉じる",
+    "catalog": {
+      "searchFailed": "検索に失敗しました",
+      "noResultsAboveThreshold": "しきい値を超える結果はありません",
+      "imageSearchFailed": "画像検索に失敗しました",
+      "notAnImage": "そのファイルは画像ではありません",
+      "productDeactivated": "商品を無効化しました",
+      "productActivated": "商品を有効化しました",
+      "statusChangeFailed": "状態を変更できませんでした",
+      "matchesFound": "{count, plural, one{#件の一致} other{#件の一致}}",
+      "matchCascadeDescription": "カスケード: 完全一致ハッシュ → 知覚ハッシュ → 視覚埋め込み"
+    },
+    "jobs": {
+      "cancelFailed": "キャンセルできませんでした",
+      "retryFailed": "再試行できませんでした",
+      "actionSucceeded": "{action}に成功しました",
+      "cancelRequested": "キャンセルをリクエストしました",
+      "retryQueued": "再試行をキューに追加しました",
+      "retryQueuedDetail": "新しいジョブ {jobId} — チェックポイントから再開します",
+      "reindexFailed": "再インデックスを開始できませんでした",
+      "reindexQueued": "埋め込みの再インデックスをキューに追加しました",
+      "reindexQueuedDetail": "ジョブ {jobId}"
+    },
+    "connectors": {
+      "actionFailed": "{action}できませんでした",
+      "paused": "{id} を一時停止しました",
+      "resumed": "{id} を再開しました",
+      "syncFailed": "同期を開始できませんでした"
+    }
+  },
+  "errors": {
+    "generic": "エラーが発生しました",
+    "network": "ネットワークエラーです。接続を確認してください。",
+    "unauthorized": "権限がありません",
+    "notFound": "見つかりません",
+    "validation": {
+      "required": "この項目は必須です"
+    },
+    "upload": {
+      "tooLarge": "ファイルが大きすぎます",
+      "unsupportedFormat": "対応していない形式です"
+    }
+  },
+  "landing": {
+    "hero": {
+      "badge": "動画内の商品をリアルタイムで視覚検出",
+      "title": "動画を一時停止。",
+      "subtitle": "商品を見つける。",
+      "description": "Pause2Shopは動画や画像を解析し、衣類・靴・アクセサリーを検出して、独自のファッションカタログと逆引き視覚検索を照合します。すべての結果に出典と信頼度が付きます。",
+      "ctaPrimary": "今すぐ試す",
+      "ctaSecondary": "カタログを見る",
+      "ctaTertiary": "デモを見る"
+    },
+    "howItWorks": {
+      "title": "仕組み",
+      "step1": {
+        "title": "一時停止",
+        "description": "その瞬間で動画を止めます。"
+      },
+      "step2": {
+        "title": "検出",
+        "description": "AIがフレーム内に見える商品を特定します。"
+      },
+      "step3": {
+        "title": "発見",
+        "description": "カタログとの照合、および逆引き視覚検索を行います。"
+      },
+      "heading": "1フレームから購入可能な商品まで、5つのステップ",
+      "description": "パイプライン全体は検出された物体ごとに実行され、各段階で呼び出し回数の予算とキャッシュが管理されます。",
+      "steps": {
+        "capture": {
+          "title": "フレームのキャプチャ",
+          "body": "動画(アップロード、YouTube、画面キャプチャ)からFPSとシーン変化検出に基づいて候補フレームを抽出します。ほぼ同一のフレームは知覚ハッシュで除外され、検出処理のコストがかかりません。",
+          "meta": "rVFC · シーン差分 · 知覚ハッシュ"
+        },
+        "detect": {
+          "title": "マルチモーダル検出",
+          "body": "視覚モデルが各物体を、枠・カテゴリ・色・人物との関係(着用中/保持/背景)とともに特定します。選択したカテゴリのみが解析されます。",
+          "meta": "バウンディングボックス · 関係性 · 信頼度"
+        },
+        "dedupe": {
+          "title": "トラッキングと重複除去",
+          "body": "物体はフレーム間でIDを保持し、グローバルに統合されます。10回登場する同じジャケットは1つの商品として扱われ、最良の切り出しが選ばれます。",
+          "meta": "trackId · NMS · 最良クロップ"
+        },
+        "match": {
+          "title": "カタログとの照合",
+          "body": "各切り出し画像はまず独自カタログでカスケード検索されます: 完全一致ハッシュ → 知覚ハッシュ → 視覚埋め込み。十分な一致がない場合は逆引き視覚検索に切り替わります。",
+          "meta": "カタログ優先 · pgvector · CLIP"
+        },
+        "result": {
+          "title": "出典付きの結果",
+          "body": "各結果にはスコア、解決に使われた段階、出所(カタログまたは外部プロバイダー)が付きます。設定した信頼度しきい値を下回るものは公開されません。",
+          "meta": "スコア · matchStage · 出所"
+        }
+      }
+    },
+    "useCases": {
+      "title": "活用例",
+      "heading": "動画カタログのために作られている、単発の写真のためではない",
+      "primary": {
+        "title": "VODおよびオンデマンド動画",
+        "body": "動画カタログを商品カタログに変換します。動画全体を解析し、再出現する商品を重複除去して、出現タイムスタンプ付きの商品リストを出力します。",
+        "point1": "1ジョブあたり最大2分の動画(設定可能)",
+        "point2": "商品ごとのタイムスタンプと元フレーム",
+        "point3": "動画あたりの呼び出し回数予算とコスト"
+      },
+      "secondary": {
+        "discovery": {
+          "title": "商品の発見",
+          "body": "画面に映っているものが何かを知りたいユーザーのために。検索を始めるには画像1枚で十分です。"
+        },
+        "catalogMatch": {
+          "title": "カタログとの照合",
+          "body": "検出結果をまずあなた自身のカタログと照合してからインターネットへ出ます。精度が上がり、コストも抑えられます。"
+        },
+        "visualShopping": {
+          "title": "ビジュアルショッピング",
+          "body": "価格・在庫・店舗ページへの直接リンク付きの購入可能な結果を提供します。"
+        },
+        "clientDemos": {
+          "title": "クライアント向けデモ",
+          "body": "プレゼンテーションモード、コストパネル、認証情報に依存しないサンプルデータをすぐに提示できます。"
+        }
+      }
+    },
+    "capabilities": {
+      "title": "機能",
+      "heading": "すでに動いているすべてを、直接確認できるリンク付きで",
+      "verifiableBadge": "検証可能な技術デモ",
+      "ctaOpenStudio": "スタジオを開く",
+      "ctaViewInStudio": "スタジオで見る",
+      "features": {
+        "video": {
+          "body": "アップロード動画、YouTube、画面キャプチャに対応。継続的な解析と、プレーヤー上の検出オーバーレイ付き。"
+        },
+        "image": {
+          "body": "画像をアップロードすると、検出された物体が切り出し画像とともに表示され、そのまま検索できます。"
+        },
+        "connectors": {
+          "title": "カタログコネクタ",
+          "body": "実際の状態を持つファッションソースのモジュール型レジストリ: 実装済み、未検証、または商業契約待ち。",
+          "cta": "コネクタを見る"
+        },
+        "embeddings": {
+          "title": "視覚埋め込み",
+          "body": "ローカルCLIPまたはデモ用の決定論的ハッシュプロバイダー。モデルを変更した場合は管理画面から完全な再インデックスが可能です。",
+          "cta": "設定を見る",
+          "badge": "CLIPはオプション"
+        },
+        "catalog": {
+          "title": "正規化カタログ",
+          "body": "ブランドとカテゴリを正規化した単一の商品スキーマ、価格履歴、多段階の重複除去、ソースの追跡可能性。",
+          "cta": "カタログを探索"
+        },
+        "cost": {
+          "title": "コストと予算",
+          "body": "プロバイダー別の呼び出し回数カウンター、動画ごとのコスト上限、有料検索を繰り返さないためのキャッシュ。"
+        }
+      },
+      "complianceNote": {
+        "lead": "ルールに基づいた取り込み。",
+        "body": "各リクエスト前にrobots.txtを確認し、<code>Crawl-delay</code>を尊重し、連絡先付きの識別可能なUser-Agentを使用、アンチボット回避は一切行いません。パートナー契約やアフィリエーション提携が必要なソースは、それを得るまで取り込みません。"
+      }
+    },
+    "cta": {
+      "title": "今すぐ始める",
+      "action": "今すぐ試す",
+      "heading": "自分の動画で試してみましょう",
+      "description": "検索したいカテゴリを選び、解析の強度を調整して、フレームごとに一致が現れる様子を見てみましょう。登録は不要です。",
+      "operationsPanel": "運用パネル"
+    },
+    "sourceMarquee": {
+      "label": "連携済みソース",
+      "registryLabel": "ファッションソースレジストリ",
+      "totalLabel": "ソース",
+      "verifiedLabel": "フィクスチャで検証済み",
+      "partnerLabel": "契約が必要",
+      "footnote": "カタログサービスのコネクタレジストリの一覧です。ここに表示されていることは、そのソースが実際の実装状況とコンプライアンス状況とともに登録されていることを意味しますが、<emphasis>商業関係や許諾があることを示すものではありません</emphasis>。"
+    },
+    "stats": {
+      "productsIndexed": "{count, plural, one{#件の商品をインデックス済み} other{#件の商品をインデックス済み}}",
+      "catalogProducts": "カタログ内の商品",
+      "visualEmbeddingCoverage": "視覚埋め込み付き",
+      "detectableCategories": "検出可能なカテゴリ"
+    },
+    "heroVisual": {
+      "windowStatus": "スタジオ · 継続解析 · 00:42",
+      "liveBadge": "ライブ",
+      "boxes": {
+        "jacket": "リネンジャケット",
+        "bag": "ショッパーバッグ",
+        "sneaker": "白いスニーカー"
+      },
+      "detectionSummary": "3つの物体 · 1人 · 重複除去アクティブ",
+      "matchesTitle": "一致結果",
+      "matchesSource": "カタログ + Lens",
+      "match1": {
+        "title": "リラックスフィットのリネンジャケット",
+        "store": "カタログ · Zara"
+      },
+      "match2": {
+        "title": "レザーのショッパーバッグ",
+        "store": "カタログ · Mango"
+      },
+      "match3": {
+        "title": "ローカットの白スニーカー",
+        "store": "Google Lens"
+      },
+      "latencyLabel": "平均レイテンシ",
+      "latencyValue": "1.4秒/フレーム"
+    },
+    "studioSection": {
+      "label": "スタジオ",
+      "heading": "今すぐ動画や画像を解析",
+      "description": "カテゴリと強度を選び、コンテンツを読み込んで、リアルタイムで検出結果と一致結果を確認しましょう。",
+      "openFullscreen": "フルスクリーンで開く",
+      "loading": "解析スタジオを読み込み中…"
+    },
+    "footer": {
+      "tagline": "動画を一時停止して、商品を見つける。",
+      "description": "動画・画像内の商品の視覚検出、独自カタログとの照合、逆引き視覚検索。結果は実在するソースから取得しています。ブランド、価格、リンクを創作することはありません。",
+      "product": {
+        "title": "プロダクト",
+        "studio": "解析スタジオ",
+        "catalog": "検出されたカタログ",
+        "demo": "動画デモ"
+      },
+      "operations": {
+        "title": "運用",
+        "admin": "管理パネル",
+        "connectors": "コネクタ",
+        "jobs": "取り込みジョブ",
+        "logs": "モニタリング"
+      },
+      "copyright": "© {year} {appName}. 技術デモです。",
+      "complianceNote": "カタログ取り込みはrobots.txtを尊重し、ドメイン単位のレート制限を適用、アンチボット回避は行いません。"
+    }
+  },
+  "studio": {
+    "page": {
+      "title": "分析スタジオ",
+      "description": "動画や画像から商品を検出し、カタログで見つけます。開始前に検索するカテゴリーと分析の強度を設定してください。"
+    },
+    "demoBadge": "デモモード",
+    "technicalPanel": "技術パネル(消費量と呼び出し数)",
+    "selectFile": "ファイルを選択",
+    "analysisType": {
+      "label": "解析タイプ",
+      "video": "動画を解析",
+      "image": "画像を解析"
+    },
+    "urlInput": {
+      "placeholder": "https://www.youtube.com/watch?v=...",
+      "label": "動画のURL",
+      "submit": "動画を読み込む",
+      "invalidUrl": "そのURLは有効ではないようです。YouTubeのリンク(watch、youtu.be、shorts)を貼り付けてください。"
+    },
+    "liveStats": {
+      "peopleDetected": "{count, plural, one{<value>#</value>人} other{<value>#</value>人}}",
+      "tracking": "{count, plural, one{<value>#</value>件を追跡中} other{<value>#</value>件を追跡中}}",
+      "uniqueProducts": "{count, plural, one{<value>#</value>件のユニーク商品} other{<value>#</value>件のユニーク商品}}",
+      "withMatch": "一致あり"
+    },
+    "product": {
+      "fallbackTitle": "物体",
+      "brand": "ブランド: {brand}",
+      "seenCount": "{count, plural, one{#回検出} other{#回検出}}",
+      "imageAlt": "画像"
+    },
+    "loading": {
+      "processing": "コンテンツを解析中"
+    },
+    "cost": {
+      "title": "コスト",
+      "heading": "AIの消費量とコスト",
+      "demoMode": "デモモード",
+      "real": "実データ",
+      "totalCost": "総コスト",
+      "apiCalls": "API呼び出し",
+      "cacheHits": "キャッシュヒット",
+      "itemsDetected": "検出されたアイテム",
+      "openaiVision": "OpenAI Vision",
+      "aiSuggestions": "AIによる提案",
+      "reverseSearch": "逆引き検索(Lens)",
+      "shopping": "ショッピング",
+      "callsCount": "{count, plural, one{#回の呼び出し} other{#回の呼び出し}}",
+      "fallbacksUsed": "フォールバック: {count}",
+      "mockCallsNote": "{count, plural, one{#回はデモモードの呼び出し(コストなし)} other{#回はデモモードの呼び出し(コストなし)}}"
+    },
+    "overlayDetail": {
+      "subtitle": "{category} · {color} · 信頼度{confidence}%",
+      "matchesTitle": "見つかった一致結果",
+      "searchingMatches": "この物体の視覚的な一致を検索中…"
+    },
+    "history": {
+      "title": "解析済みフレーム",
+      "clear": "クリア",
+      "frameAlt": "解析済みフレーム",
+      "itemCount": "{count, plural, one{#件のアイテム} other{#件のアイテム}}",
+      "locatedCount": "{count, plural, one{#件のアイテムを検出} other{#件のアイテムを検出}}"
+    },
+    "videoAnalyzer": {
+      "phase": {
+        "idle": "非アクティブ",
+        "requestingPermission": "権限をリクエスト中…",
+        "captureActive": "キャプチャ中",
+        "capturingFrame": "フレームをキャプチャ中…",
+        "analyzingFrame": "フレームを解析中…",
+        "waitingNextInterval": "次の間隔を待機中",
+        "skippedSimilarFrame": "フレームをスキップ(類似シーン)",
+        "skippedBusy": "フレームをスキップ(解析中)",
+        "error": "エラー",
+        "stopped": "停止中"
+      },
+      "tabs": {
+        "pasteLink": "🔗 リンクを貼り付け",
+        "uploadVideo": "📁 動画をアップロード"
+      },
+      "uploadedVideoDefaultName": "動画",
+      "uploadedReadyNote": "動画の準備が完了しました · 再生を開始すると自動的に解析が始まります。",
+      "providerDetectedLabel": "検出されたプロバイダー:",
+      "embedCompatible": "埋め込み対応",
+      "notEmbeddable": "埋め込み不可",
+      "requiresScreenShare": "· 画面共有が必要です",
+      "changeVideo": "動画を変更",
+      "changeUrl": "URLを変更",
+      "youtubeWarning": {
+        "title": "YouTubeは画面キャプチャが必要です",
+        "body": "クロスオリジンの制約により、ブラウザはiframeから直接フレームを読み取ることをブロックします。解析するには:",
+        "step1": "下の<b>画面キャプチャを有効にする</b>を押してください",
+        "step2": "<b>このタブ</b>を選択してください(画面全体ではありません)",
+        "step3": "自動キャプチャを有効にして動画を再生してください",
+        "footer": "画面共有を避けたい場合は、<b>動画をアップロード</b>タブからMP4をアップロードしてください。"
+      },
+      "pauseHintNoCapture": "動画を一時停止しましたが、タブキャプチャが有効になっていません。解析するには「画面キャプチャを有効にする」を押してください。",
+      "crossOriginWarning": "<b>{provider}</b>は直接フレームを読み取ることを許可していません(クロスオリジンの制約)。画面キャプチャを有効にし、<b>このタブ</b>を選択してください。",
+      "directCaptureActive": "直接キャプチャが有効です。",
+      "directCaptureDefaultReason": "この動画を解析するには画面共有は不要です。",
+      "unknownProviderHint": "<b>動画をアップロード</b>タブに切り替えるか、.mp4/.m3u8のURLを使用してください。",
+      "urlPanel": {
+        "title": "動画のURLを貼り付け",
+        "subtitle": "YouTube · Dailymotion · Vimeo · .mp4 / .m3u8の直接リンク"
+      },
+      "upload": {
+        "dropHint": "ここに動画をドロップ",
+        "uploadHint": "動画をアップロードすると、商品を自動的に解析します。",
+        "formatsHint": "MP4、WebM、または MOV(ブラウザが再生できる場合) · ドラッグまたはファイルを選択"
+      },
+      "status": {
+        "lastFrame": "最後のフレーム: {seconds}秒前",
+        "intervalLabel": "間隔: {seconds}秒",
+        "captured": "キャプチャ数:",
+        "analyzed": "解析数:",
+        "skipped": "スキップ数:"
+      },
+      "stopAnalysis": "⏹ 解析を停止",
+      "resumeAnalysis": "▶ 解析を再開",
+      "detectingObjectsInline": "物体を検出中…",
+      "analyzingRealtime": "動画をリアルタイムで解析中 · シーン変化時に検出",
+      "analysisPaused": "解析は一時停止中です",
+      "technicalOptions": "技術オプション",
+      "analyzeOnPause": "一時停止時に解析",
+      "forceAnalyzeFrame": "このフレームの解析を強制する",
+      "autoCapture": "自動キャプチャ",
+      "autoCaptureInterval": "{seconds}秒ごと",
+      "activateScreenCapture": "画面キャプチャを有効にする",
+      "stopCapture": "キャプチャを停止",
+      "analyzeScreenshot": "スクリーンショットを解析",
+      "tooltipActivateFirst": "まず画面キャプチャを有効にしてください",
+      "tooltipAlreadyAnalyzing": "すでに解析が進行中です",
+      "realtimeIndicator": "商品をリアルタイムで解析中",
+      "frameCounter": "フレーム {count}",
+      "fpsSuffix": "· {fps} fps",
+      "statsPersons": "{count, plural, one{#人} other{#人}}",
+      "statsTracked": "{count, plural, one{#件の商品を追跡中} other{#件の商品を追跡中}}",
+      "statsUnique": "{count, plural, one{#件のユニーク} other{#件のユニーク}}",
+      "statsMatched": "{count, plural, one{#件を識別} other{#件を識別}}",
+      "intervalOnlyNewFrames": "{seconds}秒ごとにキャプチャ · 新しいフレームのみ",
+      "currentPosition": "現在の位置: {timestamp}",
+      "debugTitle": "キャプチャデバッグ",
+      "debugNoEvents": "イベントはまだありません。",
+      "debugFramesSummary": "フレーム数: {frameCount} · 解析済み: {analyzedCount} · スキップ: {skippedCount}",
+      "debugClear": "クリア",
+      "loadingPlayer": "プレーヤーを読み込み中…",
+      "detectingObjectsOverlay": "物体を検出中…",
+      "analyzeFrameNow": "このフレームを今すぐ解析",
+      "captureHint": {
+        "idle": "キャプチャは非アクティブです",
+        "active": "キャプチャ中",
+        "denied": "権限が拒否されました",
+        "needsSelection": "このタブまたはウィンドウを選択してください",
+        "error": "キャプチャエラー"
+      },
+      "youtubeCaptureRequired": "YouTube動画を解析するには画面キャプチャの権限が必要です。これはYouTubeがiframeから直接フレームを読み取ることを許可していないためです。有効にする際は<b>このタブまたはウィンドウ</b>を選択してください。",
+      "analyzingFrameOverlay": "フレームを解析中…"
+    },
+    "localVideo": {
+      "uploadHint": "動画をアップロード(.mp4、.mov、.webm)",
+      "uploadSubHint": "画面キャプチャなしで素早くテストするのに最適",
+      "defaultTitle": "ローカル動画"
+    },
+    "imageAnalyzer": {
+      "unsupportedFormat": "対応していない形式です: {format}。JPG、PNG、またはWebPを使用してください。",
+      "unknownFormat": "不明",
+      "emptyFile": "ファイルが空です。",
+      "tooLarge": "画像が{maxMb}MBの上限を超えています。",
+      "readError": "画像を読み取れませんでした。",
+      "dropHere": "ここに画像をドロップ",
+      "uploadPrompt": "画像をアップロード、ドラッグ、またはペーストしてください",
+      "pasteHint": "JPG、PNG、WebP — 最大{maxMb}MB · <kbd>Ctrl+V</kbd>でペースト",
+      "analyzingOverlay": "画像を解析中…",
+      "analyzedBadge": "解析済み ✓",
+      "analyzingLabel": "解析中…",
+      "analyzeAnother": "別の画像を解析",
+      "changeImage": "画像を変更",
+      "fileInfo": "{sizeKb} KB · アップロードされた画像",
+      "previewAlt": "プレビュー"
+    },
+    "configSelector": {
+      "title": "何を見つけたいですか?",
+      "subtitle": "選択したカテゴリのみが解析されます: それ以外はAIも検索も消費しません。",
+      "activeCount": "{count, plural, one{#件アクティブ} other{#件アクティブ}}",
+      "intensity": {
+        "fast": {
+          "label": "高速",
+          "hint": "パス数を減らす · 試用に最適"
+        },
+        "standard": {
+          "label": "標準",
+          "hint": "精度とコストのバランス"
+        },
+        "exhaustive": {
+          "label": "徹底",
+          "hint": "最大精度 · 短い動画向け"
+        }
+      },
+      "intensityLabel": "解析の強度",
+      "personCentricNote": "人物中心モード: 人が着用または保持している衣類やアクセサリーのみを解析し、シーンの背景は無視します。"
+    },
+    "loadingAnalysis": {
+      "ariaLabel": "フレームを解析中",
+      "heading": "フレームを解析中…",
+      "stages": {
+        "capture": "フレームをキャプチャ中",
+        "detect": "物体を検出中",
+        "crop": "切り出しと重複除去中",
+        "search": "一致を検索中"
+      }
+    },
+    "productCard": {
+      "detectionTooltip": "物体とその属性が動画内で正しく識別された確からしさ。",
+      "detectionPct": "検出精度 {pct}%",
+      "matchTooltip": "ウェブ上の結果が同じ商品に対応している確からしさ。",
+      "matchPct": "一致度 {pct}%",
+      "matchLabel": {
+        "exact": "完全一致の商品",
+        "nearExact": "ほぼ完全一致",
+        "similar": "類似"
+      },
+      "evidenceTitle": "一致した点",
+      "sourcesTitle": "検索元",
+      "internalScore": "内部スコア: {score}点 · エンジン: {source}",
+      "debugTitle": "マッチングのデバッグ",
+      "debugReverseSearch": "逆引き画像検索: あり(切り出し画像を送信、まず純粋な視覚検索を実行)",
+      "debugProvider": "プロバイダー: {provider}",
+      "debugFallback": "フォールバック使用: {value}",
+      "debugCacheHit": "キャッシュヒット: {value}",
+      "debugLatency": "レイテンシ: {ms} ms",
+      "debugDetail": "詳細: {detail}",
+      "debugDataForSeoNote": "DataForSEO: 価格・店舗情報の補完のみ(識別には使用しません)",
+      "yes": "はい",
+      "no": "いいえ",
+      "sourceLabel": {
+        "searchapiGoogleLens": "Google Lens",
+        "serpapiGoogleLens": "Google Lens(フォールバック)",
+        "serpapiGoogleShopping": "Google Shopping",
+        "dataforseoGoogleShopping": "Google Shopping(DataForSEO)"
+      },
+      "candidateCount": "{count, plural, one{#件の候補} other{#件の候補}}",
+      "confirmedBySources": "✓ {count}件のソースで確認済み",
+      "waitingBetterFrame": "より良いフレームを待っています…",
+      "searchingByImage": "画像で検索中(Google Lens)…",
+      "statusMessage": {
+        "noMatch": "完全一致は見つかりませんでした — 以下に視覚的に最も似ている商品を表示しています。",
+        "budgetExhausted": "外部検索は行われません(消費上限に達しました)。",
+        "providerError": "現在、視覚検索は利用できません。"
+      },
+      "evidenceVisibleText": "表示されているテキスト: 「{text}」",
+      "evidenceLogoDesc": "ロゴ: {description}",
+      "evidenceLogoVisible": "商品に判読可能なロゴあり",
+      "brandEvidenceTitle": "証拠に基づき推定されたブランド — {evidence}",
+      "brandGuess": "≈ {brand}?",
+      "logoVisibleBadge": "ロゴが見える",
+      "visibleTextLabel": "テキスト: 「{text}」",
+      "logoDescLine": "ロゴ: {description}",
+      "similarLabel": {
+        "withMatch": "こちらも類似:",
+        "withoutMatch": "視覚的に類似した商品:"
+      }
+    },
+    "resultsPanel": {
+      "title": "結果",
+      "subtitle": "検出された物体とその一致結果",
+      "reanalyzeTooltip": "キャッシュを無視して最後のフレームを再解析します",
+      "reanalyzeAction": "もう一度解析",
+      "scopeAriaLabel": "結果の対象範囲",
+      "thisFrame": "このフレーム",
+      "wholeVideo": "動画全体",
+      "demoModeNotice": "デモモード(<code>OPENAI_API_KEY</code>なし): 現実的なサンプルデータを表示しています。",
+      "savedInCatalog": "{count, plural, one{#件の要素をカタログに保存済み} other{#件の要素をカタログに保存済み}}",
+      "view": "表示",
+      "localSaveNotice": "このセッションのローカル保存が有効です。同期は自動的に再試行されます。",
+      "sessionSummary": "{count, plural, one{動画中に検出された#件のユニークな物体(フレーム間で重複除去済み)。} other{動画中に検出された#件のユニークな物体(フレーム間で重複除去済み)。}}",
+      "analyzeErrorTitle": "解析できませんでした",
+      "technicalDetails": "技術的な詳細",
+      "detectingMore": "このシーンでさらに物体を検出中…",
+      "styleDetectedLabel": "検出されたスタイル:",
+      "noItemsTitle": "明確な購入可能アイテムがありません",
+      "noItemsDescription": "このフレームには十分に明確な商品がありません。より近い、または明るいフレームで試してください。",
+      "readyTitle": "解析の準備ができました",
+      "readyDescription": "動画を再生して気になる瞬間で一時停止するか、画像をアップロードしてください。フレームが得られると解析が始まります。",
+      "privacyNote": "キャプチャは購入可能な物体の検出にのみ使用されます。人物の識別や画像のサーバー保存は行いません。",
+      "memoryFallbackNote": "(データベースが利用できません — このセッションに保存され、自動的に再試行されます)",
+      "localSessionNote": "(ローカルセッション)",
+      "memoryNote": "(メモリ内 — 永続化するには<code>DATABASE_URL</code>を設定してください)",
+      "groups": {
+        "worn": "着用しているもの",
+        "heldOrUsed": "持っている・使っているもの",
+        "nearPerson": "人物の近くにあるもの",
+        "otherObjects": "シーン内のその他の物体({count})",
+        "lowPriority": "優先度低"
+      }
+    }
+  },
+  "analysis": {
+    "processing": "コンテンツを解析中",
+    "queued": "キュー待ち",
+    "done": "完了",
+    "failed": "失敗",
+    "noItemsDetected": "商品は検出されませんでした"
+  },
+  "catalog": {
+    "products": "商品",
+    "empty": "一致する商品がありません",
+    "status": {
+      "active": "有効",
+      "inactive": "無効"
+    },
+    "filters": {
+      "searchPlaceholder": "ブランド、グループ、地域を検索…",
+      "titleSearchPlaceholder": "タイトル、ブランドで検索…",
+      "sourceAriaLabel": "ソース",
+      "allSources": "すべてのソース",
+      "originAriaLabel": "出所",
+      "allOrigins": "すべての出所",
+      "statusAriaLabel": "状態",
+      "allStatuses": "有効・無効すべて",
+      "onlyActive": "有効のみ",
+      "onlyInactive": "無効のみ"
+    },
+    "pagination": "{count}件の商品 · {page} / {totalPages} ページ",
+    "modeAriaLabel": "探索モード",
+    "modes": {
+      "browse": "探索",
+      "text": "テキストで検索",
+      "image": "画像で検索"
+    },
+    "viewAriaLabel": "表示",
+    "view": {
+      "grid": "グリッド",
+      "list": "リスト"
+    },
+    "actions": {
+      "refresh": "更新",
+      "previousPage": "前へ",
+      "nextPage": "次へ"
+    },
+    "origin": {
+      "scraped": "店舗から取り込み",
+      "external": "外部で発見"
+    },
+    "textSearch": {
+      "placeholder": "赤いサテンのドレス、黒いニットブレザー…"
+    },
+    "imageSearch": {
+      "urlPlaceholder": "https://…/image.jpg",
+      "searchByUrl": "URLで検索",
+      "dropHint": "画像をドラッグ、またはクリックして選択",
+      "dropSubHint": "カタログの視覚検索エンドポイントにbase64で送信されます"
+    },
+    "originFilterNotice": "出所フィルターは読み込まれたページに対して適用されます。サービスは出所でフィルタリングする前にページ分割を行います。",
+    "errors": {
+      "loadFailed": "カタログを読み込めませんでした"
+    },
+    "grid": {
+      "emptyTitle": "これらのフィルターではカタログが空です",
+      "emptyDescription": "コネクタから同期を実行するか、フィクスチャのシードを実行してください(ルートで npm run catalog:seed)。デモデータが用意されます。"
+    },
+    "table": {
+      "product": "商品",
+      "source": "ソース",
+      "category": "カテゴリ",
+      "price": "価格",
+      "indexes": "インデックス",
+      "lastSeen": "最終検出",
+      "status": "状態",
+      "emptyTitle": "商品がありません",
+      "emptyDescription": "フィルターを調整するか、コネクタからカタログを取り込んでください。"
+    },
+    "badges": {
+      "inactive": "無効",
+      "external": "外部",
+      "hasImageEmbeddingTooltip": "視覚埋め込みあり"
+    },
+    "noCategory": "カテゴリなし",
+    "card": {
+      "lastSeenPrefix": "検出"
+    },
+    "matches": {
+      "countLabel": "{count, plural, one{#件の一致} other{#件の一致}}(スコア順)",
+      "backToBrowse": "探索に戻る",
+      "emptyTitle": "しきい値を超える一致がありません",
+      "emptyDescription": "カタログに十分似ているものがありません。これは正しい動作です: 疑わしい結果を返すより、何も返さない方を選んでいます。",
+      "viewListing": "商品ページ"
+    },
+    "drawer": {
+      "fallbackTitle": "商品",
+      "loading": "商品情報を読み込み中…",
+      "hasImageEmbeddingBadge": "視覚埋め込み",
+      "hasPerceptualHashBadge": "知覚ハッシュ",
+      "normalizedDataTitle": "正規化されたデータ",
+      "price": "価格",
+      "originalPrice": "元の価格",
+      "availability": "在庫状況",
+      "category": "カテゴリ",
+      "subcategory": "サブカテゴリ",
+      "gender": "性別",
+      "color": "色",
+      "firstSeen": "初回検出",
+      "lastSeen": "最終検出",
+      "externalScore": "外部スコア",
+      "perceptualHash": "知覚ハッシュ",
+      "id": "ID",
+      "extractionTitle": "抽出方法",
+      "primaryExtractor": "主要な抽出器",
+      "extractorsUsed": "使用された抽出器",
+      "aiLabel": "AI",
+      "aiUsedAsFallback": "フォールバックとして使用",
+      "aiNotNeeded": "不要",
+      "browserLabel": "ブラウザ",
+      "browserUsedYes": "Playwrightでレンダリング",
+      "browserNotNeeded": "不要",
+      "confidence": "信頼度",
+      "extractedAt": "抽出日時",
+      "evidenceField": "フィールド",
+      "evidenceSource": "出所",
+      "evidenceSnippet": "証拠",
+      "viewInStore": "店舗で見る",
+      "copyId": "IDをコピー"
+    }
+  },
+  "jobs": {
+    "running": "実行中",
+    "queued": "キュー待ち",
+    "completed": "完了",
+    "failed": "失敗",
+    "table": {
+      "job": "ジョブ",
+      "type": "タイプ",
+      "status": "状態",
+      "progress": "進行状況",
+      "duration": "所要時間",
+      "cost": "コスト",
+      "startedAt": "開始日時",
+      "actions": "操作"
+    },
+    "filters": {
+      "statusAriaLabel": "状態で絞り込み",
+      "sourceAriaLabel": "ソースで絞り込み",
+      "all": "すべて",
+      "running": "実行中",
+      "completed": "完了",
+      "failed": "失敗",
+      "allSources": "すべてのソース"
+    },
+    "actions": {
+      "refresh": "更新"
+    },
+    "callout": "ジョブは進行するごとにチェックポイントを保存します。キャンセルまたは失敗したジョブは<ink>再試行</ink>で、カタログを再発見せずに再開できます。",
+    "empty": {
+      "errorTitle": "ジョブを読み込めませんでした",
+      "noneTitle": "これらのフィルターに合致するジョブはありません",
+      "noneDescription": "コネクタから同期を実行するか、状態フィルターを変更してください。"
+    },
+    "drawer": {
+      "breakdown": "内訳",
+      "discovered": "発見",
+      "fetched": "取得済み",
+      "new": "新規",
+      "updated": "更新",
+      "duplicates": "重複",
+      "ignored": "無視",
+      "errors": "エラー",
+      "withoutAi": "AIなし",
+      "withAi": "AIあり",
+      "withBrowser": "ブラウザあり",
+      "retries": "再試行",
+      "aiCostLine": "推定AIコスト: {cost} · {tokens} トークン",
+      "aiRatioSuffix": "AI使用の商品情報 {pct}%",
+      "checkpoint": "チェックポイント: インデックス {index} から再開されます",
+      "checkpointUrlsSuffix": "/ {total} URL",
+      "checkpointStageSuffix": "段階 {stage}",
+      "errorsTitle": "エラー({count})",
+      "noErrors": "記録されたエラーはありません。",
+      "activityTitle": "ジョブの活動"
+    }
+  },
+  "connectors": {
+    "kpi": {
+      "registered": "登録済みソース",
+      "registeredHint": "レジストリ内のすべての店舗",
+      "syncable": "現在同期可能",
+      "syncableHint": "実装と認証情報あり",
+      "verifiedLive": "ライブで検証済み",
+      "verifiedLiveHint": "カタログに実際の商品がすでに存在",
+      "requireAgreement": "契約が必要",
+      "requireAgreementHint": "パートナーまたはアフィリエイトネットワーク"
+    },
+    "filters": {
+      "searchPlaceholder": "ブランド、グループ、地域を検索…",
+      "segmentLabel": "店舗セグメント",
+      "allSegments": "すべてのセグメント",
+      "filterAriaLabel": "コネクタを絞り込む",
+      "group": {
+        "all": "すべて",
+        "syncable": "同期可能",
+        "partner": "契約が必要",
+        "paused": "一時停止中",
+        "problem": "問題あり"
+      }
+    },
+    "table": {
+      "source": "ソース",
+      "realStatus": "実際の状態",
+      "health": "健全性",
+      "discovery": "発見",
+      "compliance": "コンプライアンス",
+      "products": "商品",
+      "extraction": "抽出",
+      "lastSync": "最終同期",
+      "actions": "操作"
+    },
+    "actionLabels": {
+      "test": "コネクタをテスト",
+      "resume": "再開",
+      "pause": "一時停止",
+      "checkHealth": "状態を確認"
+    },
+    "actions": {
+      "healthLiveTitle": "同期可能なソースの状態をライブで確認します(実際のリクエスト)",
+      "healthLiveActive": "ライブヘルスチェックが有効です",
+      "healthLiveCheck": "ライブヘルスチェックを実行",
+      "refresh": "更新",
+      "syncFullTitle": "完全な同期を実行します(25件までに制限)",
+      "syncShort": "同期",
+      "testTitle": "実際の商品情報でパイプラインをテスト",
+      "resumeTitle": "再開",
+      "pauseTitle": "一時停止"
+    },
+    "badges": {
+      "paused": "一時停止中"
+    },
+    "callout": {
+      "title": "この表の読み方",
+      "body": "<muted>実際の状態</muted>は正直な表示です。<em>検証済み</em>と表示されるのは、このソースがパイプラインによって抽出された実際の商品をカタログに持っている場合のみです。コードが存在するだけでは足りません。<muted>健全性</muted>は現在店舗が返している状態、<muted>抽出</muted>はAIなしで(構造化データまたはDOMで)解決された商品情報の割合を示します。AIはあくまで最後の手段です。ライブでの確認はすべてのソースに対して自動実行されません。店舗に対して失礼になるためです。"
+    },
+    "empty": {
+      "noMatchTitle": "一致するソースがありません",
+      "noMatchDescription": "別の検索語を試すか、有効なフィルターを解除してください。",
+      "clearFilters": "フィルターをクリア"
+    },
+    "errors": {
+      "loadFailed": "レジストリを読み込めませんでした"
+    },
+    "extraction": {
+      "withoutAiPct": "AIなし {pct}%",
+      "withAiCost": "{count}件がAI使用 · {cost}",
+      "noAiCalls": "AI呼び出し 0件"
+    },
+    "footer": {
+      "showingCount": "登録済み{total}件のソースのうち{filtered}件を表示しています。"
+    },
+    "syncMode": {
+      "full": "完全",
+      "incremental": "増分"
+    },
+    "toast": {
+      "testSucceeded": "{label}: パイプラインは正常です",
+      "testSample": "サンプル商品情報: {sampleTitle}({duration})",
+      "testFailed": "{label}: 「{step}」で失敗しました",
+      "noDetail": "詳細なし",
+      "healthChecked": "{id}: {label}",
+      "syncQueued": "{mode}同期をキューに追加しました",
+      "syncQueuedDetail": "ジョブ {jobId} · 進行状況はJobsタブで確認できます"
+    },
+    "drawer": {
+      "checkStatusButton": "状態を確認",
+      "testPipelineButton": "パイプラインをテスト",
+      "syncIncrementalButton": "増分同期",
+      "syncFullButton": "完全同期",
+      "loading": "詳細を読み込み中…",
+      "sourceStatusTitle": "ソースの状態",
+      "missingTitle": "有効化に必要な残りの項目",
+      "missingEnvLabel": "未設定の環境変数",
+      "lastErrorTitle": "最後に記録されたエラー",
+      "extractionLabel": "測定された抽出",
+      "extractionEmpty": "このソースの商品はまだカタログに存在せず、測定できるものがありません。同期を実行して実データを取得してください。",
+      "productsWithMetadata": "メタデータ付きの商品",
+      "resolvedWithoutAi": "AIなしで解決",
+      "resolvedWithAi": "AIで解決",
+      "neededBrowser": "ブラウザが必要だった",
+      "avgConfidence": "平均信頼度",
+      "estimatedAiCost": "AIコスト(推定)",
+      "primaryExtractor": "主要な抽出器",
+      "techSheetLabel": "技術シート",
+      "implementation": "実装",
+      "robotsPolicy": "robots.txtポリシー",
+      "robotsAlwaysRespected": "常に尊重",
+      "crawlDelay": "宣言されたクロール遅延: {seconds}秒",
+      "declaredSelectors": "宣言されたセレクター",
+      "none": "なし",
+      "urlPattern": "商品ページのパターン",
+      "accessMethod": "アクセス方法",
+      "verification": "検証",
+      "syncModes": "同期モード",
+      "segments": "セグメント",
+      "categories": "カテゴリ",
+      "markets": "市場",
+      "productsInCatalog": "カタログ内の商品",
+      "healthCheckedAt": "ヘルスチェック実行日時",
+      "store": "店舗",
+      "program": "プログラム",
+      "sitemapsLabel": "宣言されたサイトマップ",
+      "sitemapsHint": "どれも応答しない場合、コネクタは店舗のrobots.txtに宣言されたサイトマップを探します。",
+      "recentJobsLabel": "このソースの最近のジョブ",
+      "noJobs": "このソースはまだジョブを実行していません。",
+      "logsLabel": "このソースのログ",
+      "noLogs": "現在のバッファにこのソースのイベントは記録されていません。"
+    }
+  },
+  "settings": {
+    "title": "設定",
+    "keys": "キー",
+    "storage": "ストレージ",
+    "embeddings": "埋め込み",
+    "matching": "マッチング",
+    "compliance": "コンプライアンス",
+    "refresh": "更新",
+    "empty": {
+      "errorTitle": "設定を読み込めませんでした"
+    },
+    "banner": {
+      "body": "これらの値はカタログサービスの環境から読み込まれ、読み取り専用で表示されます。設定は<code>.env</code>で変更し、再起動時に適用されます。これにより追跡可能性が保たれ、レプリカ間の差異が発生しません。"
+    },
+    "sections": {
+      "keys": {
+        "title": "APIキー",
+        "description": "サービスのキーはサーバーから外に出ることはありません。管理画面はアプリのプロキシ経由でサービスと通信します。",
+        "authBadgeOn": "認証が有効",
+        "authBadgeOff": "認証が無効",
+        "configured": "設定済み · {count}文字",
+        "notConfigured": "未設定",
+        "portLabel": "サービスのポート",
+        "authWarning": "<code>CATALOG_SERVICE_API_KEY</code>がない場合、サービスはすべてのリクエストを受け入れます。ローカルでは許容範囲ですが、外部からアクセス可能な環境では絶対に避けてください。"
+      },
+      "storage": {
+        "description": "有効な接続文字列があるかどうかに応じて、バックエンドが自動的に選択されます。",
+        "configured": "設定済み",
+        "missing": "存在しない、またはpostgres://ではありません",
+        "dataDirLabel": "データディレクトリ",
+        "imagesDirLabel": "画像ディレクトリ",
+        "fileWarning": "ファイルモード: カタログはJSONで永続化され、ベクトル検索はメモリ内で行われます。<code>postgres://</code>接続文字列(Neonの<code>-pooler</code>エンドポイント)を設定してマイグレーションを実行し、pgvectorを有効化してください。"
+      },
+      "embeddings": {
+        "reindex": "再インデックス",
+        "description": "プロバイダーを変更すると次元数も変わります。再インデックスしないと、古いベクトルは比較できなくなります。",
+        "imageProviderLabel": "画像プロバイダー",
+        "imageModelLabel": "画像モデル",
+        "textProviderLabel": "テキストプロバイダー",
+        "activeNowLabel": "現在アクティブ",
+        "hashWarning": "<code>hash</code>プロバイダー: デモとテスト用の64次元の決定論的ベクトルです。実際の視覚的類似性は計算しません。catalog-scraperで<code>npm run embeddings:install</code>を実行してローカルプロバイダーをインストールし、<code>CATALOG_IMAGE_EMBEDDING_PROVIDER=local</code>を設定してください。",
+        "reindexSuccessTitle": "再インデックスをキューに追加しました",
+        "reindexSuccessBody": "ジョブ {jobId}",
+        "reindexErrorTitle": "再インデックスを開始できませんでした"
+      },
+      "matching": {
+        "title": "マッチングと重複除去のしきい値",
+        "description": "最小スコアを下回るものは公開されません: 疑わしい結果を返すより、何も返さない方を選んでいます。",
+        "minImageScoreLabel": "画像の最小スコア",
+        "perceptualHashLabel": "知覚ハッシュの最大距離",
+        "dedupThresholdLabel": "埋め込みによる重複除去しきい値",
+        "jobsWorkersLabel": "ジョブのワーカー数"
+      },
+      "compliance": {
+        "title": "取り込みとコンプライアンスの制限",
+        "description": "デフォルト値は意図的に保守的に設定されています。店舗に迷惑をかけるより、時間がかかる方が良いという考え方です。",
+        "robotsBadge": "robots.txtを尊重",
+        "rateLimitLabel": "ドメインごとの最小間隔",
+        "concurrencyLabel": "グローバル並行数",
+        "timeoutLabel": "リクエストごとのタイムアウト",
+        "retriesLabel": "再試行数",
+        "circuitBreakerLabel": "サーキットブレーカーのしきい値",
+        "circuitBreakerSuffix": "連続失敗",
+        "userAgentLabel": "User-Agent",
+        "policyTitle": "適用中のポリシー",
+        "policyBody": "{policy}。さらに: 店舗が宣言している場合は<code>Crawl-delay</code>を尊重、連絡先付きの識別可能なUser-Agent、持続的なブロックに対しては再試行をやめるサーキットブレーカーを備えています。パートナー契約やアフィリエーション提携が必要なソースは、それを得るまで取り込みません。"
+      },
+      "observability": {
+        "title": "オブザーバビリティとキャッシュ",
+        "logsLabel": "ログ",
+        "logsValue": "メモリ内の循環バッファ(750イベント) + stdoutへの構造化JSON出力",
+        "healthCacheLabel": "コネクタのヘルスキャッシュ",
+        "healthCacheValue": "ソースごとに10分間、ライブでの確認は手動です",
+        "metricsLabel": "メトリクス",
+        "metricsValue": "<code>/stats</code>と<code>/overview</code>に公開されるメモリ内カウンター",
+        "footnote": "観測可能なすべての状態はプロセスに属します。サービスを再起動するとカウンターとログバッファはリセットされます。実際の履歴が必要な場合は、stdoutを収集してPostgresバックエンドを使用してください。"
+      }
+    }
+  },
+  "overview": {
+    "title": "概要",
+    "recentActivity": "最近の活動",
+    "sectionLabel": {
+      "status": "全体の状態"
+    },
+    "status": {
+      "updated": "{time}に更新",
+      "loading": "読み込み中…"
+    },
+    "errorState": {
+      "title": "カタログサービスを読み込めません",
+      "description": "{message}。カタログエンジンはこのアプリに統合された形で動作しています。<code>DATABASE_URL</code>が有効なPostgresを指しているか、マイグレーションが適用されているか(<code>npm run db:migrate</code>)を確認してください。"
+    },
+    "kpi": {
+      "products": "商品",
+      "productsHint": "有効{active}件 · 画像あり{withImages}件",
+      "connectors": "コネクタ",
+      "connectorsHint": "同期可能{syncable}件 · 一時停止{paused}件",
+      "throughput": "スループット",
+      "throughputValue": "{perMinute}件/分",
+      "throughputHint": "{minutes}分間で新規{products}件",
+      "errorRate": "エラー率",
+      "errorRateHint": "最近のジョブにおける試行に対する失敗した取得の割合"
+    },
+    "degraded": {
+      "title": "デグレードモードでの永続化",
+      "body": "有効なPostgresの<code>DATABASE_URL</code>がないため、サービスはファイルストアを使用しています。すべて動作しますが、pgvectorがないためベクトル検索はメモリ内で行われ、スケールしません。"
+    },
+    "embeddings": {
+      "title": "埋め込み",
+      "indexedOf": "{total}件中{indexed}件の商品をインデックス済み",
+      "dimensions": "{count}次元",
+      "coverageLabel": "埋め込みのカバレッジ",
+      "hashNote": "<code>hash</code>プロバイダー: 64次元の決定論的ベクトルで、デモやテストには有効ですが、実際の視覚的類似性には使用できません。本番用にはローカルプロバイダー(CLIP)をインストールして再インデックスしてください。"
+    },
+    "queue": {
+      "title": "取り込みキュー",
+      "viewAll": "すべて表示",
+      "noJobsYet": "まだジョブは実行されていません。",
+      "progressLine": "新規{new} · 更新{updated} · 重複{duplicates} · エラー{errors}",
+      "emptyTitle": "まだジョブがありません",
+      "emptyDescription": "コネクタから同期を実行してカタログを充実させてください。",
+      "goToConnectors": "コネクタへ →"
+    },
+    "registry": {
+      "title": "ソースレジストリの成熟度",
+      "lastSync": "最終同期"
+    },
+    "logs": {
+      "viewAll": "ログを見る",
+      "emptyTitle": "記録された活動はありません",
+      "emptyDescription": "ログバッファはサービスが動作を開始すると満たされます。"
+    },
+    "misc": {
+      "duplicatesDetected": "検出された重複",
+      "externalOrigin": "外部からの出所",
+      "serviceUptime": "サービスの稼働時間"
+    }
+  },
+  "logs": {
+    "title": "イベントログ",
+    "level": {
+      "error": "エラー",
+      "warn": "警告",
+      "info": "情報",
+      "debug": "デバッグ"
+    },
+    "ariaLabels": {
+      "logType": "ログの種類",
+      "minLevel": "最小レベル",
+      "source": "ソース",
+      "refresh": "更新"
+    },
+    "views": {
+      "ingest": "取り込み",
+      "process": "処理"
+    },
+    "status": {
+      "aiExtractor": "AI抽出器",
+      "disabled": "無効",
+      "aiDetailFallback": "フォールバックとしてのみ · キャッシュ{cache}",
+      "cachePersistent": "永続的",
+      "cacheInMemory": "メモリ内",
+      "browser": "ブラウザ",
+      "connected": "接続済み",
+      "available": "利用可能",
+      "browserDetail": "コンテキスト{contexts}件 · 開いているページ{pages}件",
+      "catalog": "カタログ",
+      "productionPersistence": "本番用の永続化",
+      "fileStoreWarning": "ファイルストア: 本番用の永続化ではありません",
+      "respected": "尊重されています",
+      "rateLimitDetail": "リクエスト間{delay}ms · 並行数{concurrency}",
+      "circuitBreakersOpen": "開いているサーキットブレーカー",
+      "subsystemWarnings": "サブシステムの警告"
+    },
+    "about": {
+      "title": "このログについて",
+      "defaultRetention": "サービスのメモリ内循環バッファです。",
+      "minLevelLabel": "出力される最小レベル:",
+      "configuredVia": "(次の変数で設定されます:",
+      "stdoutNote": ")。実際の保存が必要な場合は、ログプラットフォームでサービスのstdoutを収集してください。"
+    },
+    "filters": {
+      "all": "すべて",
+      "infoPlus": "情報以上",
+      "warnPlus": "警告以上",
+      "errors": "エラー",
+      "searchPlaceholder": "メッセージやコンテキストで絞り込み…",
+      "sourceLabel": "ソース",
+      "allSources": "すべてのソース"
+    },
+    "actions": {
+      "pauseStream": "ストリームを一時停止"
+    },
+    "table": {
+      "eventsCount": "{count}件のイベント · 新しい順",
+      "live": "ライブ"
+    },
+    "empty": {
+      "errorTitle": "ログを読み込めませんでした",
+      "noEventsTitle": "これらのフィルターに合致するイベントはありません",
+      "noEventsDescription": "バッファにはサービスの最後の起動以降のイベントしか含まれません。同期を実行して活動を生成してください。"
+    },
+    "console": {
+      "filterPlaceholder": "メッセージまたはURLで絞り込み…",
+      "levelAriaLabel": "最小レベル",
+      "levels": {
+        "all": "すべて",
+        "debug": "デバッグ以上",
+        "info": "情報以上",
+        "success": "成功以上",
+        "warn": "警告以上",
+        "error": "エラー"
+      },
+      "stageAriaLabel": "段階",
+      "allStages": "すべての段階",
+      "sourceAriaLabel": "ソース",
+      "allSources": "すべてのソース",
+      "copyAriaLabel": "ログをコピー",
+      "downloadAriaLabel": "ログをダウンロード",
+      "reloadAriaLabel": "再読み込み",
+      "copyError": "ブラウザがクリップボードへのコピーを許可しませんでした",
+      "lineCount": "{count, plural, one{#行} other{#行}}",
+      "errorCount": "{count, plural, one{#件のエラー} other{#件のエラー}}",
+      "warnCount": "{count, plural, one{#件の警告} other{#件の警告}}",
+      "aiCost": "AI ≈ {cost}",
+      "autoScroll": "自動スクロール",
+      "status": {
+        "streaming": "ストリーミング中",
+        "polling": "ポーリング {seconds}秒",
+        "connecting": "接続中…",
+        "paused": "一時停止中",
+        "memoryAndDb": "メモリ + DB",
+        "memoryOnly": "メモリのみ"
+      },
+      "readErrorTitle": "ログを読み込めませんでした",
+      "emptyTitle": "これらのフィルターに合致する活動はありません",
+      "emptyDescription": "コネクタから同期を実行して、パイプラインの段階ごとの動作を確認してください。",
+      "detail": {
+        "closeAriaLabel": "詳細を閉じる",
+        "moment": "時刻",
+        "duration": "所要時間",
+        "job": "ジョブ",
+        "product": "商品",
+        "retry": "再試行",
+        "url": "URL",
+        "metadata": "メタデータ"
+      },
+      "transportNote": {
+        "title": "このログの範囲",
+        "persistentBody": "イベントはデータベースに永続化されます。コンソールには以前のジョブの履歴も表示されます。SSEストリーミングは<strong>この起動</strong>のイベントのみを配信します。それ以外はポーリングで届きます。",
+        "ephemeralBody": "データベースが設定されていないため、ログは<strong>メモリ内のみ</strong>で保持され、プロセスの再起動時に失われます。履歴を保持するには<code>DATABASE_URL</code>(<code>postgres://</code>形式の文字列)を設定し、<code>npm run db:migrate</code>を実行してください。"
+      }
+    }
+  },
+  "admin": {
+    "shell": {
+      "operationsLabel": "運用",
+      "sectionsNav": "管理画面のセクション",
+      "closeNav": "ナビゲーションを閉じる",
+      "openNav": "ナビゲーションを開く",
+      "backToProduct": "プロダクトに戻る",
+      "nav": {
+        "overview": "概要",
+        "connectors": "コネクタ",
+        "jobs": "ジョブ",
+        "catalog": "カタログ",
+        "logs": "モニタリング",
+        "settings": "設定"
+      },
+      "servicePill": {
+        "unavailable": "サービスが利用できません",
+        "checking": "確認中…",
+        "postgres": "Postgres + pgvector",
+        "fileStore": "ファイルストア",
+        "productsSummary": "{count}件の商品 · {provider} {dimension}次元"
+      }
+    },
+    "overview": {
+      "title": "運用概要",
+      "description": "カタログ、コネクタ、取り込みキュー、最近の活動の状態"
+    },
+    "connectors": {
+      "title": "カタログコネクタ",
+      "description": "実装の成熟度と実際の運用状態を含むファッションソースのレジストリ"
+    },
+    "settings": {
+      "title": "サービス設定",
+      "description": "キー、ストレージ、埋め込み、マッチング、コンプライアンスの有効な設定"
+    },
+    "catalog": {
+      "title": "カタログエクスプローラー",
+      "description": "正規化された商品、インデックスの状態、テキストまたは画像による検索"
+    },
+    "logs": {
+      "title": "モニタリング",
+      "description": "レベル、ソース、テキストで絞り込めるカタログサービスのイベント"
+    },
+    "jobs": {
+      "title": "取り込みジョブ",
+      "description": "各サービスジョブの進行状況、エラー、チェックポイントからの再試行"
+    }
+  },
+  "publicCatalog": {
+    "meta": {
+      "title": "カタログ",
+      "description": "動画を解析して検出したアイテムの社内カタログ: 衣類、アクセサリー、購入可能なオブジェクトと、それらの商品マッチ。"
+    },
+    "page": {
+      "heading": "検出アイテムのカタログ",
+      "description": "動画や画像の解析で検出されたすべてのアイテム。フィルタリング、確認、一致する商品の検索ができます。",
+      "openScraper": "スクレイパーを開く",
+      "ingestedCatalog": "取り込み済みカタログ"
+    },
+    "empty": {
+      "filtered": "フィルターに一致するアイテムがありません。フィルターを調整するか、クリアしてください。",
+      "noItems": "カタログは空です。{appName}で動画を一時停止するとアイテムの検出が始まります。",
+      "cta": "動画を解析する"
+    },
+    "errors": {
+      "network": "ネットワークエラーです。"
+    },
+    "filters": {
+      "searchPlaceholder": "名前、説明、スタイルで検索…",
+      "typeAriaLabel": "タイプ",
+      "allTypes": "すべてのタイプ",
+      "statusAriaLabel": "状態",
+      "anyStatus": "すべての状態",
+      "originAriaLabel": "出所",
+      "anyOrigin": "すべての出所",
+      "categoryPlaceholder": "カテゴリ",
+      "colorPlaceholder": "色",
+      "itemCount": "{count, plural, one{#件のアイテム} other{#件のアイテム}}",
+      "localSaveTitle": "データベースが利用できません: アイテムとその画像はこのセッション中は保持され、接続が回復すると同期されます。",
+      "localSaveBadge": "このセッションで保存済み・同期待ち",
+      "videoBadge": "動画: {id}…",
+      "clearFilters": "フィルターをクリア"
+    },
+    "sourceTypes": {
+      "youtube": "YouTube",
+      "dailymotion": "Dailymotion",
+      "vimeo": "Vimeo",
+      "directMp4": "直接MP4",
+      "hls": "HLS / ストリーム",
+      "uploaded": "ローカル動画",
+      "imageUpload": "アップロードされた画像",
+      "screenCapture": "画面キャプチャ"
+    },
+    "itemTypes": {
+      "clothing": "衣類",
+      "footwear": "履物",
+      "accessory": "アクセサリー",
+      "electronics": "電化製品",
+      "home": "ホーム",
+      "beauty": "ビューティー",
+      "other": "その他"
+    },
+    "itemStatus": {
+      "detected": "検出済み",
+      "reviewed": "確認済み",
+      "matched": "商品あり",
+      "ignored": "無視"
+    },
+    "matchType": {
+      "exact": "完全一致",
+      "nearExact": "ほぼ完全一致",
+      "similar": "類似"
+    },
+    "card": {
+      "viewDetailTitle": "詳細とおすすめを見る",
+      "detectedInVideo": "📸 動画内で検出",
+      "foundProductTitle": "見つかった商品: {title}",
+      "matchPct": "{pct}% 一致",
+      "matchScoreTooltip": "ウェブ上の結果が同一の商品である確度。",
+      "searchingMatches": "視覚的な一致を検索中…",
+      "localOnlyNotice": "このセッションで利用可能・同期待ち",
+      "brandPrefix": "ブランド: {brand}",
+      "viewDetail": "詳細を見る",
+      "viewProduct": "商品を見る ↗",
+      "markReviewed": "確認済みにする",
+      "ignore": "無視",
+      "reactivate": "再有効化",
+      "originImage": "🖼️ アップロードされた画像",
+      "originScreen": "🖥️ 画面キャプチャ"
+    },
+    "drawer": {
+      "ariaLabel": "アイテム詳細",
+      "title": "アイテム詳細",
+      "loading": "読み込み中…",
+      "selectItem": "アイテムを選択してください。",
+      "sectionDetected": "📸 動画内で検出",
+      "noCaptureYet": "このオブジェクトのキャプチャはまだありません — 視覚的マッチングで生成されます。",
+      "seenCount": "検出 ×{count}",
+      "specs": {
+        "moment": "動画内の時点",
+        "subcategory": "サブカテゴリ",
+        "color": "色",
+        "otherColors": "その他の色",
+        "style": "スタイル",
+        "pattern": "柄",
+        "materialGuess": "素材(推定)",
+        "genderFit": "フィット / 性別",
+        "visibleBrand": "確認できるブランド"
+      },
+      "viewOriginalFrame": "シーンの元フレームを見る",
+      "originalFrameAlt": "{name}の元フレーム",
+      "sectionBestMatch": "🛒 ネットで見つかった商品",
+      "searchingBestMatch": "視覚的な一致を検索中…",
+      "noReliableMatch": "まだ信頼できる一致がありません。「商品を検索」を試してください。",
+      "searchProducts": "🔎 商品を検索",
+      "searching": "検索中…",
+      "markReviewed": "確認済みにする",
+      "ignore": "無視",
+      "reactivate": "再有効化",
+      "alternativesTitle": "代替案 ({count})",
+      "searchingProducts": "商品を検索中…",
+      "noMoreResults": "これ以上結果はありません。",
+      "auditTitle": "🔍 技術監査",
+      "audit": {
+        "detectedImage": "検出された画像",
+        "localCrop": "ローカルクロップ(セッション)— ストレージ保存待ち",
+        "storedCrop": "ストレージ内のクロップ",
+        "noCrop": "クロップなし",
+        "originFrame": "元フレーム",
+        "saved": "保存済み",
+        "notSaved": "未保存",
+        "matchProvider": "マッチプロバイダー",
+        "matchScore": "マッチスコア",
+        "candidateCount": "候補数",
+        "detectionCount": "累積検出数",
+        "createdAt": "作成日時",
+        "updatedAt": "更新日時",
+        "searchQuery": "検索クエリ",
+        "marketplaceKeywords": "マーケットプレイスのキーワード"
+      },
+      "bestMatch": {
+        "matchScoreTooltip": "ウェブ上の結果が同一の商品である確度。",
+        "matchPct": "{pct}% 一致",
+        "viewProduct": "商品を見る ↗"
+      },
+      "recommendation": {
+        "affinityPct": "{pct}% の親和性"
+      }
+    }
+  },
+  "demo": {
+    "page": {
+      "title": "フルビデオデモ",
+      "description": "アップロードされた動画の非同期解析: チェックポイント付きジョブ、シーン検出、トラッキング、商品のグローバル重複排除。",
+      "goToStudio": "インタラクティブスタジオへ →"
+    },
+    "upload": {
+      "title": "動画をアップロード(最大{seconds}秒)",
+      "description": "ブラウザがフレームを抽出し、サーバーはチェックポイント、シーン、トラッキング、グローバル重複排除を伴う非同期ジョブを維持します。コストの高い検索はユニークな商品ごとに一度だけ課金されます。",
+      "notVideoError": "ファイルは動画である必要があります(mp4、webmなど)。",
+      "durationError": "動画の長さは{seconds}秒です。デモの最大時間は{maxSeconds}秒です。"
+    },
+    "matchingMode": {
+      "title": "マッチングモード",
+      "catalogOnly": {
+        "label": "カタログのみ",
+        "hint": "外部検索なし"
+      },
+      "catalogFirst": {
+        "label": "カタログ優先",
+        "hint": "解決しない場合のみ外部"
+      },
+      "externalOnly": {
+        "label": "外部検索のみ",
+        "hint": "従来のLensパイプライン"
+      },
+      "hybrid": {
+        "label": "ハイブリッド",
+        "hint": "両方、共通ランキング"
+      }
+    },
+    "actions": {
+      "analyze": "動画を解析",
+      "analyzing": "解析中…",
+      "cancel": "キャンセル",
+      "boundingBoxes": "バウンディングボックス"
+    },
+    "errors": {
+      "createJobFailed": "ジョブを作成できませんでした。",
+      "frameBatchFailed": "フレームバッチの処理中にエラーが発生しました。",
+      "finalizeFailed": "ジョブの完了処理中にエラーが発生しました。",
+      "unknown": "不明なエラーです。"
+    },
+    "job": {
+      "title": "解析ジョブ",
+      "idLabel": "id: {jobId}",
+      "stats": {
+        "framesReceived": "受信フレーム数",
+        "framesAnalyzed": "解析済みフレーム数",
+        "scenes": "シーン数",
+        "tracks": "トラック数",
+        "uniqueProducts": "ユニーク商品数",
+        "externalSearches": "外部検索数"
+      }
+    },
+    "savings": {
+      "title": "回避されたコストの高い呼び出し",
+      "framesDedup": "重複排除されたフレーム(ハッシュ)",
+      "tracksMerged": "統合されたトラック",
+      "cacheHits": "キャッシュヒット",
+      "catalogHits": "カタログヒット"
+    },
+    "timings": {
+      "title": "ステージ別の所要時間",
+      "hashScenes": "ハッシュ/シーン",
+      "detection": "検出",
+      "tracking": "トラッキング",
+      "globalDedup": "グローバル重複排除",
+      "matching": "マッチング",
+      "total": "合計"
+    },
+    "status": {
+      "notStarted": "未開始",
+      "creatingJob": "ジョブを作成中…",
+      "scanningFrames": "フレームを抽出中…",
+      "matchingProducts": "商品ごとにマッチング中…"
+    },
+    "products": {
+      "title": "ユニーク商品 ({count})",
+      "tracksMerged": "{count}件のトラックを統合",
+      "scoreLine": "スコア {score} · ソース {source} ({provider})",
+      "matchingSkipped": "マッチングをスキップ: {reason}",
+      "noProductsDetected": "選択したカテゴリでは商品が検出されませんでした。",
+      "segmentTooltip": "{start} – {end}"
+    },
+    "check": {
+      "title": "デモのプリフライト",
+      "description": "開始前に外部サービス、データベース、ブラウザの権限を確認します。キーは表示されません。",
+      "back": "← 戻る",
+      "runButton": "完全なチェックを実行",
+      "running": "確認中…",
+      "runError": "チェックを実行できませんでした(タイムアウトまたはサーバーダウン)。",
+      "overall": {
+        "ok": "デモの準備が整っています。",
+        "warning": "デモは実行できますが、警告があります: 推奨アクションを確認してください。",
+        "error": "デモに影響するエラーがあります: 解決するか、ランブックのプランBを使用してください。"
+      },
+      "emptyHint": "ボタンを押してすべてのチェックを実行してください。",
+      "status": {
+        "ok": "OK",
+        "warning": "警告",
+        "error": "エラー"
+      },
+      "browserChecks": {
+        "displayMedia": {
+          "label": "タブキャプチャ(getDisplayMedia)",
+          "okDetail": "このブラウザはYouTube用のタブキャプチャに対応しています。",
+          "errorDetail": "このブラウザはgetDisplayMediaに対応していません: YouTubeのフローは動作しません。",
+          "action": "デスクトップ版のChrome/Edgeを使用してください。"
+        },
+        "clipboard": {
+          "label": "クリップボード(画像の貼り付け)",
+          "okDetail": "Ctrl+Vでの貼り付けが利用可能です。",
+          "warningDetail": "クリップボードAPIが制限されています。ドラッグ&ドロップを使用してください。"
+        }
+      }
+    }
+  }
+}

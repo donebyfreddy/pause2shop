@@ -1,15 +1,17 @@
 import type { Metadata } from "next";
+import { getTranslations } from "next-intl/server";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { SettingsView } from "@/components/admin/SettingsView";
 
-export const metadata: Metadata = { title: "Ajustes" };
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("admin.settings");
+  return { title: t("title") };
+}
 
-export default function AdminSettingsPage() {
+export default async function AdminSettingsPage() {
+  const t = await getTranslations("admin.settings");
   return (
-    <AdminShell
-      title="Ajustes del servicio"
-      description="Configuración efectiva de claves, almacenamiento, embeddings, matching y cumplimiento"
-    >
+    <AdminShell title={t("title")} description={t("description")}>
       <SettingsView />
     </AdminShell>
   );

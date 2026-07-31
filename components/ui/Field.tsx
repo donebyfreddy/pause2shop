@@ -18,11 +18,11 @@ export function Input({ className, ...props }: ComponentProps<"input">) {
 export function Select({ className, children, ...props }: ComponentProps<"select">) {
   return (
     <div className="relative">
-      <select className={cn(control, "cursor-pointer appearance-none pr-8", className)} {...props}>
+      <select className={cn(control, "cursor-pointer appearance-none pe-8", className)} {...props}>
         {children}
       </select>
       <ChevronDown
-        className="pointer-events-none absolute top-1/2 right-2.5 size-3.5 -translate-y-1/2 text-ink-faint"
+        className="pointer-events-none absolute top-1/2 end-2.5 size-3.5 -translate-y-1/2 text-ink-faint"
         aria-hidden
       />
     </div>
@@ -34,10 +34,10 @@ export function SearchInput({ className, ...props }: ComponentProps<"input">) {
   return (
     <div className={cn("relative", className)}>
       <Search
-        className="pointer-events-none absolute top-1/2 left-3 size-3.5 -translate-y-1/2 text-ink-faint"
+        className="pointer-events-none absolute top-1/2 start-3 size-3.5 -translate-y-1/2 text-ink-faint"
         aria-hidden
       />
-      <input type="search" className={cn(control, "pl-9")} {...props} />
+      <input type="search" className={cn(control, "ps-9")} {...props} />
     </div>
   );
 }
@@ -51,7 +51,7 @@ export function Label({
   return (
     <label className={cn("block", className)} {...props}>
       <span className="text-[11px] font-medium text-ink-muted">{children}</span>
-      {hint && <span className="ml-2 text-[10px] text-ink-faint">{hint}</span>}
+      {hint && <span className="ms-2 text-[10px] text-ink-faint">{hint}</span>}
     </label>
   );
 }
@@ -71,7 +71,7 @@ export function DataRow({
       <span className="shrink-0 text-[11px] text-ink-subtle">{label}</span>
       <span
         className={cn(
-          "min-w-0 text-right text-[12px] break-words text-ink",
+          "min-w-0 text-end text-[12px] break-words text-ink",
           mono && "font-mono text-[11px]"
         )}
       >

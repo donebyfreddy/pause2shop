@@ -170,6 +170,41 @@ const CONFIDENCE_THRESHOLD = clamp(
 // deja la petición (y el spinner del cliente) bloqueados indefinidamente.
 const OPENAI_TIMEOUT_MS = 45_000;
 
+const VALID_SERVICE_TIERS = ["auto", "default", "flex", "priority"] as const;
+type ServiceTier = (typeof VALID_SERVICE_TIERS)[number];
+
+/**
+ * Saneador de OPENAI_SERVICE_TIER: la env puede llegar rota (vacía, "||",
+ * espacios, valores concatenados por un script de sync) y OpenAI devuelve
+ * 400 si el valor no es exactamente uno de los soportados. NUNCA propagamos
+ * el valor crudo a la petición: o es uno de los 4 válidos, o se omite.
+ */
+let loggedServiceTierOnce = false;
+
+function sanitizeServiceTier(raw: string | undefined): ServiceTier | null {
+  const detected = raw ?? "(no definido)";
+  const cleaned = (raw ?? "").trim().replace(/^["']|["']$/g, "");
+  const isValid = (VALID_SERVICE_TIERS as readonly string[]).includes(cleaned);
+  const finalValue = isValid ? (cleaned as ServiceTier) : null;
+
+  // Se loguea una sola vez por proceso (no en cada request) para no ensuciar
+  // los logs de producción; el valor no cambia entre peticiones.
+  if (!loggedServiceTierOnce) {
+    loggedServiceTierOnce = true;
+    console.log(
+      `[vision] OPENAI_SERVICE_TIER detectado="${detected}" → final=${
+        finalValue ?? "(omitido, fallback)"
+      } fallback=${raw !== undefined && !isValid}`
+    );
+    if (raw !== undefined && !isValid) {
+      console.warn(
+        `[vision] OPENAI_SERVICE_TIER="${detected}" no es válido (valores permitidos: ${VALID_SERVICE_TIERS.join(", ")}). Se omite el parámetro service_tier en la petición a OpenAI.`
+      );
+    }
+  }
+  return finalValue;
+}
+
 function buildVisionRequestBody(
   imageDataUrl: string,
   model: string,
@@ -177,6 +212,7 @@ function buildVisionRequestBody(
   config?: VideoAnalysisConfig
 ): string {
   const prompt = buildVisionPrompt(config);
+  const serviceTier = sanitizeServiceTier(process.env.OPENAI_SERVICE_TIER);
   return JSON.stringify({
     model,
     stream,
@@ -188,10 +224,9 @@ function buildVisionRequestBody(
       ? { max_completion_tokens: 4000, reasoning_effort: "minimal" }
       : { max_tokens: 4000, temperature: 0.2 }),
     // Tier de prioridad opcional para el día de la demo (menos latencia,
-    // más coste). Valores: "auto" (default) | "priority" | "flex".
-    ...(process.env.OPENAI_SERVICE_TIER
-      ? { service_tier: process.env.OPENAI_SERVICE_TIER }
-      : {}),
+    // más coste). Valores soportados por OpenAI: "auto" | "default" | "flex"
+    // | "priority". Saneado defensivo: nunca se envía un valor crudo/roto.
+    ...(serviceTier ? { service_tier: serviceTier } : {}),
     response_format: { type: "json_object" },
     messages: [
       {

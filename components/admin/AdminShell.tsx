@@ -15,8 +15,10 @@ import {
   X,
 } from "lucide-react";
 import { useState, type ReactNode } from "react";
+import { useTranslations } from "next-intl";
 import { cn } from "@/lib/ui/cn";
 import { LogoMark } from "@/components/shell/Logo";
+import { LanguageSelector } from "@/components/i18n/LanguageSelector";
 import { ServiceStatusPill } from "./ServiceStatusPill";
 
 /**
@@ -24,23 +26,27 @@ import { ServiceStatusPill } from "./ServiceStatusPill";
  *
  * Comparte tokens y componentes con el producto público: es el MISMO producto
  * visto desde operaciones, no una herramienta aparte.
+ *
+ * Los estilos direccionales de este componente (posición/transform de la
+ * barra lateral, padding del contenido) usan propiedades lógicas (`start-`,
+ * `ps-`) y las variantes `rtl:`/`ltr:` de Tailwind para funcionar en árabe.
  */
 
 type NavItem = {
   href: string;
-  label: string;
+  labelKey: "overview" | "connectors" | "jobs" | "catalog" | "logs" | "settings";
   icon: typeof LayoutDashboard;
   /** `/admin` solo está activo en coincidencia exacta: si no, lo estaría siempre. */
   exact?: boolean;
 };
 
 const NAV: NavItem[] = [
-  { href: "/admin", label: "Resumen", icon: LayoutDashboard, exact: true },
-  { href: "/admin/connectors", label: "Conectores", icon: Plug },
-  { href: "/admin/jobs", label: "Jobs", icon: ListChecks },
-  { href: "/admin/catalog", label: "Catálogo", icon: Database },
-  { href: "/admin/logs", label: "Monitorización", icon: ScrollText },
-  { href: "/admin/settings", label: "Ajustes", icon: Settings },
+  { href: "/admin", labelKey: "overview", icon: LayoutDashboard, exact: true },
+  { href: "/admin/connectors", labelKey: "connectors", icon: Plug },
+  { href: "/admin/jobs", labelKey: "jobs", icon: ListChecks },
+  { href: "/admin/catalog", labelKey: "catalog", icon: Database },
+  { href: "/admin/logs", labelKey: "logs", icon: ScrollText },
+  { href: "/admin/settings", labelKey: "settings", icon: Settings },
 ];
 
 export function AdminShell({
@@ -54,6 +60,7 @@ export function AdminShell({
   actions?: ReactNode;
   children: ReactNode;
 }) {
+  const t = useTranslations("admin.shell");
   const pathname = usePathname();
   const [navOpen, setNavOpen] = useState(false);
   // El menú móvil se cierra al pulsar un enlace (en el propio evento, no en un
@@ -68,8 +75,8 @@ export function AdminShell({
       {/* ------------------------- sidebar ------------------------- */}
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r border-line bg-canvas-raised transition-transform duration-300 lg:translate-x-0",
-          navOpen ? "translate-x-0" : "-translate-x-full"
+          "fixed inset-y-0 start-0 z-50 flex w-64 flex-col border-e border-line bg-canvas-raised transition-transform duration-300 lg:translate-x-0",
+          navOpen ? "translate-x-0" : "ltr:-translate-x-full rtl:translate-x-full"
         )}
       >
         <div className="flex h-16 items-center justify-between gap-2 border-b border-line px-4">
@@ -78,21 +85,21 @@ export function AdminShell({
             <span className="flex flex-col leading-none">
               <span className="text-[13px] font-semibold text-ink">Pause2Shop</span>
               <span className="mt-0.5 text-[10px] tracking-[0.12em] text-ink-faint uppercase">
-                Operaciones
+                {t("operationsLabel")}
               </span>
             </span>
           </Link>
           <button
             type="button"
             onClick={() => setNavOpen(false)}
-            aria-label="Cerrar navegación"
+            aria-label={t("closeNav")}
             className="rounded-md p-1.5 text-ink-faint lg:hidden"
           >
             <X className="size-4" />
           </button>
         </div>
 
-        <nav className="flex-1 space-y-0.5 overflow-y-auto p-3" aria-label="Secciones del admin">
+        <nav className="flex-1 space-y-0.5 overflow-y-auto p-3" aria-label={t("sectionsNav")}>
           {NAV.map((item) => {
             const active = isActive(item);
             return (
@@ -117,7 +124,7 @@ export function AdminShell({
                   className={cn("relative size-4", active ? "text-brand-bright" : "")}
                   aria-hidden
                 />
-                <span className="relative">{item.label}</span>
+                <span className="relative">{t(`nav.${item.labelKey}`)}</span>
               </Link>
             );
           })}
@@ -130,8 +137,8 @@ export function AdminShell({
             onClick={closeNav}
             className="mt-2 flex items-center gap-2 rounded-lg px-3 py-2 text-[12px] text-ink-subtle transition-colors hover:bg-white/[0.04] hover:text-ink"
           >
-            <ArrowLeft className="size-3.5" aria-hidden />
-            Volver al producto
+            <ArrowLeft className="size-3.5 rtl:-scale-x-100" aria-hidden />
+            {t("backToProduct")}
           </Link>
         </div>
       </aside>
@@ -140,21 +147,21 @@ export function AdminShell({
       {navOpen && (
         <button
           type="button"
-          aria-label="Cerrar navegación"
+          aria-label={t("closeNav")}
           onClick={() => setNavOpen(false)}
           className="fixed inset-0 z-40 bg-black/60 lg:hidden"
         />
       )}
 
       {/* ------------------------- contenido ------------------------- */}
-      <div className="flex min-w-0 flex-1 flex-col lg:pl-64">
+      <div className="flex min-w-0 flex-1 flex-col lg:ps-64">
         <header className="sticky top-0 z-30 border-b border-line bg-canvas/85 backdrop-blur-xl">
           <div className="flex min-h-16 flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-6">
             <div className="flex min-w-0 items-center gap-3">
               <button
                 type="button"
                 onClick={() => setNavOpen(true)}
-                aria-label="Abrir navegación"
+                aria-label={t("openNav")}
                 className="grid size-9 shrink-0 place-items-center rounded-lg border border-line text-ink-muted lg:hidden"
               >
                 <Menu className="size-4" />
@@ -166,7 +173,10 @@ export function AdminShell({
                 )}
               </div>
             </div>
-            {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
+            <div className="flex flex-wrap items-center gap-2">
+              {actions}
+              <LanguageSelector />
+            </div>
           </div>
         </header>
 

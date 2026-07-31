@@ -28,6 +28,7 @@ import {
 import { trackVisionCall, trackProductCalls } from "@/lib/server/costTracker";
 import { enrichAnalysisWithVisualMatches } from "@/lib/visualSearch/engine";
 import type { EnrichedItem } from "@/lib/visualSearch/types";
+import { toAnalysisFailure } from "@/lib/errors";
 
 // ~8MB techo del payload de imagen decodificada para proteger la función.
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
@@ -57,8 +58,12 @@ function clientKey(req: NextRequest): string {
   );
 }
 
-function bad(error: string, status = 400): NextResponse<AnalyzeFrameApiResponse> {
-  return NextResponse.json({ ok: false, error }, { status });
+function bad(
+  error: string,
+  status = 400,
+  errorDetail?: string
+): NextResponse<AnalyzeFrameApiResponse> {
+  return NextResponse.json({ ok: false, error, errorDetail }, { status });
 }
 
 const SOURCE_TYPES: FrameSourceType[] = [
@@ -385,10 +390,9 @@ export async function handleAnalyzeFrameStream(
         }
         trackVisionCall(mock);
       } catch (err) {
-        send({
-          type: "error",
-          error: `No se pudo analizar el frame: ${err instanceof Error ? err.message : "Error desconocido"}`,
-        });
+        const failure = toAnalysisFailure(err);
+        console.error("[analyze-frame-stream] fallo de visión:", failure.detail);
+        send({ type: "error", error: failure.message, errorDetail: failure.detail });
         controller.close();
         return;
       }
@@ -480,8 +484,9 @@ export async function handleAnalyzeFrame(
     }
     trackVisionCall(mock);
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Error desconocido";
-    return bad(`No se pudo analizar el frame: ${message}`, 502);
+    const failure = toAnalysisFailure(err);
+    console.error("[analyze-frame] fallo de visión:", failure.detail);
+    return bad(failure.message, 502, failure.detail);
   }
   timings.detectionMs = Date.now() - tStart;
 

@@ -19,6 +19,7 @@ import {
   ScanSearch,
   Search,
 } from "lucide-react";
+import { useFormatter, useTranslations } from "next-intl";
 import { useEffect, useMemo, useState } from "react";
 import {
   Badge,
@@ -68,6 +69,10 @@ type SearchMode = "browse" | "text" | "image";
 
 export function CatalogView() {
   const toast = useToast();
+  const t = useTranslations("catalog");
+  const tToast = useTranslations("toast.catalog");
+  const tCommon = useTranslations("common");
+  const format = useFormatter();
   const [view, setView] = useState<ViewMode>("grid");
   const [mode, setMode] = useState<SearchMode>("browse");
   const [page, setPage] = useState(1);
@@ -124,11 +129,11 @@ export function CatalogView() {
     });
     setSearching(false);
     if (!res.ok) {
-      toast.error("La búsqueda falló", res.error.message);
+      toast.error(tToast("searchFailed"), res.error.message);
       return;
     }
     setMatches(res.data.matches);
-    if (res.data.matches.length === 0) toast.info("Sin resultados por encima del umbral");
+    if (res.data.matches.length === 0) toast.info(tToast("noResultsAboveThreshold"));
   };
 
   const runImageSearch = async (payload: { imageUrl?: string; imageBase64?: string }) => {
@@ -140,19 +145,19 @@ export function CatalogView() {
     });
     setSearching(false);
     if (!res.ok) {
-      toast.error("La búsqueda por imagen falló", res.error.message);
+      toast.error(tToast("imageSearchFailed"), res.error.message);
       return;
     }
     setMatches(res.data.matches);
     toast.success(
-      `${res.data.matches.length} coincidencia${res.data.matches.length === 1 ? "" : "s"}`,
-      "Cascada: hash exacto → hash perceptual → embedding visual"
+      tToast("matchesFound", { count: res.data.matches.length }),
+      tToast("matchCascadeDescription")
     );
   };
 
   const onDropImage = async (file: File) => {
     if (!file.type.startsWith("image/")) {
-      toast.error("Ese archivo no es una imagen");
+      toast.error(tToast("notAnImage"));
       return;
     }
     const buffer = await file.arrayBuffer();
@@ -164,10 +169,12 @@ export function CatalogView() {
   const toggleActive = async (product: CatalogProductSummary) => {
     const res = await adminPost(`products/${product.id}/active`, { active: !product.isActive });
     if (!res.ok) {
-      toast.error("No se pudo cambiar el estado", res.error.message);
+      toast.error(tToast("statusChangeFailed"), res.error.message);
       return;
     }
-    toast.success(product.isActive ? "Producto desactivado" : "Producto activado");
+    toast.success(
+      product.isActive ? tToast("productDeactivated") : tToast("productActivated")
+    );
     reload();
   };
 
@@ -177,30 +184,30 @@ export function CatalogView() {
       <div className="flex flex-wrap items-center gap-3">
         <Segmented
           size="sm"
-          ariaLabel="Modo de exploración"
+          ariaLabel={t("modeAriaLabel")}
           value={mode}
           onChange={(next) => {
             setMode(next);
             setMatches(null);
           }}
           options={[
-            { value: "browse", label: "Explorar", icon: Database },
-            { value: "text", label: "Buscar por texto", icon: Search },
-            { value: "image", label: "Buscar por imagen", icon: ScanSearch },
+            { value: "browse", label: t("modes.browse"), icon: Database },
+            { value: "text", label: t("modes.text"), icon: Search },
+            { value: "image", label: t("modes.image"), icon: ScanSearch },
           ]}
         />
         <div className="ml-auto flex items-center gap-2">
           <Segmented
             size="sm"
-            ariaLabel="Vista"
+            ariaLabel={t("viewAriaLabel")}
             value={view}
             onChange={setView}
             options={[
-              { value: "grid", label: "Rejilla", icon: LayoutGrid },
-              { value: "list", label: "Lista", icon: List },
+              { value: "grid", label: t("view.grid"), icon: LayoutGrid },
+              { value: "list", label: t("view.list"), icon: List },
             ]}
           />
-          <Button variant="ghost" size="sm" icon onClick={reload} aria-label="Refrescar">
+          <Button variant="ghost" size="sm" icon onClick={reload} aria-label={t("actions.refresh")}>
             <RefreshCw className={refreshing ? "size-4 animate-spin" : "size-4"} aria-hidden />
           </Button>
         </div>
@@ -210,7 +217,7 @@ export function CatalogView() {
       {mode === "browse" && (
         <div className="flex flex-wrap items-center gap-3">
           <SearchInput
-            placeholder="Buscar por título, marca…"
+            placeholder={t("filters.titleSearchPlaceholder")}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             className="min-w-56 flex-1"
@@ -222,9 +229,9 @@ export function CatalogView() {
               setPage(1);
             }}
             className="w-auto min-w-40"
-            aria-label="Fuente"
+            aria-label={t("filters.sourceAriaLabel")}
           >
-            <option value="all">Todas las fuentes</option>
+            <option value="all">{t("filters.allSources")}</option>
             {(connectors.data?.connectors ?? [])
               .filter((c) => c.productCount > 0)
               .map((c) => (
@@ -237,11 +244,11 @@ export function CatalogView() {
             value={origin}
             onChange={(e) => setOrigin(e.target.value)}
             className="w-auto min-w-40"
-            aria-label="Origen"
+            aria-label={t("filters.originAriaLabel")}
           >
-            <option value="all">Todo origen</option>
-            <option value="scraped">Ingerido de tienda</option>
-            <option value="externally_discovered">Descubierto externamente</option>
+            <option value="all">{t("filters.allOrigins")}</option>
+            <option value="scraped">{t("origin.scraped")}</option>
+            <option value="externally_discovered">{t("origin.external")}</option>
           </Select>
           <Select
             value={active}
@@ -250,11 +257,11 @@ export function CatalogView() {
               setPage(1);
             }}
             className="w-auto min-w-36"
-            aria-label="Estado"
+            aria-label={t("filters.statusAriaLabel")}
           >
-            <option value="all">Activos e inactivos</option>
-            <option value="true">Solo activos</option>
-            <option value="false">Solo inactivos</option>
+            <option value="all">{t("filters.allStatuses")}</option>
+            <option value="true">{t("filters.onlyActive")}</option>
+            <option value="false">{t("filters.onlyInactive")}</option>
           </Select>
         </div>
       )}
@@ -262,7 +269,7 @@ export function CatalogView() {
       {mode === "text" && (
         <div className="flex flex-wrap items-center gap-2">
           <Input
-            placeholder="vestido rojo satinado, blazer de punto negro…"
+            placeholder={t("textSearch.placeholder")}
             value={textQuery}
             onChange={(e) => setTextQuery(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && runTextSearch()}
@@ -270,7 +277,7 @@ export function CatalogView() {
           />
           <Button variant="primary" size="sm" loading={searching} onClick={runTextSearch}>
             <Search className="size-3.5" aria-hidden />
-            Buscar
+            {tCommon("search")}
           </Button>
         </div>
       )}
@@ -279,7 +286,7 @@ export function CatalogView() {
         <div className="space-y-3">
           <div className="flex flex-wrap items-center gap-2">
             <Input
-              placeholder="https://…/imagen.jpg"
+              placeholder={t("imageSearch.urlPlaceholder")}
               value={imageUrl}
               onChange={(e) => setImageUrl(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && imageUrl && runImageSearch({ imageUrl })}
@@ -293,7 +300,7 @@ export function CatalogView() {
               onClick={() => runImageSearch({ imageUrl })}
             >
               <ScanSearch className="size-3.5" aria-hidden />
-              Buscar por URL
+              {t("imageSearch.searchByUrl")}
             </Button>
           </div>
 
@@ -320,10 +327,10 @@ export function CatalogView() {
           >
             <ScanSearch className="size-5 text-ink-faint" aria-hidden />
             <span className="text-[13px] font-medium text-ink">
-              Arrastra una imagen o haz clic para elegirla
+              {t("imageSearch.dropHint")}
             </span>
             <span className="text-[11px] text-ink-subtle">
-              Se envía en base64 al endpoint de búsqueda visual del catálogo
+              {t("imageSearch.dropSubHint")}
             </span>
           </button>
           <input
@@ -345,21 +352,18 @@ export function CatalogView() {
       ) : (
         <>
           {origin !== "all" && (
-            <Callout tone="info">
-              El filtro de origen se aplica sobre la página cargada: el servicio pagina antes de
-              filtrar por origen.
-            </Callout>
+            <Callout tone="info">{t("originFilterNotice")}</Callout>
           )}
 
           {error && !data ? (
             <Card>
               <EmptyState
                 icon={CircleAlert}
-                title="No se pudo leer el catálogo"
+                title={t("errors.loadFailed")}
                 description={error.message}
                 action={
                   <Button variant="secondary" size="sm" onClick={reload}>
-                    Reintentar
+                    {tCommon("retry")}
                   </Button>
                 }
               />
@@ -383,7 +387,7 @@ export function CatalogView() {
           {total > 0 && (
             <div className="flex items-center justify-between gap-3">
               <p className="text-[11px] text-ink-faint">
-                {total.toLocaleString("es-ES")} productos · página {page} de {totalPages}
+                {t("pagination", { count: format.number(total), page, totalPages })}
               </p>
               <div className="flex items-center gap-2">
                 <Button
@@ -393,7 +397,7 @@ export function CatalogView() {
                   onClick={() => setPage((p) => Math.max(1, p - 1))}
                 >
                   <ChevronLeft className="size-3.5" aria-hidden />
-                  Anterior
+                  {t("actions.previousPage")}
                 </Button>
                 <Button
                   variant="outline"
@@ -401,7 +405,7 @@ export function CatalogView() {
                   disabled={page >= totalPages}
                   onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                 >
-                  Siguiente
+                  {t("actions.nextPage")}
                   <ChevronRight className="size-3.5" aria-hidden />
                 </Button>
               </div>
@@ -453,6 +457,9 @@ function ProductGrid({
   onOpen: (id: string) => void;
   onToggleActive: (product: CatalogProductSummary) => void;
 }) {
+  const t = useTranslations("catalog");
+  const tActions = useTranslations("actions");
+
   if (loading) {
     return (
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
@@ -474,8 +481,8 @@ function ProductGrid({
       <Card>
         <EmptyState
           icon={Package}
-          title="El catálogo está vacío con estos filtros"
-          description="Lanza un sync desde Conectores o ejecuta el seed de fixtures (npm run catalog:seed en la raíz) para tener datos de demo."
+          title={t("grid.emptyTitle")}
+          description={t("grid.emptyDescription")}
         />
       </Card>
     );
@@ -498,13 +505,15 @@ function ProductGrid({
               className="size-full transition-transform duration-500 group-hover:scale-105"
             />
             <div className="absolute top-2 left-2 flex flex-col gap-1">
-              {!product.isActive && <Badge tone="danger">inactivo</Badge>}
-              {product.origin === "externally_discovered" && <Badge tone="info">externo</Badge>}
+              {!product.isActive && <Badge tone="danger">{t("badges.inactive")}</Badge>}
+              {product.origin === "externally_discovered" && (
+                <Badge tone="info">{t("badges.external")}</Badge>
+              )}
             </div>
             <div className="absolute top-2 right-2 flex flex-col items-end gap-1">
               {product.hasImageEmbedding && (
                 <span
-                  title="Con embedding visual"
+                  title={t("badges.hasImageEmbeddingTooltip")}
                   className="grid size-6 place-items-center rounded-md border border-success/30 bg-canvas/80 backdrop-blur-sm"
                 >
                   <Binary className="size-3 text-success" aria-hidden />
@@ -520,11 +529,11 @@ function ProductGrid({
           <div className="p-3">
             <p className="truncate text-[12px] font-medium text-ink">{product.title}</p>
             <p className="mt-0.5 truncate text-[11px] text-ink-subtle">
-              {product.brand ?? product.source} · {product.category ?? "sin categoría"}
+              {product.brand ?? product.source} · {product.category ?? t("noCategory")}
             </p>
             <div className="mt-2 flex items-center justify-between">
               <span className="text-[10px] text-ink-faint">
-                visto {timeAgo(product.lastSeenAt)}
+                {t("card.lastSeenPrefix")} {timeAgo(product.lastSeenAt)}
               </span>
               <button
                 type="button"
@@ -532,7 +541,7 @@ function ProductGrid({
                   e.stopPropagation();
                   onToggleActive(product);
                 }}
-                title={product.isActive ? "Desactivar" : "Activar"}
+                title={product.isActive ? tActions("deactivate") : tActions("activate")}
                 className="rounded-md p-1 text-ink-faint transition-colors hover:text-ink"
               >
                 {product.isActive ? (
@@ -560,6 +569,7 @@ function ProductList({
   onOpen: (id: string) => void;
   onToggleActive: (product: CatalogProductSummary) => void;
 }) {
+  const t = useTranslations("catalog");
   return (
     <Card className="overflow-hidden">
       <TableWrap className="max-h-[64vh] overflow-y-auto">
@@ -567,13 +577,13 @@ function ProductList({
           <THead>
             <TR>
               <TH className="w-14" />
-              <TH>Producto</TH>
-              <TH>Fuente</TH>
-              <TH>Categoría</TH>
-              <TH className="text-right">Precio</TH>
-              <TH>Índices</TH>
-              <TH>Visto</TH>
-              <TH className="text-right">Estado</TH>
+              <TH>{t("table.product")}</TH>
+              <TH>{t("table.source")}</TH>
+              <TH>{t("table.category")}</TH>
+              <TH className="text-right">{t("table.price")}</TH>
+              <TH>{t("table.indexes")}</TH>
+              <TH>{t("table.lastSeen")}</TH>
+              <TH className="text-right">{t("table.status")}</TH>
             </TR>
           </THead>
           <TBody>
@@ -582,8 +592,8 @@ function ProductList({
               <TableEmpty colSpan={8}>
                 <EmptyState
                   icon={Package}
-                  title="Sin productos"
-                  description="Ajusta los filtros o ingiere catálogo desde Conectores."
+                  title={t("table.emptyTitle")}
+                  description={t("table.emptyDescription")}
                 />
               </TableEmpty>
             )}
@@ -623,7 +633,7 @@ function ProductList({
                       size="xs"
                       onClick={() => onToggleActive(product)}
                     >
-                      {product.isActive ? "Activo" : "Inactivo"}
+                      {product.isActive ? t("status.active") : t("status.inactive")}
                     </Button>
                   </TD>
                 </TR>
@@ -642,14 +652,14 @@ function MatchResults({
   matches: SearchResponse["matches"];
   onClear: () => void;
 }) {
+  const t = useTranslations("catalog");
+  const format = useFormatter();
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <SectionLabel>
-          {matches.length} coincidencia{matches.length === 1 ? "" : "s"} ordenadas por score
-        </SectionLabel>
+        <SectionLabel>{t("matches.countLabel", { count: matches.length })}</SectionLabel>
         <Button variant="ghost" size="xs" onClick={onClear}>
-          Volver a explorar
+          {t("matches.backToBrowse")}
         </Button>
       </div>
 
@@ -657,8 +667,8 @@ function MatchResults({
         <Card>
           <EmptyState
             icon={Search}
-            title="Sin coincidencias por encima del umbral"
-            description="El catálogo no tiene nada suficientemente parecido. Es el comportamiento correcto: preferimos no devolver nada antes que devolver algo dudoso."
+            title={t("matches.emptyTitle")}
+            description={t("matches.emptyDescription")}
           />
         </Card>
       ) : (
@@ -686,8 +696,9 @@ function MatchResults({
               </div>
               <div className="flex items-center justify-between border-t border-line px-3 py-2">
                 <span className="font-mono text-[10px] text-ink-faint">
-                  v{match.visualScore.toFixed(2)} · t{match.textScore.toFixed(2)} · a
-                  {match.attributeScore.toFixed(2)}
+                  v{format.number(match.visualScore, "precise")} · t
+                  {format.number(match.textScore, "precise")} · a
+                  {format.number(match.attributeScore, "precise")}
                 </span>
                 <a
                   href={match.productUrl}
@@ -695,7 +706,7 @@ function MatchResults({
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-1 text-[11px] text-brand-bright hover:underline"
                 >
-                  Ficha
+                  {t("matches.viewListing")}
                   <ExternalLink className="size-3" aria-hidden />
                 </a>
               </div>
@@ -711,15 +722,17 @@ function ProductDrawer({ id, onClose }: { id: string | null; onClose: () => void
   const { data, loading, error } = useAdminResource<CatalogProductSummary>(
     id ? `products/${id}` : null
   );
+  const t = useTranslations("catalog");
+  const format = useFormatter();
 
   return (
     <Drawer
       open={Boolean(id)}
       onClose={onClose}
-      title={data?.title ?? "Producto"}
+      title={data?.title ?? t("drawer.fallbackTitle")}
       subtitle={data ? `${data.brand ?? "—"} · ${data.source}` : undefined}
     >
-      {loading && <p className="text-xs text-ink-subtle">Cargando ficha…</p>}
+      {loading && <p className="text-xs text-ink-subtle">{t("drawer.loading")}</p>}
       {error && !data && (
         <Callout tone="danger" icon={CircleAlert}>
           {error.message}
@@ -733,42 +746,46 @@ function ProductDrawer({ id, onClose }: { id: string | null; onClose: () => void
 
           <div className="flex flex-wrap gap-2">
             <Badge tone={data.isActive ? "success" : "danger"} size="md">
-              {data.isActive ? "Activo" : "Inactivo"}
+              {data.isActive ? t("status.active") : t("status.inactive")}
             </Badge>
             <Badge tone={data.origin === "scraped" ? "neutral" : "info"} size="md">
-              {data.origin === "scraped" ? "Ingerido de tienda" : "Descubierto externamente"}
+              {data.origin === "scraped" ? t("origin.scraped") : t("origin.external")}
             </Badge>
             <Badge tone={data.hasImageEmbedding ? "success" : "muted"} size="md">
-              embedding visual
+              {t("drawer.hasImageEmbeddingBadge")}
             </Badge>
             <Badge tone={data.perceptualHash ? "success" : "muted"} size="md">
-              hash perceptual
+              {t("drawer.hasPerceptualHashBadge")}
             </Badge>
           </div>
 
           <div>
-            <SectionLabel>Datos normalizados</SectionLabel>
+            <SectionLabel>{t("drawer.normalizedDataTitle")}</SectionLabel>
             <div className="mt-2">
-              <DataRow label="Precio">{formatPrice(data.price, data.currency)}</DataRow>
+              <DataRow label={t("drawer.price")}>
+                {formatPrice(data.price, data.currency)}
+              </DataRow>
               {data.originalPrice != null && (
-                <DataRow label="Precio original">
+                <DataRow label={t("drawer.originalPrice")}>
                   {formatPrice(data.originalPrice, data.currency)}
                 </DataRow>
               )}
-              <DataRow label="Disponibilidad">{data.availability}</DataRow>
-              <DataRow label="Categoría">{data.category ?? "—"}</DataRow>
-              <DataRow label="Subcategoría">{data.subcategory ?? "—"}</DataRow>
-              <DataRow label="Género">{data.gender ?? "—"}</DataRow>
-              <DataRow label="Color">{data.color ?? "—"}</DataRow>
-              <DataRow label="Primera vez visto">{timeAgo(data.firstSeenAt)}</DataRow>
-              <DataRow label="Última vez visto">{timeAgo(data.lastSeenAt)}</DataRow>
+              <DataRow label={t("drawer.availability")}>{data.availability}</DataRow>
+              <DataRow label={t("drawer.category")}>{data.category ?? "—"}</DataRow>
+              <DataRow label={t("drawer.subcategory")}>{data.subcategory ?? "—"}</DataRow>
+              <DataRow label={t("drawer.gender")}>{data.gender ?? "—"}</DataRow>
+              <DataRow label={t("drawer.color")}>{data.color ?? "—"}</DataRow>
+              <DataRow label={t("drawer.firstSeen")}>{timeAgo(data.firstSeenAt)}</DataRow>
+              <DataRow label={t("drawer.lastSeen")}>{timeAgo(data.lastSeenAt)}</DataRow>
               {data.externalScore != null && (
-                <DataRow label="Score externo">{data.externalScore.toFixed(3)}</DataRow>
+                <DataRow label={t("drawer.externalScore")}>
+                  {format.number(data.externalScore)}
+                </DataRow>
               )}
-              <DataRow label="Hash perceptual" mono>
+              <DataRow label={t("drawer.perceptualHash")} mono>
                 {data.perceptualHash ?? "—"}
               </DataRow>
-              <DataRow label="ID" mono>
+              <DataRow label={t("drawer.id")} mono>
                 {data.id}
               </DataRow>
             </div>
@@ -778,32 +795,38 @@ function ProductDrawer({ id, onClose }: { id: string | null; onClose: () => void
               permite auditar un precio sin volver a la tienda. */}
           {data.extraction && (
             <div>
-              <SectionLabel>Cómo se extrajo</SectionLabel>
+              <SectionLabel>{t("drawer.extractionTitle")}</SectionLabel>
               <div className="mt-2">
-                <DataRow label="Extractor principal" mono>
+                <DataRow label={t("drawer.primaryExtractor")} mono>
                   {data.extraction.primaryExtractor ?? "—"}
                 </DataRow>
-                <DataRow label="Extractores aplicados" mono>
+                <DataRow label={t("drawer.extractorsUsed")} mono>
                   {data.extraction.extractorsUsed.join(", ") || "—"}
                 </DataRow>
-                <DataRow label="IA">
+                <DataRow label={t("drawer.aiLabel")}>
                   {data.extraction.aiUsed ? (
                     <>
-                      <Badge tone="warning">usada como fallback</Badge>
+                      <Badge tone="warning">{t("drawer.aiUsedAsFallback")}</Badge>
                       <span className="mt-0.5 block text-[10px] text-ink-faint">
                         {data.extraction.aiModel} · {data.extraction.aiTokens} tokens ·{" "}
-                        {data.extraction.aiCostUsd.toFixed(6)} USD
+                        {format.number(data.extraction.aiCostUsd, "usdCost")}
                       </span>
                     </>
                   ) : (
-                    <Badge tone="success">no necesaria</Badge>
+                    <Badge tone="success">{t("drawer.aiNotNeeded")}</Badge>
                   )}
                 </DataRow>
-                <DataRow label="Navegador">
-                  {data.extraction.browserUsed ? "renderizado con Playwright" : "no necesario"}
+                <DataRow label={t("drawer.browserLabel")}>
+                  {data.extraction.browserUsed
+                    ? t("drawer.browserUsedYes")
+                    : t("drawer.browserNotNeeded")}
                 </DataRow>
-                <DataRow label="Confianza">{data.extraction.confidence.toFixed(2)}</DataRow>
-                <DataRow label="Extraído">{timeAgo(data.extraction.extractedAt)}</DataRow>
+                <DataRow label={t("drawer.confidence")}>
+                  {format.number(data.extraction.confidence, "precise")}
+                </DataRow>
+                <DataRow label={t("drawer.extractedAt")}>
+                  {timeAgo(data.extraction.extractedAt)}
+                </DataRow>
               </div>
 
               {data.extraction.evidence.length > 0 && (
@@ -812,13 +835,13 @@ function ProductDrawer({ id, onClose }: { id: string | null; onClose: () => void
                     <thead className="bg-white/[0.03]">
                       <tr>
                         <th className="px-2.5 py-1.5 text-[10px] font-semibold tracking-[0.1em] text-ink-faint uppercase">
-                          Campo
+                          {t("drawer.evidenceField")}
                         </th>
                         <th className="px-2.5 py-1.5 text-[10px] font-semibold tracking-[0.1em] text-ink-faint uppercase">
-                          Origen
+                          {t("drawer.evidenceSource")}
                         </th>
                         <th className="px-2.5 py-1.5 text-[10px] font-semibold tracking-[0.1em] text-ink-faint uppercase">
-                          Evidencia
+                          {t("drawer.evidenceSnippet")}
                         </th>
                       </tr>
                     </thead>
@@ -863,7 +886,7 @@ function ProductDrawer({ id, onClose }: { id: string | null; onClose: () => void
               className="inline-flex items-center gap-1.5 rounded-lg border border-line bg-white/[0.02] px-3 py-2 text-[12px] text-ink-muted transition-colors hover:border-brand/40 hover:text-ink"
             >
               <ExternalLink className="size-3.5" aria-hidden />
-              Ver en la tienda
+              {t("drawer.viewInStore")}
             </a>
             <button
               type="button"
@@ -871,7 +894,7 @@ function ProductDrawer({ id, onClose }: { id: string | null; onClose: () => void
               className="inline-flex items-center gap-1.5 rounded-lg border border-line bg-white/[0.02] px-3 py-2 text-[12px] text-ink-muted transition-colors hover:text-ink"
             >
               <Copy className="size-3.5" aria-hidden />
-              Copiar ID
+              {t("drawer.copyId")}
             </button>
           </div>
         </div>

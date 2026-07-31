@@ -11,6 +11,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { useTranslations } from "next-intl";
 import { cn } from "@/lib/ui/cn";
 
 /**
@@ -50,6 +51,7 @@ const TONE_CONFIG: Record<ToastTone, { icon: typeof Info; className: string }> =
 const DURATION_MS = 5200;
 
 export function ToastProvider({ children }: { children: ReactNode }) {
+  const t = useTranslations("toast");
   const [toasts, setToasts] = useState<Toast[]>([]);
   const nextId = useRef(1);
 
@@ -112,8 +114,8 @@ export function ToastProvider({ children }: { children: ReactNode }) {
                 <button
                   type="button"
                   onClick={() => dismiss(toast.id)}
-                  aria-label="Cerrar aviso"
-                  className="-mr-1 rounded-md p-1 text-ink-faint transition-colors hover:text-ink"
+                  aria-label={t("dismiss")}
+                  className="-me-1 rounded-md p-1 text-ink-faint transition-colors hover:text-ink"
                 >
                   <X className="size-3.5" aria-hidden />
                 </button>

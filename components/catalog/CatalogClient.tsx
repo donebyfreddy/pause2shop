@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { Database, PlugZap } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type {
   CatalogItem,
@@ -34,7 +35,8 @@ type Props = {
   appName: string;
 };
 
-export default function CatalogClient({ initialVideoId, appName }: Props) {
+export default function CatalogClient({ initialVideoId, appName }: Readonly<Props>) {
+  const t = useTranslations("publicCatalog");
   const [filters, setFilters] = useState<FilterState>(EMPTY_FILTERS);
   const [videoFilter, setVideoFilter] = useState<string | null>(initialVideoId);
 
@@ -79,11 +81,11 @@ export default function CatalogClient({ initialVideoId, appName }: Props) {
       }
     } catch (err) {
       if (myReq !== reqId.current) return;
-      setError(err instanceof Error ? err.message : "Error de red.");
+      setError(err instanceof Error ? err.message : t("errors.network"));
     } finally {
       if (myReq === reqId.current) setLoading(false);
     }
-  }, [filters, videoFilter]);
+  }, [filters, videoFilter, t]);
 
   // Debounce: refetch al cambiar filtros.
   useEffect(() => {
@@ -109,11 +111,11 @@ export default function CatalogClient({ initialVideoId, appName }: Props) {
       if (data.ok) setDetail(data.item);
       else setError(data.error);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Error de red.");
+      setError(err instanceof Error ? err.message : t("errors.network"));
     } finally {
       setLoadingDetail(false);
     }
-  }, []);
+  }, [t]);
 
   const setStatus = useCallback(
     async (item: CatalogItem, status: ItemStatus) => {
@@ -160,12 +162,12 @@ export default function CatalogClient({ initialVideoId, appName }: Props) {
           setError(data.error);
         }
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Error de red.");
+        setError(err instanceof Error ? err.message : t("errors.network"));
       } finally {
         setSearching(false);
       }
     },
-    []
+    [t]
   );
 
   const recommendationClick = useCallback(
@@ -189,11 +191,10 @@ export default function CatalogClient({ initialVideoId, appName }: Props) {
       <header className="mb-6 flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="display text-3xl text-ink sm:text-4xl">
-            Catálogo de elementos detectados
+            {t("page.heading")}
           </h1>
           <p className="mt-2 max-w-2xl text-sm leading-relaxed text-ink-muted">
-            Todo lo que el análisis ha detectado en tus vídeos e imágenes. Filtra, revisa y
-            busca productos coincidentes.
+            {t("page.description")}
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -202,14 +203,14 @@ export default function CatalogClient({ initialVideoId, appName }: Props) {
             className="inline-flex items-center gap-2 rounded-lg bg-gradient-to-br from-brand to-magenta px-4 py-2 text-sm font-semibold text-white transition hover:brightness-110"
           >
             <PlugZap className="size-4" aria-hidden />
-            Abrir scraper
+            {t("page.openScraper")}
           </Link>
           <Link
             href="/admin/catalog"
             className="inline-flex items-center gap-2 rounded-lg border border-line px-4 py-2 text-sm font-medium text-ink-muted transition-colors hover:border-brand/40 hover:text-brand-bright"
           >
             <Database className="size-4" aria-hidden />
-            Catálogo ingerido
+            {t("page.ingestedCatalog")}
           </Link>
         </div>
       </header>
@@ -284,25 +285,26 @@ function Grid({ children }: { children: React.ReactNode }) {
   );
 }
 
-function EmptyState({ hasFilters, appName }: { hasFilters: boolean; appName: string }) {
+function EmptyState({
+  hasFilters,
+  appName,
+}: Readonly<{ hasFilters: boolean; appName: string }>) {
+  const t = useTranslations("publicCatalog.empty");
   return (
     <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-line bg-white/[0.02] py-20 text-center">
       <div className="text-4xl">🗂️</div>
       {hasFilters ? (
-        <p className="max-w-sm text-sm text-ink-muted">
-          Ningún elemento coincide con los filtros. Prueba a ajustarlos o limpiarlos.
-        </p>
+        <p className="max-w-sm text-sm text-ink-muted">{t("filtered")}</p>
       ) : (
         <>
           <p className="max-w-sm text-sm text-ink-muted">
-            Tu catálogo está vacío. Pausa un vídeo en {appName} para empezar a detectar
-            elementos.
+            {t("noItems", { appName })}
           </p>
           <Link
             href="/"
             className="rounded-lg bg-gradient-to-br from-brand to-magenta px-4 py-2 text-sm font-semibold text-white transition hover:brightness-110"
           >
-            Ir a analizar un vídeo
+            {t("cta")}
           </Link>
         </>
       )}

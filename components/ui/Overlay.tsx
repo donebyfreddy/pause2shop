@@ -3,7 +3,9 @@
 import { AnimatePresence, motion } from "motion/react";
 import { X } from "lucide-react";
 import { useEffect, useRef, type ReactNode } from "react";
+import { useLocale, useTranslations } from "next-intl";
 import { cn } from "@/lib/ui/cn";
+import { isRtl, type Locale } from "@/i18n/locales";
 import { Button } from "./Button";
 
 /**
@@ -30,10 +32,11 @@ function useOverlayBehaviour(open: boolean, onClose: () => void) {
 }
 
 function Backdrop({ onClose }: { onClose: () => void }) {
+  const t = useTranslations("common");
   return (
     <motion.button
       type="button"
-      aria-label="Cerrar"
+      aria-label={t("close")}
       onClick={onClose}
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
@@ -63,6 +66,9 @@ export function Drawer({
 }) {
   useOverlayBehaviour(open, onClose);
   const panelRef = useRef<HTMLDivElement>(null);
+  const locale = useLocale() as Locale;
+  const t = useTranslations("common");
+  const offscreenX = isRtl(locale) ? "-100%" : "100%";
 
   useEffect(() => {
     if (open) panelRef.current?.focus();
@@ -80,12 +86,12 @@ export function Drawer({
             tabIndex={-1}
             role="dialog"
             aria-modal="true"
-            initial={{ x: "100%" }}
+            initial={{ x: offscreenX }}
             animate={{ x: 0 }}
-            exit={{ x: "100%" }}
+            exit={{ x: offscreenX }}
             transition={{ type: "spring", stiffness: 380, damping: 38 }}
             className={cn(
-              "fixed inset-y-0 right-0 z-50 flex w-full flex-col border-l border-line bg-canvas-raised outline-none",
+              "fixed inset-y-0 end-0 z-50 flex w-full flex-col border-s border-line bg-canvas-raised outline-none",
               widths
             )}
           >
@@ -94,7 +100,7 @@ export function Drawer({
                 <h2 className="truncate text-sm font-semibold text-ink">{title}</h2>
                 {subtitle && <p className="mt-0.5 text-xs text-ink-subtle">{subtitle}</p>}
               </div>
-              <Button variant="ghost" size="xs" icon onClick={onClose} aria-label="Cerrar panel">
+              <Button variant="ghost" size="xs" icon onClick={onClose} aria-label={t("close")}>
                 <X className="size-4" aria-hidden />
               </Button>
             </header>
@@ -127,6 +133,7 @@ export function Modal({
   children?: ReactNode;
 }) {
   useOverlayBehaviour(open, onClose);
+  const t = useTranslations("common");
 
   return (
     <AnimatePresence>
@@ -153,7 +160,7 @@ export function Modal({
               <div className="flex items-center justify-end gap-2 px-5 py-4">
                 {footer ?? (
                   <Button variant="outline" size="sm" onClick={onClose}>
-                    Cerrar
+                    {t("close")}
                   </Button>
                 )}
               </div>

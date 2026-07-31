@@ -13,6 +13,7 @@ import {
   Terminal,
   X,
 } from "lucide-react";
+import { useFormatter, useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Badge,
@@ -53,14 +54,7 @@ const POLL_MS = 3000;
 /** Techo de líneas en el DOM: una consola infinita acaba congelando la pestaña. */
 const MAX_LINES = 1500;
 
-const LEVELS: Array<{ value: "all" | JobLogLevel; label: string }> = [
-  { value: "all", label: "Todo" },
-  { value: "debug", label: "Debug+" },
-  { value: "info", label: "Info+" },
-  { value: "success", label: "OK+" },
-  { value: "warn", label: "Avisos+" },
-  { value: "error", label: "Errores" },
-];
+const LEVELS: Array<"all" | JobLogLevel> = ["all", "debug", "info", "success", "warn", "error"];
 
 export interface ScraperConsoleProps {
   /** Limita la consola a un job concreto. */
@@ -81,6 +75,10 @@ export function ScraperConsole({
   className,
   maxHeightClass = "max-h-[58vh]",
 }: ScraperConsoleProps) {
+  const t = useTranslations("logs.console");
+  const tActions = useTranslations("actions");
+  const tCommon = useTranslations("common");
+  const format = useFormatter();
   const [entries, setEntries] = useState<JobLogEntry[]>([]);
   const [level, setLevel] = useState<"all" | JobLogLevel>("all");
   const [stage, setStage] = useState<"all" | JobStage>("all");
@@ -245,7 +243,7 @@ export function ScraperConsole({
         .reverse()
         .map((e) =>
           [
-            new Date(e.createdAt).toLocaleTimeString("es-ES"),
+            format.dateTime(new Date(e.createdAt), "time"),
             LOG_LEVEL_STYLE[e.level].label.padEnd(7),
             (e.connectorId ?? "-").padEnd(14),
             STAGE_LABEL[e.stage].padEnd(10),
@@ -257,7 +255,7 @@ export function ScraperConsole({
             .join(" ")
         )
         .join("\n"),
-    [entries]
+    [entries, format]
   );
 
   const copyAll = async (): Promise<void> => {
@@ -266,7 +264,7 @@ export function ScraperConsole({
       setCopied(true);
       setTimeout(() => setCopied(false), 1600);
     } catch {
-      setError("el navegador no permitió copiar al portapapeles");
+      setError(t("copyError"));
     }
   };
 
@@ -299,7 +297,7 @@ export function ScraperConsole({
     <div className={cn("space-y-4", className)}>
       <div className="flex flex-wrap items-center gap-3">
         <SearchInput
-          placeholder="Filtrar por mensaje o URL…"
+          placeholder={t("filterPlaceholder")}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           className="min-w-52 flex-1"
@@ -308,11 +306,11 @@ export function ScraperConsole({
           value={level}
           onChange={(e) => setLevel(e.target.value as "all" | JobLogLevel)}
           className="w-auto min-w-32"
-          aria-label="Nivel mínimo"
+          aria-label={t("levelAriaLabel")}
         >
           {LEVELS.map((l) => (
-            <option key={l.value} value={l.value}>
-              {l.label}
+            <option key={l} value={l}>
+              {t(`levels.${l}`)}
             </option>
           ))}
         </Select>
@@ -320,9 +318,9 @@ export function ScraperConsole({
           value={stage}
           onChange={(e) => setStage(e.target.value as "all" | JobStage)}
           className="w-auto min-w-36"
-          aria-label="Etapa"
+          aria-label={t("stageAriaLabel")}
         >
-          <option value="all">Todas las etapas</option>
+          <option value="all">{t("allStages")}</option>
           {stages.map((s) => (
             <option key={s} value={s}>
               {STAGE_LABEL[s] ?? s}
@@ -334,9 +332,9 @@ export function ScraperConsole({
             value={source}
             onChange={(e) => setSource(e.target.value)}
             className="w-auto min-w-36"
-            aria-label="Fuente"
+            aria-label={t("sourceAriaLabel")}
           >
-            <option value="all">Todas las fuentes</option>
+            <option value="all">{t("allSources")}</option>
             {connectorIds.map((id) => (
               <option key={id} value={id}>
                 {id}
@@ -352,26 +350,26 @@ export function ScraperConsole({
           {paused ? (
             <>
               <Play className="size-3.5" aria-hidden />
-              Reanudar
+              {tActions("resume")}
             </>
           ) : (
             <>
               <Pause className="size-3.5" aria-hidden />
-              Pausar
+              {tActions("pause")}
             </>
           )}
         </Button>
-        <Button variant="ghost" size="sm" onClick={copyAll} aria-label="Copiar logs">
+        <Button variant="ghost" size="sm" onClick={copyAll} aria-label={t("copyAriaLabel")}>
           {copied ? (
             <Check className="size-4 text-success" aria-hidden />
           ) : (
             <Copy className="size-4" aria-hidden />
           )}
         </Button>
-        <Button variant="ghost" size="sm" onClick={download} aria-label="Descargar logs">
+        <Button variant="ghost" size="sm" onClick={download} aria-label={t("downloadAriaLabel")}>
           <Download className="size-4" aria-hidden />
         </Button>
-        <Button variant="ghost" size="sm" icon onClick={reload} aria-label="Recargar">
+        <Button variant="ghost" size="sm" icon onClick={reload} aria-label={t("reloadAriaLabel")}>
           <RefreshCw className={loading ? "size-4 animate-spin" : "size-4"} aria-hidden />
         </Button>
       </div>
@@ -379,12 +377,16 @@ export function ScraperConsole({
       <Card className="overflow-hidden">
         <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line px-4 py-2.5">
           <div className="flex items-center gap-3 font-mono text-[11px] text-ink-subtle">
-            <span>{entries.length} líneas</span>
+            <span>{t("lineCount", { count: entries.length })}</span>
             {counts.error > 0 && (
-              <span className="text-danger">{counts.error} errores</span>
+              <span className="text-danger">{t("errorCount", { count: counts.error })}</span>
             )}
-            {counts.warn > 0 && <span className="text-warning">{counts.warn} avisos</span>}
-            {aiCost > 0 && <span>IA ≈ {aiCost.toFixed(6)} USD</span>}
+            {counts.warn > 0 && (
+              <span className="text-warning">{t("warnCount", { count: counts.warn })}</span>
+            )}
+            {aiCost > 0 && (
+              <span>{t("aiCost", { cost: format.number(aiCost, "usdCost") })}</span>
+            )}
             <label className="flex cursor-pointer items-center gap-1.5">
               <input
                 type="checkbox"
@@ -392,24 +394,26 @@ export function ScraperConsole({
                 onChange={(e) => setAutoScroll(e.target.checked)}
                 className="size-3 accent-[var(--color-brand)]"
               />
-              auto-scroll
+              {t("autoScroll")}
             </label>
           </div>
           <div className="flex items-center gap-2">
             {transport === "sse" && !paused && (
               <Badge tone="success" dot pulse>
-                streaming
+                {t("status.streaming")}
               </Badge>
             )}
             {transport === "polling" && !paused && (
               <Badge tone="info" dot>
-                polling {POLL_MS / 1000}s
+                {t("status.polling", { seconds: POLL_MS / 1000 })}
               </Badge>
             )}
-            {transport === "connecting" && !paused && <Badge tone="muted">conectando…</Badge>}
-            {paused && <Badge tone="warning">pausado</Badge>}
+            {transport === "connecting" && !paused && (
+              <Badge tone="muted">{t("status.connecting")}</Badge>
+            )}
+            {paused && <Badge tone="warning">{t("status.paused")}</Badge>}
             <Badge tone={logSource === "memory+db" ? "neutral" : "muted"}>
-              {logSource === "memory+db" ? "memoria + BD" : "solo memoria"}
+              {logSource === "memory+db" ? t("status.memoryAndDb") : t("status.memoryOnly")}
             </Badge>
           </div>
         </div>
@@ -426,11 +430,11 @@ export function ScraperConsole({
           {!loading && error && (
             <EmptyState
               icon={CircleAlert}
-              title="No se pudieron leer los logs"
+              title={t("readErrorTitle")}
               description={error}
               action={
                 <Button variant="secondary" size="sm" onClick={reload}>
-                  Reintentar
+                  {tCommon("retry")}
                 </Button>
               }
             />
@@ -439,8 +443,8 @@ export function ScraperConsole({
           {!loading && !error && entries.length === 0 && (
             <EmptyState
               icon={ScrollText}
-              title="Sin actividad con estos filtros"
-              description="Lanza un sync desde Conectores para ver el pipeline etapa por etapa."
+              title={t("emptyTitle")}
+              description={t("emptyDescription")}
             />
           )}
 
@@ -463,7 +467,7 @@ export function ScraperConsole({
                       <span className="mt-0.5 flex shrink-0 items-center gap-2">
                         <span className={cn("size-1.5 rounded-full", style.dot)} />
                         <span className="font-mono text-[10px] text-ink-faint">
-                          {new Date(entry.createdAt).toLocaleTimeString("es-ES")}
+                          {format.dateTime(new Date(entry.createdAt), "time")}
                         </span>
                       </span>
                       <span
@@ -509,6 +513,8 @@ export function ScraperConsole({
 
 /** Panel de detalle de una línea: metadata completa sin salir de la consola. */
 function LogDetail({ entry, onClose }: { entry: JobLogEntry; onClose: () => void }) {
+  const t = useTranslations("logs.console.detail");
+  const format = useFormatter();
   const style = LOG_LEVEL_STYLE[entry.level];
   return (
     <Card className="overflow-hidden">
@@ -521,26 +527,26 @@ function LogDetail({ entry, onClose }: { entry: JobLogEntry; onClose: () => void
           <Badge tone="neutral">{STAGE_LABEL[entry.stage] ?? entry.stage}</Badge>
           {entry.connectorId && <Badge tone="muted">{entry.connectorId}</Badge>}
         </div>
-        <Button variant="ghost" size="sm" icon onClick={onClose} aria-label="Cerrar detalle">
+        <Button variant="ghost" size="sm" icon onClick={onClose} aria-label={t("closeAriaLabel")}>
           <X className="size-4" aria-hidden />
         </Button>
       </div>
       <div className="space-y-3 p-4">
         <p className="text-[13px] text-ink">{entry.message}</p>
         <dl className="grid gap-x-6 gap-y-1.5 font-mono text-[11px] sm:grid-cols-2">
-          <Row label="Momento" value={new Date(entry.createdAt).toLocaleString("es-ES")} />
+          <Row label={t("moment")} value={format.dateTime(new Date(entry.createdAt), "short")} />
           {entry.durationMs != null && (
-            <Row label="Duración" value={formatDuration(entry.durationMs)} />
+            <Row label={t("duration")} value={formatDuration(entry.durationMs)} />
           )}
-          {entry.jobId && <Row label="Job" value={entry.jobId} />}
-          {entry.productId && <Row label="Producto" value={entry.productId} />}
-          {entry.retry != null && <Row label="Reintento" value={String(entry.retry)} />}
-          {entry.url && <Row label="URL" value={entry.url} wide />}
+          {entry.jobId && <Row label={t("job")} value={entry.jobId} />}
+          {entry.productId && <Row label={t("product")} value={entry.productId} />}
+          {entry.retry != null && <Row label={t("retry")} value={String(entry.retry)} />}
+          {entry.url && <Row label={t("url")} value={entry.url} wide />}
         </dl>
         {entry.metadata && Object.keys(entry.metadata).length > 0 && (
           <div>
             <p className="mb-1 text-[10px] font-semibold tracking-[0.12em] text-ink-faint uppercase">
-              Metadata
+              {t("metadata")}
             </p>
             <pre className="overflow-x-auto rounded-md border border-line bg-black/20 p-3 font-mono text-[10.5px] text-ink-subtle">
               {JSON.stringify(entry.metadata, null, 2)}
@@ -574,21 +580,15 @@ function shortUrl(url: string): string {
 
 /** Aviso reutilizable sobre el alcance del streaming. */
 export function ConsoleTransportNote({ persistent }: { persistent: boolean }) {
+  const t = useTranslations("logs.console.transportNote");
   return (
-    <Callout tone={persistent ? "info" : "warning"} title="Alcance de estos logs">
-      {persistent ? (
-        <>
-          Los eventos se persisten en la base de datos: la consola muestra también el histórico de
-          jobs anteriores. El streaming SSE solo entrega los eventos de{" "}
-          <strong>esta invocación</strong>; el resto llega por el polling.
-        </>
-      ) : (
-        <>
-          No hay base de datos configurada, así que los logs viven <strong>solo en memoria</strong> y
-          se pierden al reiniciar el proceso. Configura <code>DATABASE_URL</code> (cadena{" "}
-          <code>postgres://</code>) y ejecuta <code>npm run db:migrate</code> para tener histórico.
-        </>
-      )}
+    <Callout tone={persistent ? "info" : "warning"} title={t("title")}>
+      {persistent
+        ? t.rich("persistentBody", { strong: (chunks) => <strong>{chunks}</strong> })
+        : t.rich("ephemeralBody", {
+            strong: (chunks) => <strong>{chunks}</strong>,
+            code: (chunks) => <code>{chunks}</code>,
+          })}
     </Callout>
   );
 }

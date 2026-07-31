@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { AnimatePresence, motion } from "motion/react";
 import {
   ArrowRight,
@@ -18,7 +19,7 @@ import { useState } from "react";
 import type { DetectedItem, FrameAnalysis, ProductLink } from "@/lib/types";
 import type { PersistenceStatus } from "@/lib/api/types";
 import { presentationPriority } from "@/lib/priority";
-import { normalizeStyle, prettyStyleLabel } from "@/lib/utils";
+import { itemKey, normalizeStyle, prettyStyleLabel } from "@/lib/utils";
 import { IS_PRESENTATION } from "@/lib/presentation";
 import FramePreview from "./FramePreview";
 import LoadingAnalysis from "./LoadingAnalysis";
@@ -30,6 +31,8 @@ type Props = {
   /** true mientras llegan items en streaming (análisis parcial visible). */
   streaming?: boolean;
   error: string | null;
+  /** Detalle técnico del error (mensaje crudo del proveedor), para depuración. */
+  errorDetail?: string | null;
   warning?: string | null;
   analysis: FrameAnalysis | null;
   items: DetectedItem[];
@@ -44,6 +47,10 @@ type Props = {
   onLinkClick: (item: DetectedItem, link: ProductLink) => void;
   onReanalyze?: () => void;
   canReanalyze?: boolean;
+  /** Item resaltado (sincronizado con el hotspot de la imagen analizada). */
+  selectedKey?: string | null;
+  /** Clic en una card: selecciona su hotspot correspondiente en la imagen. */
+  onSelectItem?: (item: DetectedItem) => void;
 };
 
 type Tab = "frame" | "session";
@@ -79,12 +86,17 @@ function GroupedProductList({
   keyPrefix,
   onLinkClick,
   frameUrl,
+  selectedKey,
+  onSelectItem,
 }: {
   items: DetectedItem[];
   keyPrefix: string;
   onLinkClick: (item: DetectedItem, link: ProductLink) => void;
   frameUrl?: string | null;
+  selectedKey?: string | null;
+  onSelectItem?: (item: DetectedItem) => void;
 }) {
+  const t = useTranslations("studio.resultsPanel");
   const groups = groupByRelationship(items);
   let rank = 0;
 
@@ -102,6 +114,8 @@ function GroupedProductList({
               rank={++rank}
               onLinkClick={onLinkClick}
               frameUrl={frameUrl}
+              selected={Boolean(selectedKey) && itemKey(item) === selectedKey}
+              onSelect={onSelectItem}
             />
           ))}
         </div>
@@ -122,6 +136,8 @@ function GroupedProductList({
             rank={idx + 1}
             onLinkClick={onLinkClick}
             frameUrl={frameUrl}
+            selected={Boolean(selectedKey) && itemKey(item) === selectedKey}
+            onSelect={onSelectItem}
           />
         ))}
       </div>
@@ -130,14 +146,14 @@ function GroupedProductList({
 
   return (
     <div className="space-y-6">
-      {renderGroup("Lo que lleva", groups.worn)}
-      {renderGroup("Lo que sostiene o utiliza", groups.heldOrUsed)}
-      {renderGroup("Cerca de la persona", groups.other)}
+      {renderGroup(t("groups.worn"), groups.worn)}
+      {renderGroup(t("groups.heldOrUsed"), groups.heldOrUsed)}
+      {renderGroup(t("groups.nearPerson"), groups.other)}
       {groups.background.length > 0 && (
         <details className="group rounded-xl border border-line bg-white/[0.02] px-3.5 py-2.5">
           <summary className="flex cursor-pointer items-center justify-between gap-2 text-[10px] font-semibold tracking-[0.12em] text-ink-faint uppercase transition-colors select-none hover:text-ink-muted">
-            Otros objetos de la escena ({groups.background.length})
-            <span className="text-[9px] normal-case">prioridad baja</span>
+            {t("groups.otherObjects", { count: groups.background.length })}
+            <span className="text-[9px] normal-case">{t("groups.lowPriority")}</span>
           </summary>
           <div className="mt-3 space-y-3">
             {groups.background.map((item, idx) => (
@@ -147,6 +163,8 @@ function GroupedProductList({
                 rank={++rank}
                 onLinkClick={onLinkClick}
                 frameUrl={frameUrl}
+                selected={Boolean(selectedKey) && itemKey(item) === selectedKey}
+                onSelect={onSelectItem}
               />
             ))}
           </div>
@@ -160,6 +178,7 @@ export default function ProductResultsPanel({
   loading,
   streaming = false,
   error,
+  errorDetail,
   warning,
   analysis,
   items,
@@ -173,7 +192,10 @@ export default function ProductResultsPanel({
   onLinkClick,
   onReanalyze,
   canReanalyze,
+  selectedKey,
+  onSelectItem,
 }: Props) {
+  const t = useTranslations("studio.resultsPanel");
   const [tab, setTab] = useState<Tab>("frame");
   const vibe = normalizeStyle(analysis?.style_vibe);
   const catalogHref = videoId ? `/catalog?videoId=${videoId}` : "/catalog";
@@ -183,9 +205,9 @@ export default function ProductResultsPanel({
     <aside className="panel flex h-full flex-col overflow-hidden">
       <header className="flex items-center justify-between gap-3 border-b border-line px-5 py-4">
         <div className="min-w-0">
-          <h2 className="text-sm font-semibold text-ink">Resultados</h2>
+          <h2 className="text-sm font-semibold text-ink">{t("title")}</h2>
           <p className="mt-0.5 text-xs text-ink-subtle">
-            Objetos detectados y sus coincidencias
+            {t("subtitle")}
           </p>
         </div>
         {onReanalyze && (
@@ -194,10 +216,10 @@ export default function ProductResultsPanel({
             size="sm"
             onClick={onReanalyze}
             disabled={!canReanalyze || loading}
-            title="Vuelve a analizar el último frame ignorando la caché"
+            title={t("reanalyzeTooltip")}
           >
             <RefreshCw className={loading ? "size-3.5 animate-spin" : "size-3.5"} aria-hidden />
-            Analizar otra vez
+            {t("reanalyzeAction")}
           </Button>
         )}
       </header>
@@ -206,15 +228,15 @@ export default function ProductResultsPanel({
         <div className="border-b border-line px-5 py-3">
           <Segmented
             size="sm"
-            ariaLabel="Ámbito de los resultados"
+            ariaLabel={t("scopeAriaLabel")}
             value={tab}
             onChange={setTab}
             className="w-full"
             options={[
-              { value: "frame", label: "Este frame", icon: ScanSearch, count: items.length },
+              { value: "frame", label: t("thisFrame"), icon: ScanSearch, count: items.length },
               {
                 value: "session",
-                label: "Todo el vídeo",
+                label: t("wholeVideo"),
                 icon: Film,
                 count: sessionItems.length,
               },
@@ -226,8 +248,9 @@ export default function ProductResultsPanel({
       <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-5 py-4">
         {mock && (
           <Callout tone="warning" icon={TriangleAlert}>
-            Modo demo (sin <code className="font-mono text-[11px]">OPENAI_API_KEY</code>):
-            se muestran datos de ejemplo realistas.
+            {t.rich("demoModeNotice", {
+              code: (chunks) => <code className="font-mono text-[11px]">{chunks}</code>,
+            })}
           </Callout>
         )}
 
@@ -236,16 +259,15 @@ export default function ProductResultsPanel({
             <p className="text-xs text-ink-muted">
               <CircleCheck className="mr-1.5 inline size-3.5 text-success" aria-hidden />
               <span className="font-medium text-success">
-                {savedCount} elemento{savedCount === 1 ? "" : "s"}
-              </span>{" "}
-              guardado{savedCount === 1 ? "" : "s"} en el catálogo
+                {t("savedInCatalog", { count: savedCount })}
+              </span>
               <PersistenceHint persisted={persisted} persistence={persistence} />
             </p>
             <Link
               href={catalogHref}
               className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-success/30 px-2 py-1 text-[11px] font-medium text-success transition-colors hover:bg-success/15"
             >
-              Ver
+              {t("view")}
               <ArrowRight className="size-3" aria-hidden />
             </Link>
           </div>
@@ -253,9 +275,7 @@ export default function ProductResultsPanel({
 
         {warning && (
           <Callout tone="warning" icon={TriangleAlert}>
-            {IS_PRESENTATION
-              ? "Guardado local de esta sesión activo; la sincronización se reintenta automáticamente."
-              : warning}
+            {IS_PRESENTATION ? t("localSaveNotice") : warning}
           </Callout>
         )}
 
@@ -271,9 +291,7 @@ export default function ProductResultsPanel({
             {tab === "session" && showSessionTab && (
               <>
                 <Callout tone="brand" icon={Layers}>
-                  {sessionItems.length} objeto{sessionItems.length === 1 ? "" : "s"} único
-                  {sessionItems.length === 1 ? "" : "s"} durante el vídeo, ya deduplicados entre
-                  frames.
+                  {t("sessionSummary", { count: sessionItems.length })}
                 </Callout>
                 <GroupedProductList
                   items={sessionItems}
@@ -288,8 +306,18 @@ export default function ProductResultsPanel({
                 {frameDataUrl && <FramePreview dataUrl={frameDataUrl} items={items} />}
 
                 {error && (
-                  <Callout tone="danger" icon={TriangleAlert} title="No se pudo analizar">
-                    {error}
+                  <Callout tone="danger" icon={TriangleAlert} title={t("analyzeErrorTitle")}>
+                    <p>{error}</p>
+                    {errorDetail && !IS_PRESENTATION && (
+                      <details className="mt-2 text-[11px] text-danger/80">
+                        <summary className="cursor-pointer select-none font-medium hover:text-danger">
+                          {t("technicalDetails")}
+                        </summary>
+                        <pre className="mt-1.5 max-h-40 overflow-auto whitespace-pre-wrap break-words rounded-lg border border-danger/20 bg-black/20 p-2 font-mono text-[10px] leading-relaxed text-ink-muted">
+                          {errorDetail}
+                        </pre>
+                      </details>
+                    )}
                   </Callout>
                 )}
 
@@ -303,7 +331,7 @@ export default function ProductResultsPanel({
                       <span className="absolute inset-0 animate-ping rounded-full bg-brand-bright opacity-70" />
                       <span className="relative size-1.5 rounded-full bg-brand-bright" />
                     </span>
-                    Detectando más objetos en esta escena…
+                    {t("detectingMore")}
                   </div>
                 )}
 
@@ -319,7 +347,7 @@ export default function ProductResultsPanel({
                       <div className="flex items-center gap-2.5 rounded-xl border border-line bg-linear-to-r from-brand/10 to-accent/5 px-3.5 py-2.5">
                         <Sparkles className="size-3.5 shrink-0 text-brand-bright" aria-hidden />
                         <p className="text-xs text-ink-muted">
-                          Estilo detectado:{" "}
+                          {t("styleDetectedLabel")}{" "}
                           <span className="font-semibold text-ink">
                             {prettyStyleLabel(vibe)}
                           </span>
@@ -333,12 +361,14 @@ export default function ProductResultsPanel({
                         keyPrefix="frame"
                         onLinkClick={onLinkClick}
                         frameUrl={frameDataUrl}
+                        selectedKey={selectedKey}
+                        onSelectItem={onSelectItem}
                       />
                     ) : (
                       <EmptyState
                         icon={Search}
-                        title="Sin objetos comprables claros"
-                        description="Este frame no tiene productos suficientemente definidos. Prueba con un frame más cercano o mejor iluminado."
+                        title={t("noItemsTitle")}
+                        description={t("noItemsDescription")}
                       />
                     )}
                   </>
@@ -347,8 +377,8 @@ export default function ProductResultsPanel({
                 {!loading && !analysis && !error && (
                   <EmptyState
                     icon={ScanSearch}
-                    title="Listo para analizar"
-                    description="Reproduce el vídeo y haz pausa en el momento que te interese, o sube una imagen. El análisis empieza en cuanto haya un frame."
+                    title={t("readyTitle")}
+                    description={t("readyDescription")}
                   />
                 )}
               </>
@@ -360,8 +390,7 @@ export default function ProductResultsPanel({
       <footer className="flex items-start gap-2 border-t border-line px-5 py-3">
         <Lock className="mt-px size-3 shrink-0 text-ink-faint" aria-hidden />
         <p className="text-[11px] leading-relaxed text-ink-faint">
-          La captura solo se usa para detectar objetos comprables. No identificamos personas ni
-          almacenamos imágenes en el servidor.
+          {t("privacyNote")}
         </p>
       </footer>
     </aside>
@@ -376,21 +405,17 @@ function PersistenceHint({
   persisted?: boolean;
   persistence?: PersistenceStatus | null;
 }) {
+  const t = useTranslations("studio.resultsPanel");
   if (persisted) return null;
   if (persistence === "memory_fallback") {
-    return (
-      <span className="text-warning/80">
-        {" "}
-        (base de datos no disponible — guardado en esta sesión, se reintenta solo)
-      </span>
-    );
+    return <span className="text-warning/80">{t("memoryFallbackNote")}</span>;
   }
-  if (IS_PRESENTATION) return <span className="text-ink-faint"> (sesión local)</span>;
+  if (IS_PRESENTATION) return <span className="text-ink-faint">{t("localSessionNote")}</span>;
   return (
     <span className="text-ink-faint">
-      {" "}
-      (en memoria — configura <code className="font-mono text-[11px]">DATABASE_URL</code> para
-      persistir)
+      {t.rich("memoryNote", {
+        code: (chunks) => <code className="font-mono text-[11px]">{chunks}</code>,
+      })}
     </span>
   );
 }

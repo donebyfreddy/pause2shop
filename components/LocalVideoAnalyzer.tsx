@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useTranslations } from "next-intl";
 import { captureFrameDataUrl } from "@/lib/frameCapture";
 import type { FrameMeta } from "@/lib/api/types";
 
@@ -10,6 +11,8 @@ type Props = {
 };
 
 export default function LocalVideoAnalyzer({ onRequestAnalysis, analyzing }: Props) {
+  const t = useTranslations("studio.videoAnalyzer");
+  const tLocal = useTranslations("studio.localVideo");
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const [src, setSrc] = useState<string | null>(null);
   const [fileName, setFileName] = useState<string | null>(null);
@@ -43,11 +46,11 @@ export default function LocalVideoAnalyzer({ onRequestAnalysis, analyzing }: Pro
     onRequestAnalysis(dataUrl, {
       sourceType: "uploaded",
       videoKey,
-      videoTitle: fileName ?? "Vídeo local",
+      videoTitle: fileName ?? tLocal("defaultTitle"),
       timestampSeconds: rounded,
       cacheKey: `${videoKey}:${rounded}`,
     });
-  }, [fileName, onRequestAnalysis]);
+  }, [fileName, onRequestAnalysis, tLocal]);
 
   const handlePause = useCallback(() => {
     if (!autoAnalyze) return;
@@ -61,10 +64,10 @@ export default function LocalVideoAnalyzer({ onRequestAnalysis, analyzing }: Pro
           <div className="text-3xl">🎬</div>
           <div>
             <p className="text-sm font-medium text-ink">
-              Sube un vídeo (.mp4, .mov, .webm)
+              {tLocal("uploadHint")}
             </p>
             <p className="text-xs text-ink-subtle">
-              Ideal para pruebas rápidas — sin captura de pantalla
+              {tLocal("uploadSubHint")}
             </p>
           </div>
           <input
@@ -88,7 +91,7 @@ export default function LocalVideoAnalyzer({ onRequestAnalysis, analyzing }: Pro
             <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-[2px]">
               <div className="flex items-center gap-3 rounded-full border border-line-strong bg-black/70 px-5 py-2.5 text-sm font-medium text-white">
                 <span className="h-2 w-2 animate-pulse rounded-full bg-brand-bright" />
-                Analizando frame…
+                {t("analyzingFrameOverlay")}
               </div>
             </div>
           )}
@@ -108,7 +111,7 @@ export default function LocalVideoAnalyzer({ onRequestAnalysis, analyzing }: Pro
               <span className="h-6 w-11 rounded-full bg-white/10 transition peer-checked:bg-brand" />
               <span className="absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white transition peer-checked:translate-x-5" />
             </span>
-            Analizar al pausar
+            {t("analyzeOnPause")}
           </label>
 
           <div className="ml-auto flex gap-2">
@@ -120,10 +123,10 @@ export default function LocalVideoAnalyzer({ onRequestAnalysis, analyzing }: Pro
               disabled={analyzing}
               className="rounded-lg bg-gradient-to-br from-brand to-magenta px-3.5 py-2 text-xs font-semibold text-white transition hover:brightness-110 disabled:opacity-40"
             >
-              Analizar este frame ahora
+              {t("analyzeFrameNow")}
             </button>
             <label className="cursor-pointer rounded-lg border border-line bg-white/5 px-3.5 py-2 text-xs font-medium text-ink-muted transition hover:bg-white/10">
-              Cambiar vídeo
+              {t("changeVideo")}
               <input
                 type="file"
                 accept="video/mp4,video/quicktime,video/webm,video/*"

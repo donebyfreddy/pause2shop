@@ -16,6 +16,7 @@ import {
   Search,
   ShieldCheck,
 } from "lucide-react";
+import { useFormatter, useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
 import {
   Badge,
@@ -70,16 +71,22 @@ import type {
 
 type GroupFilter = "all" | "syncable" | "partner" | "paused" | "problem";
 
-const GROUP_OPTIONS = [
-  { value: "all" as const, label: "Todas" },
-  { value: "syncable" as const, label: "Sincronizables" },
-  { value: "partner" as const, label: "Requieren acuerdo" },
-  { value: "paused" as const, label: "Pausadas" },
-  { value: "problem" as const, label: "Con problema" },
-];
-
 export function ConnectorsView() {
+  const t = useTranslations("connectors");
+  const tActions = useTranslations("actions");
+  const tToast = useTranslations("toast.connectors");
   const toast = useToast();
+
+  const GROUP_OPTIONS = useMemo(
+    () => [
+      { value: "all" as const, label: t("filters.group.all") },
+      { value: "syncable" as const, label: t("filters.group.syncable") },
+      { value: "partner" as const, label: t("filters.group.partner") },
+      { value: "paused" as const, label: t("filters.group.paused") },
+      { value: "problem" as const, label: t("filters.group.problem") },
+    ],
+    [t]
+  );
   const [query, setQuery] = useState("");
   const [group, setGroup] = useState<GroupFilter>("all");
   const [tier, setTier] = useState("all");
@@ -130,29 +137,34 @@ export function ConnectorsView() {
     );
     setBusy(null);
     if (!res.ok) {
-      toast.error(`No se pudo ${label}`, res.error.message);
+      toast.error(tToast("actionFailed", { action: label }), res.error.message);
       return;
     }
     if (action === "test") {
       const result = res.data as ConnectorTestResult;
       if (result.ok) {
         toast.success(
-          `${result.label}: pipeline correcto`,
-          `Ficha de muestra: ${result.sampleTitle ?? "—"} (${formatDuration(result.durationMs)})`
+          t("toast.testSucceeded", { label: result.label }),
+          t("toast.testSample", {
+            sampleTitle: result.sampleTitle ?? "—",
+            duration: formatDuration(result.durationMs),
+          })
         );
       } else {
         const failed = result.steps.find((s) => !s.ok);
         toast.error(
-          `${result.label}: falló en «${failed?.step ?? "?"}»`,
-          failed?.detail ?? "sin detalle"
+          t("toast.testFailed", { label: result.label, step: failed?.step ?? "?" }),
+          failed?.detail ?? t("toast.noDetail")
         );
       }
     } else if (action === "health") {
       const health = res.data as unknown as { status: string; note: string };
       const meta = metaFor(HEALTH_META, health.status);
-      toast.info(`${id}: ${meta.label}`, health.note);
+      toast.info(t("toast.healthChecked", { id, label: meta.label }), health.note);
     } else {
-      toast.success(`${id} ${action === "pause" ? "pausado" : "reanudado"}`);
+      toast.success(
+        action === "pause" ? tToast("paused", { id }) : tToast("resumed", { id })
+      );
     }
     reload();
   };
@@ -162,12 +174,14 @@ export function ConnectorsView() {
     const res = await adminPost<{ jobId: string }>("jobs/sync", { source: id, mode, limit: 25 });
     setBusy(null);
     if (!res.ok) {
-      toast.error("No se pudo lanzar el sync", res.error.message);
+      toast.error(tToast("syncFailed"), res.error.message);
       return;
     }
     toast.success(
-      `Sync ${mode} encolado`,
-      `Job ${res.data.jobId.slice(0, 8)} · sigue el progreso en la pestaña Jobs`
+      t("toast.syncQueued", {
+        mode: mode === "full" ? t("syncMode.full") : t("syncMode.incremental"),
+      }),
+      t("toast.syncQueuedDetail", { jobId: res.data.jobId.slice(0, 8) })
     );
     reload();
   };
@@ -181,58 +195,55 @@ export function ConnectorsView() {
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           <SummaryTile
             icon={Plug}
-            label="Fuentes registradas"
+            label={t("kpi.registered")}
             value={summary.total}
-            hint="todas las tiendas del registro"
+            hint={t("kpi.registeredHint")}
           />
           <SummaryTile
             icon={Rocket}
-            label="Sincronizables ahora"
+            label={t("kpi.syncable")}
             value={summary.syncable}
-            hint="con implementación y credenciales"
+            hint={t("kpi.syncableHint")}
             tone="success"
           />
           <SummaryTile
             icon={ShieldCheck}
-            label="Verificadas en vivo"
+            label={t("kpi.verifiedLive")}
             value={connectors.filter((c) => c.verifiedLive).length}
-            hint="con productos reales ya en catálogo"
+            hint={t("kpi.verifiedLiveHint")}
             tone="brand"
           />
           <SummaryTile
             icon={KeyRound}
-            label="Requieren acuerdo"
+            label={t("kpi.requireAgreement")}
             value={
               (summary.byLifecycle.partner_required ?? 0) +
               (summary.byLifecycle.needs_credentials ?? 0)
             }
-            hint="partner o red de afiliación"
+            hint={t("kpi.requireAgreementHint")}
             tone="warning"
           />
         </div>
       )}
 
-      <Callout tone="info" icon={Info} title="Cómo leer esta tabla">
-        <span className="text-ink-muted">Estado real</span> es la etiqueta honesta: solo dice{" "}
-        <em>verificado</em> si esta fuente tiene productos reales en el catálogo extraídos por el
-        pipeline — no basta con que exista el código.{" "}
-        <span className="text-ink-muted">Salud</span> es lo que responde la tienda ahora mismo, y{" "}
-        <span className="text-ink-muted">extracción</span> mide qué porcentaje de fichas se resolvió
-        sin IA (con datos estructurados o DOM); la IA es solo el último recurso. La comprobación
-        live no se hace sola para todas las fuentes: sería descortés con las tiendas.
+      <Callout tone="info" icon={Info} title={t("callout.title")}>
+        {t.rich("callout.body", {
+          muted: (chunks) => <span className="text-ink-muted">{chunks}</span>,
+          em: (chunks) => <em>{chunks}</em>,
+        })}
       </Callout>
 
       {/* ------------------------- filtros ------------------------- */}
       <div className="flex flex-wrap items-center gap-3">
         <SearchInput
-          placeholder="Buscar marca, grupo, región…"
+          placeholder={t("filters.searchPlaceholder")}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           className="min-w-56 flex-1"
         />
         <Segmented
           size="sm"
-          ariaLabel="Filtrar conectores"
+          ariaLabel={t("filters.filterAriaLabel")}
           value={group}
           onChange={setGroup}
           options={GROUP_OPTIONS}
@@ -241,9 +252,9 @@ export function ConnectorsView() {
           value={tier}
           onChange={(e) => setTier(e.target.value)}
           className="w-auto min-w-40"
-          aria-label="Segmento de tienda"
+          aria-label={t("filters.segmentLabel")}
         >
-          <option value="all">Todos los segmentos</option>
+          <option value="all">{t("filters.allSegments")}</option>
           {Object.entries(TIER_LABEL).map(([value, label]) => (
             <option key={value} value={value}>
               {label}
@@ -254,12 +265,12 @@ export function ConnectorsView() {
           variant={live ? "success" : "outline"}
           size="sm"
           onClick={() => setLive((v) => !v)}
-          title="Comprueba en directo el estado de las fuentes sincronizables (peticiones reales)"
+          title={t("actions.healthLiveTitle")}
         >
           <RadioTower className="size-3.5" aria-hidden />
-          {live ? "Health live activo" : "Comprobar health live"}
+          {live ? t("actions.healthLiveActive") : t("actions.healthLiveCheck")}
         </Button>
-        <Button variant="ghost" size="sm" icon onClick={reload} aria-label="Refrescar">
+        <Button variant="ghost" size="sm" icon onClick={reload} aria-label={t("actions.refresh")}>
           <RefreshCw className={refreshing ? "size-4 animate-spin" : "size-4"} aria-hidden />
         </Button>
       </div>
@@ -270,15 +281,15 @@ export function ConnectorsView() {
           <Table className="min-w-[1080px]">
             <THead>
               <TR>
-                <TH>Fuente</TH>
-                <TH>Estado real</TH>
-                <TH>Salud</TH>
-                <TH>Descubrimiento</TH>
-                <TH>Cumplimiento</TH>
-                <TH className="text-right">Productos</TH>
-                <TH className="text-right">Extracción</TH>
-                <TH>Último sync</TH>
-                <TH className="text-right">Acciones</TH>
+                <TH>{t("table.source")}</TH>
+                <TH>{t("table.realStatus")}</TH>
+                <TH>{t("table.health")}</TH>
+                <TH>{t("table.discovery")}</TH>
+                <TH>{t("table.compliance")}</TH>
+                <TH className="text-right">{t("table.products")}</TH>
+                <TH className="text-right">{t("table.extraction")}</TH>
+                <TH>{t("table.lastSync")}</TH>
+                <TH className="text-right">{t("table.actions")}</TH>
               </TR>
             </THead>
             <TBody>
@@ -288,11 +299,11 @@ export function ConnectorsView() {
                 <TableEmpty colSpan={8}>
                   <EmptyState
                     icon={CircleAlert}
-                    title="No se pudo leer el registro"
+                    title={t("errors.loadFailed")}
                     description={error.message}
                     action={
                       <Button variant="secondary" size="sm" onClick={reload}>
-                        Reintentar
+                        {tActions("retryJob")}
                       </Button>
                     }
                   />
@@ -303,8 +314,8 @@ export function ConnectorsView() {
                 <TableEmpty colSpan={8}>
                   <EmptyState
                     icon={Search}
-                    title="Ninguna fuente coincide"
-                    description="Prueba con otro término o quita los filtros activos."
+                    title={t("empty.noMatchTitle")}
+                    description={t("empty.noMatchDescription")}
                     action={
                       <Button
                         variant="outline"
@@ -315,7 +326,7 @@ export function ConnectorsView() {
                           setTier("all");
                         }}
                       >
-                        Limpiar filtros
+                        {t("empty.clearFilters")}
                       </Button>
                     }
                   />
@@ -339,7 +350,7 @@ export function ConnectorsView() {
       </Card>
 
       <p className="text-[11px] text-ink-faint">
-        Mostrando {filtered.length} de {connectors.length} fuentes registradas.
+        {t("footer.showingCount", { filtered: filtered.length, total: connectors.length })}
       </p>
 
       <ConnectorDrawer
@@ -411,6 +422,8 @@ function ConnectorRow({
   );
   const effective = metaFor(EFFECTIVE_STATUS_META, connector.effectiveStatus);
   const isBusy = (action: string) => busy === `${connector.id}:${action}`;
+  const t = useTranslations("connectors");
+  const format = useFormatter();
 
   return (
     <TR interactive onClick={onOpen}>
@@ -458,19 +471,24 @@ function ConnectorRow({
         <Badge tone={compliance.tone}>{compliance.label}</Badge>
       </TD>
       <TD className="text-right font-medium text-ink tabular-nums">
-        {connector.productCount.toLocaleString("es-ES")}
+        {format.number(connector.productCount)}
       </TD>
       <TD className="text-right">
         {/* % con IA / sin IA: medido sobre los productos ya guardados. */}
         {connector.extraction.total > 0 ? (
           <div className="flex flex-col items-end gap-0.5">
             <span className="font-mono text-[11px] text-ink-muted tabular-nums">
-              {Math.round((1 - (connector.extraction.aiRatio ?? 0)) * 100)}% sin IA
+              {t("extraction.withoutAiPct", {
+                pct: Math.round((1 - (connector.extraction.aiRatio ?? 0)) * 100),
+              })}
             </span>
             <span className="font-mono text-[10px] text-ink-faint tabular-nums">
               {connector.extraction.withAi > 0
-                ? `${connector.extraction.withAi} con IA · ${connector.extraction.aiCostUsd.toFixed(4)} USD`
-                : "0 llamadas a IA"}
+                ? t("extraction.withAiCost", {
+                    count: connector.extraction.withAi,
+                    cost: format.number(connector.extraction.aiCostUsd, "usdCost"),
+                  })
+                : t("extraction.noAiCalls")}
             </span>
           </div>
         ) : (
@@ -486,9 +504,9 @@ function ConnectorRow({
               size="xs"
               loading={isBusy("sync")}
               onClick={() => onSync(connector.id, "full")}
-              title="Lanza un sync completo (limitado a 25 fichas)"
+              title={t("actions.syncFullTitle")}
             >
-              Sync
+              {t("actions.syncShort")}
             </Button>
           )}
           <Button
@@ -496,8 +514,8 @@ function ConnectorRow({
             size="xs"
             icon
             loading={isBusy("test")}
-            onClick={() => onAction(connector.id, "test", "probar el conector")}
-            title="Prueba el pipeline con una ficha real"
+            onClick={() => onAction(connector.id, "test", t("actionLabels.test"))}
+            title={t("actions.testTitle")}
           >
             <FlaskConical className="size-3.5" aria-hidden />
           </Button>
@@ -507,8 +525,8 @@ function ConnectorRow({
               size="xs"
               icon
               loading={isBusy("resume")}
-              onClick={() => onAction(connector.id, "resume", "reanudar")}
-              title="Reanudar"
+              onClick={() => onAction(connector.id, "resume", t("actionLabels.resume"))}
+              title={t("actions.resumeTitle")}
             >
               <Play className="size-3.5" aria-hidden />
             </Button>
@@ -518,8 +536,8 @@ function ConnectorRow({
               size="xs"
               icon
               loading={isBusy("pause")}
-              onClick={() => onAction(connector.id, "pause", "pausar")}
-              title="Pausar"
+              onClick={() => onAction(connector.id, "pause", t("actionLabels.pause"))}
+              title={t("actions.pauseTitle")}
             >
               <Pause className="size-3.5" aria-hidden />
             </Button>
@@ -546,6 +564,8 @@ function ConnectorDrawer({
   const { data, loading, error } = useAdminResource<ConnectorDetail>(
     id ? `connectors/${id}` : null
   );
+  const t = useTranslations("connectors");
+  const format = useFormatter();
 
   const lifecycle = metaFor(LIFECYCLE_META, data?.lifecycle);
   const health = metaFor(HEALTH_META, data?.health);
@@ -566,19 +586,19 @@ function ConnectorDrawer({
               variant="outline"
               size="sm"
               loading={busy === `${data.id}:health`}
-              onClick={() => onAction(data.id, "health", "comprobar el estado")}
+              onClick={() => onAction(data.id, "health", t("actionLabels.checkHealth"))}
             >
               <RadioTower className="size-3.5" aria-hidden />
-              Comprobar estado
+              {t("drawer.checkStatusButton")}
             </Button>
             <Button
               variant="secondary"
               size="sm"
               loading={busy === `${data.id}:test`}
-              onClick={() => onAction(data.id, "test", "probar el conector")}
+              onClick={() => onAction(data.id, "test", t("actionLabels.test"))}
             >
               <FlaskConical className="size-3.5" aria-hidden />
-              Probar pipeline
+              {t("drawer.testPipelineButton")}
             </Button>
             {data.canSync && (
               <>
@@ -587,10 +607,10 @@ function ConnectorDrawer({
                   size="sm"
                   onClick={() => onSync(data.id, "incremental")}
                 >
-                  Sync incremental
+                  {t("drawer.syncIncrementalButton")}
                 </Button>
                 <Button variant="primary" size="sm" onClick={() => onSync(data.id, "full")}>
-                  Sync completo
+                  {t("drawer.syncFullButton")}
                 </Button>
               </>
             )}
@@ -601,7 +621,7 @@ function ConnectorDrawer({
       <AnimatePresence mode="wait">
         {loading && (
           <motion.p key="loading" className="text-xs text-ink-subtle">
-            Cargando detalle…
+            {t("drawer.loading")}
           </motion.p>
         )}
         {error && !data && (
@@ -620,20 +640,20 @@ function ConnectorDrawer({
               <Badge tone={lifecycle.tone} size="md">{lifecycle.label}</Badge>
               <Badge tone={health.tone} size="md" dot>{health.label}</Badge>
               <Badge tone={compliance.tone} size="md">{compliance.label}</Badge>
-              {data.paused && <Badge tone="warning" size="md">Pausado</Badge>}
+              {data.paused && <Badge tone="warning" size="md">{t("badges.paused")}</Badge>}
             </div>
 
             <Callout
               tone={data.canSync ? "info" : "warning"}
               icon={data.canSync ? Info : KeyRound}
-              title={data.canSync ? "Estado de la fuente" : "Qué falta para activarla"}
+              title={data.canSync ? t("drawer.sourceStatusTitle") : t("drawer.missingTitle")}
             >
               {data.note || data.notes}
             </Callout>
 
             {data.missingEnv.length > 0 && (
               <div>
-                <SectionLabel>Variables de entorno pendientes</SectionLabel>
+                <SectionLabel>{t("drawer.missingEnvLabel")}</SectionLabel>
                 <ul className="mt-2 flex flex-wrap gap-2">
                   {data.missingEnv.map((key) => (
                     <li
@@ -648,7 +668,7 @@ function ConnectorDrawer({
             )}
 
             {data.lastError && (
-              <Callout tone="danger" icon={CircleAlert} title="Último error registrado">
+              <Callout tone="danger" icon={CircleAlert} title={t("drawer.lastErrorTitle")}>
                 <span className="block text-[12px]">{data.lastError.message}</span>
                 {data.lastError.url && (
                   <span className="mt-1 block font-mono text-[10px] text-ink-faint">
@@ -664,32 +684,33 @@ function ConnectorDrawer({
             {/* Cómo se está extrayendo de VERDAD en esta fuente. Es la prueba
                 de que la IA es un fallback y no la vía por defecto. */}
             <div>
-              <SectionLabel>Extracción medida</SectionLabel>
+              <SectionLabel>{t("drawer.extractionLabel")}</SectionLabel>
               <div className="mt-2">
                 {data.extraction.total === 0 ? (
-                  <p className="text-[12px] text-ink-faint">
-                    Todavía no hay productos de esta fuente en el catálogo: nada medido. Lanza un
-                    sync para tener datos reales.
-                  </p>
+                  <p className="text-[12px] text-ink-faint">{t("drawer.extractionEmpty")}</p>
                 ) : (
                   <>
-                    <DataRow label="Productos con metadatos">{data.extraction.total}</DataRow>
-                    <DataRow label="Resueltos sin IA">
+                    <DataRow label={t("drawer.productsWithMetadata")}>
+                      {data.extraction.total}
+                    </DataRow>
+                    <DataRow label={t("drawer.resolvedWithoutAi")}>
                       {data.extraction.withoutAi} ·{" "}
                       {Math.round((1 - (data.extraction.aiRatio ?? 0)) * 100)}%
                     </DataRow>
-                    <DataRow label="Resueltos con IA">
+                    <DataRow label={t("drawer.resolvedWithAi")}>
                       {data.extraction.withAi} ·{" "}
                       {Math.round((data.extraction.aiRatio ?? 0) * 100)}%
                     </DataRow>
-                    <DataRow label="Necesitaron navegador">{data.extraction.withBrowser}</DataRow>
-                    <DataRow label="Confianza media">
+                    <DataRow label={t("drawer.neededBrowser")}>
+                      {data.extraction.withBrowser}
+                    </DataRow>
+                    <DataRow label={t("drawer.avgConfidence")}>
                       {data.extraction.avgConfidence ?? "—"}
                     </DataRow>
-                    <DataRow label="Coste de IA (estimado)" mono>
-                      {data.extraction.aiCostUsd.toFixed(6)} USD
+                    <DataRow label={t("drawer.estimatedAiCost")} mono>
+                      {format.number(data.extraction.aiCostUsd, "usdCost")}
                     </DataRow>
-                    <DataRow label="Extractor principal" mono>
+                    <DataRow label={t("drawer.primaryExtractor")} mono>
                       {Object.entries(data.extraction.byPrimaryExtractor)
                         .sort((a, b) => b[1] - a[1])
                         .map(([k, v]) => `${k}: ${v}`)
@@ -701,51 +722,55 @@ function ConnectorDrawer({
             </div>
 
             <div>
-              <SectionLabel>Ficha técnica</SectionLabel>
+              <SectionLabel>{t("drawer.techSheetLabel")}</SectionLabel>
               <div className="mt-2">
-                <DataRow label="Estado real">
+                <DataRow label={t("table.realStatus")}>
                   {metaFor(EFFECTIVE_STATUS_META, data.effectiveStatus).label}
                   <span className="block text-[10px] text-ink-faint">
                     {metaFor(EFFECTIVE_STATUS_META, data.effectiveStatus).description}
                   </span>
                 </DataRow>
-                <DataRow label="Implementación">{data.implementation}</DataRow>
-                <DataRow label="Política robots.txt">
-                  {data.robotsPolicy === "respect" ? "se respeta siempre" : data.robotsPolicy}
+                <DataRow label={t("drawer.implementation")}>{data.implementation}</DataRow>
+                <DataRow label={t("drawer.robotsPolicy")}>
+                  {data.robotsPolicy === "respect" ? t("drawer.robotsAlwaysRespected") : data.robotsPolicy}
                   {data.crawlDelaySeconds != null && (
                     <span className="block text-[10px] text-ink-faint">
-                      crawl-delay declarado: {data.crawlDelaySeconds} s
+                      {t("drawer.crawlDelay", { seconds: data.crawlDelaySeconds })}
                     </span>
                   )}
                 </DataRow>
-                <DataRow label="Descubrimiento" mono>
+                <DataRow label={t("table.discovery")} mono>
                   {data.discoveryKinds.join(", ") || "—"}
                 </DataRow>
-                <DataRow label="Selectores declarados" mono>
-                  {data.selectorFields.length > 0 ? data.selectorFields.join(", ") : "ninguno"}
+                <DataRow label={t("drawer.declaredSelectors")} mono>
+                  {data.selectorFields.length > 0
+                    ? data.selectorFields.join(", ")
+                    : t("drawer.none")}
                 </DataRow>
-                <DataRow label="Patrón de ficha" mono>
+                <DataRow label={t("drawer.urlPattern")} mono>
                   {data.allProductUrlPatterns[0] ?? "—"}
                 </DataRow>
-                <DataRow label="Vía de acceso">
+                <DataRow label={t("drawer.accessMethod")}>
                   {access.label}
                   <span className="block text-[10px] text-ink-faint">{access.description}</span>
                 </DataRow>
-                <DataRow label="Verificación">
+                <DataRow label={t("drawer.verification")}>
                   {metaFor(VERIFICATION_META, data.verification).label}
                 </DataRow>
-                <DataRow label="Modos de sync">
+                <DataRow label={t("drawer.syncModes")}>
                   {data.syncModes.length ? data.syncModes.join(", ") : "—"}
                 </DataRow>
-                <DataRow label="Segmentos">{data.segments.join(", ") || "—"}</DataRow>
-                <DataRow label="Categorías">{data.categories.join(", ") || "—"}</DataRow>
-                <DataRow label="Mercados">{data.markets.join(", ") || "—"}</DataRow>
-                <DataRow label="Productos en catálogo">
-                  {data.productCount.toLocaleString("es-ES")}
+                <DataRow label={t("drawer.segments")}>{data.segments.join(", ") || "—"}</DataRow>
+                <DataRow label={t("drawer.categories")}>{data.categories.join(", ") || "—"}</DataRow>
+                <DataRow label={t("drawer.markets")}>{data.markets.join(", ") || "—"}</DataRow>
+                <DataRow label={t("drawer.productsInCatalog")}>
+                  {format.number(data.productCount)}
                 </DataRow>
-                <DataRow label="Último sync">{timeAgo(data.lastSyncAt)}</DataRow>
-                <DataRow label="Health comprobado">{timeAgo(data.healthCheckedAt)}</DataRow>
-                <DataRow label="Tienda" mono>
+                <DataRow label={t("table.lastSync")}>{timeAgo(data.lastSyncAt)}</DataRow>
+                <DataRow label={t("drawer.healthCheckedAt")}>
+                  {timeAgo(data.healthCheckedAt)}
+                </DataRow>
+                <DataRow label={t("drawer.store")} mono>
                   <a
                     href={data.homeUrl}
                     target="_blank"
@@ -757,7 +782,7 @@ function ConnectorDrawer({
                   </a>
                 </DataRow>
                 {data.docsUrl && (
-                  <DataRow label="Programa" mono>
+                  <DataRow label={t("drawer.program")} mono>
                     <a
                       href={data.docsUrl}
                       target="_blank"
@@ -774,7 +799,7 @@ function ConnectorDrawer({
 
             {data.sitemapUrls.length > 0 && (
               <div>
-                <SectionLabel>Sitemaps declarados</SectionLabel>
+                <SectionLabel>{t("drawer.sitemapsLabel")}</SectionLabel>
                 <ul className="mt-2 space-y-1">
                   {data.sitemapUrls.map((url) => (
                     <li key={url} className="truncate font-mono text-[11px] text-ink-subtle">
@@ -782,15 +807,12 @@ function ConnectorDrawer({
                     </li>
                   ))}
                 </ul>
-                <p className="mt-1.5 text-[10px] text-ink-faint">
-                  Si ninguno responde, el conector busca los sitemaps declarados en el
-                  robots.txt de la tienda.
-                </p>
+                <p className="mt-1.5 text-[10px] text-ink-faint">{t("drawer.sitemapsHint")}</p>
               </div>
             )}
 
             <div>
-              <SectionLabel>Jobs recientes de esta fuente</SectionLabel>
+              <SectionLabel>{t("drawer.recentJobsLabel")}</SectionLabel>
               {data.recentJobs.length > 0 ? (
                 <ul className="mt-2 space-y-2">
                   {data.recentJobs.map((job) => {
@@ -815,20 +837,18 @@ function ConnectorDrawer({
                   })}
                 </ul>
               ) : (
-                <p className="mt-2 text-xs text-ink-subtle">
-                  Esta fuente no ha ejecutado ningún job todavía.
-                </p>
+                <p className="mt-2 text-xs text-ink-subtle">{t("drawer.noJobs")}</p>
               )}
             </div>
 
             <div>
-              <SectionLabel>Logs de la fuente</SectionLabel>
+              <SectionLabel>{t("drawer.logsLabel")}</SectionLabel>
               {data.logs.length > 0 ? (
                 <pre className="mt-2 max-h-64 overflow-auto rounded-lg border border-line bg-black/40 p-3 font-mono text-[10px] leading-relaxed text-ink-muted">
                   {data.logs
                     .map(
                       (l) =>
-                        `${new Date(l.ts).toLocaleTimeString("es-ES")} [${l.level}] ${l.msg}` +
+                        `${format.dateTime(new Date(l.ts), "time")} [${l.level}] ${l.msg}` +
                         (Object.keys(l.context).length
                           ? ` ${JSON.stringify(l.context)}`
                           : "")
@@ -836,9 +856,7 @@ function ConnectorDrawer({
                     .join("\n")}
                 </pre>
               ) : (
-                <p className="mt-2 text-xs text-ink-subtle">
-                  Sin eventos registrados para esta fuente en el buffer actual.
-                </p>
+                <p className="mt-2 text-xs text-ink-subtle">{t("drawer.noLogs")}</p>
               )}
             </div>
           </motion.div>

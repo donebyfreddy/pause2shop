@@ -1,15 +1,17 @@
 import type { Metadata } from "next";
+import { getTranslations } from "next-intl/server";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { LogsView } from "@/components/admin/LogsView";
 
-export const metadata: Metadata = { title: "Monitorización" };
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("admin.logs");
+  return { title: t("title") };
+}
 
-export default function AdminLogsPage() {
+export default async function AdminLogsPage() {
+  const t = await getTranslations("admin.logs");
   return (
-    <AdminShell
-      title="Monitorización"
-      description="Eventos del servicio de catálogo con filtros por nivel, fuente y texto"
-    >
+    <AdminShell title={t("title")} description={t("description")}>
       <LogsView />
     </AdminShell>
   );

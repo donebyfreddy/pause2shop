@@ -13,6 +13,59 @@ export interface RobotsRules {
   crawlDelaySeconds: number | null;
   /** Directivas `Sitemap:` (globales, no pertenecen a ningún grupo de UA). */
   sitemaps: string[];
+  /**
+   * Cómo se obtuvo este robots.txt. Importa porque un fichero ausente y un
+   * fichero DENEGADO no significan lo mismo, y tratarlos igual produce
+   * diagnósticos falsos: la fuente sale "permitida, 0 productos" cuando la
+   * realidad es que el edge nos está bloqueando.
+   *
+   *  · `fetched`     → 2xx: reglas reales.
+   *  · `absent`      → 404/410: no hay robots.txt, se puede rastrear.
+   *  · `denied`      → 401/403/429: nos están negando el acceso.
+   *  · `unreachable` → 5xx, timeout o error de red.
+   */
+  outcome: RobotsOutcome;
+  /** Código HTTP observado, si hubo respuesta. */
+  status: number | null;
+}
+
+export type RobotsOutcome = "fetched" | "absent" | "denied" | "unreachable";
+
+/**
+ * ¿Este resultado permite rastrear el dominio?
+ *
+ * Solo `denied` (401/403/429) dice NO, y dice NO de forma rotunda: si el
+ * servidor nos niega hasta `/robots.txt`, seguir pidiendo el resto de URLs es
+ * insistir después de un no. Ese es el caso de Zara y Mango desde una IP de
+ * datacenter, y el que antes se reportaba como "permitido".
+ *
+ * `unreachable` (5xx, timeout, DNS) NO bloquea a propósito. Es ambiguo — un
+ * corte de red nuestro no es una política del dominio — y tratarlo como
+ * prohibición dejaría el scraper parado ante cualquier hipo transitorio. Se
+ * registra como aviso y el rate limit conservador nos mantiene educados.
+ */
+export function robotsAllowsCrawling(rules: RobotsRules): boolean {
+  return rules.outcome !== "denied";
+}
+
+/** Clasifica una respuesta de robots.txt. */
+export function classifyRobotsStatus(status: number): RobotsOutcome {
+  if (status >= 200 && status < 300) return "fetched";
+  if (status === 401 || status === 403 || status === 429) return "denied";
+  if (status >= 500) return "unreachable";
+  return "absent";
+}
+
+/** Reglas vacías con un desenlace concreto. */
+export function emptyRobots(outcome: RobotsOutcome, status: number | null): RobotsRules {
+  return {
+    allows: [],
+    disallows: [],
+    crawlDelaySeconds: null,
+    sitemaps: [],
+    outcome,
+    status,
+  };
 }
 
 export function parseRobots(content: string, userAgent: string): RobotsRules {
@@ -64,6 +117,8 @@ export function parseRobots(content: string, userAgent: string): RobotsRules {
     disallows: group?.disallows ?? [],
     crawlDelaySeconds: group?.crawlDelay ?? null,
     sitemaps,
+    outcome: "fetched",
+    status: 200,
   };
 }
 

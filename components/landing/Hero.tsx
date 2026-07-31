@@ -2,9 +2,11 @@
 
 import { motion, useReducedMotion } from "motion/react";
 import { ArrowRight, LayoutGrid, PlayCircle } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { Button, ButtonLink } from "@/components/ui";
 import { Aurora } from "./Aurora";
 import { HeroVisual } from "./HeroVisual";
+import { AnimatedHeroTitle } from "./AnimatedHeroTitle";
 
 /**
  * Hero de la landing. `Prueba ahora` hace scroll suave a la sección del estudio
@@ -12,13 +14,12 @@ import { HeroVisual } from "./HeroVisual";
  * profundos y para quien llega con la intención ya formada.
  */
 
-const WORDS = ["Pausa", "el", "vídeo."];
-
 export function Hero({
   stats,
 }: {
   stats: Array<{ value: string; label: string }>;
 }) {
+  const t = useTranslations("landing.hero");
   const reduce = useReducedMotion();
 
   const scrollToStudio = () => {
@@ -44,32 +45,14 @@ export function Hero({
               <span className="absolute inset-0 animate-ping rounded-full bg-accent opacity-70" />
               <span className="relative size-1.5 rounded-full bg-accent" />
             </span>
-            Detección visual de producto en vídeo, en tiempo real
+            {t("badge")}
           </motion.div>
 
-          <h1 className="display mt-6 text-[2.75rem] text-ink sm:text-6xl lg:text-7xl">
-            <span className="block">
-              {WORDS.map((word, i) => (
-                <motion.span
-                  key={word + i}
-                  initial={{ opacity: 0, y: reduce ? 0 : 24, filter: "blur(8px)" }}
-                  animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
-                  transition={{ duration: 0.7, delay: 0.1 + i * 0.09, ease: [0.22, 0.61, 0.36, 1] }}
-                  className="mr-[0.28em] inline-block"
-                >
-                  {word}
-                </motion.span>
-              ))}
-            </span>
-            <motion.span
-              initial={{ opacity: 0, y: reduce ? 0 : 24, filter: "blur(8px)" }}
-              animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
-              transition={{ duration: 0.8, delay: 0.42, ease: [0.22, 0.61, 0.36, 1] }}
-              className="text-gradient mt-1 block"
-            >
-              Encuentra el producto.
-            </motion.span>
-          </h1>
+          <AnimatedHeroTitle
+            text={t("title")}
+            secondLine={t("subtitle")}
+            className="display mt-6 text-[2.75rem] text-ink sm:text-6xl lg:text-7xl"
+          />
 
           <motion.p
             initial={{ opacity: 0, y: 12 }}
@@ -77,9 +60,7 @@ export function Hero({
             transition={{ duration: 0.7, delay: 0.55 }}
             className="mx-auto mt-6 max-w-xl text-[15px] leading-relaxed text-ink-muted sm:text-base"
           >
-            Pause2Shop analiza vídeo e imagen, detecta cada prenda, calzado o accesorio
-            y lo cruza contra un catálogo de moda propio y búsqueda visual inversa.
-            Con procedencia y confianza en cada resultado.
+            {t("description")}
           </motion.p>
 
           <motion.div
@@ -89,16 +70,16 @@ export function Hero({
             className="mt-9 flex flex-wrap items-center justify-center gap-3"
           >
             <Button variant="primary" size="lg" onClick={scrollToStudio}>
-              Prueba ahora
+              {t("ctaPrimary")}
               <ArrowRight className="size-4" aria-hidden />
             </Button>
             <ButtonLink href="/catalog" variant="secondary" size="lg">
               <LayoutGrid className="size-4" aria-hidden />
-              Ver catálogo
+              {t("ctaSecondary")}
             </ButtonLink>
             <ButtonLink href="/demo" variant="ghost" size="lg">
               <PlayCircle className="size-4" aria-hidden />
-              Ver demo
+              {t("ctaTertiary")}
             </ButtonLink>
           </motion.div>
         </div>

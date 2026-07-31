@@ -9,6 +9,7 @@ import {
   Sparkles,
   Video,
 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { Reveal } from "@/components/ui";
 import { cn } from "@/lib/ui/cn";
 
@@ -20,40 +21,18 @@ import { cn } from "@/lib/ui/cn";
  * matching → resultado), no una narrativa de marketing inventada.
  */
 
-const STEPS = [
-  {
-    icon: Video,
-    title: "Captura de frames",
-    body: "Del vídeo (subido, YouTube o pantalla) se extraen frames candidatos por FPS y detección de cambio de escena. Los frames casi idénticos se descartan por hash perceptual: no pagan detección.",
-    meta: "rVFC · scene diff · hash perceptual",
-  },
-  {
-    icon: ScanSearch,
-    title: "Detección multimodal",
-    body: "Un modelo de visión localiza cada objeto con caja, categoría, color y relación con la persona (puesto, sostenido, de fondo). Solo se analizan las categorías que hayas elegido.",
-    meta: "bounding boxes · relationship · confianza",
-  },
-  {
-    icon: Fingerprint,
-    title: "Tracking y deduplicación",
-    body: "Los objetos conservan su identidad entre frames y se funden globalmente: la misma chaqueta que reaparece diez veces es un único producto, con su mejor recorte seleccionado.",
-    meta: "trackIds · NMS · mejor crop",
-  },
-  {
-    icon: Boxes,
-    title: "Coincidencia con catálogo",
-    body: "Cada recorte se busca primero en el catálogo propio en cascada: hash exacto → hash perceptual → embedding visual. Si no hay coincidencia suficiente, se recurre a búsqueda visual inversa.",
-    meta: "catalog-first · pgvector · CLIP",
-  },
-  {
-    icon: Sparkles,
-    title: "Resultado con procedencia",
-    body: "Cada resultado llega con score, etapa que lo resolvió y origen (catálogo o proveedor externo). Nada se publica por debajo del umbral de confianza configurado.",
-    meta: "score · matchStage · origin",
-  },
-] as const;
+const STEP_ICONS = [Video, ScanSearch, Fingerprint, Boxes, Sparkles] as const;
+const STEP_KEYS = ["capture", "detect", "dedupe", "match", "result"] as const;
 
 export function HowItWorks() {
+  const t = useTranslations("landing.howItWorks");
+  const steps = STEP_KEYS.map((key, index) => ({
+    key,
+    icon: STEP_ICONS[index],
+    title: t(`steps.${key}.title`),
+    body: t(`steps.${key}.body`),
+    meta: t(`steps.${key}.meta`),
+  }));
   const containerRef = useRef<HTMLDivElement>(null);
   const { scrollYProgress } = useScroll({
     target: containerRef,
@@ -71,15 +50,10 @@ export function HowItWorks() {
       <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
         <Reveal className="mx-auto max-w-2xl text-center">
           <p className="text-[10px] font-semibold tracking-[0.16em] text-accent uppercase">
-            Cómo funciona
+            {t("title")}
           </p>
-          <h2 className="display mt-3 text-3xl text-ink sm:text-4xl">
-            Cinco pasos entre un frame y un producto comprable
-          </h2>
-          <p className="mt-4 text-[15px] leading-relaxed text-ink-muted">
-            El pipeline completo se ejecuta por objeto detectado, con presupuesto de
-            llamadas y caché en cada etapa.
-          </p>
+          <h2 className="display mt-3 text-3xl text-ink sm:text-4xl">{t("heading")}</h2>
+          <p className="mt-4 text-[15px] leading-relaxed text-ink-muted">{t("description")}</p>
         </Reveal>
 
         <div ref={containerRef} className="relative mt-16 sm:mt-20">
@@ -95,10 +69,10 @@ export function HowItWorks() {
           </div>
 
           <ol className="space-y-10 sm:space-y-14">
-            {STEPS.map((step, index) => {
+            {steps.map((step, index) => {
               const alignRight = index % 2 === 1;
               return (
-                <li key={step.title} className="relative">
+                <li key={step.key} className="relative">
                   <div
                     className={cn(
                       "grid gap-6 sm:grid-cols-2 sm:items-center",

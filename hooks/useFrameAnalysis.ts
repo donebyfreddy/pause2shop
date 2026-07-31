@@ -24,6 +24,8 @@ export type AnalysisState = {
   /** true mientras llegan items por streaming (ya hay análisis parcial visible). */
   streaming: boolean;
   error: string | null;
+  /** Detalle técnico del error (mensaje crudo del proveedor), para un panel plegable. */
+  errorDetail: string | null;
   warning: string | null;
   analysis: FrameAnalysis | null;
   mock: boolean;
@@ -60,6 +62,7 @@ const initialState: AnalysisState = {
   loading: false,
   streaming: false,
   error: null,
+  errorDetail: null,
   warning: null,
   analysis: null,
   mock: false,
@@ -86,7 +89,7 @@ type StreamEvent =
       warning?: string;
       timings?: Record<string, number>;
     }
-  | { type: "error"; error: string };
+  | { type: "error"; error: string; errorDetail?: string };
 
 function buildRequestBody(
   frameDataUrl: string,
@@ -130,13 +133,20 @@ export function useFrameAnalysis() {
       });
       const data = (await res.json()) as AnalyzeFrameApiResponse;
       if (!data.ok) {
-        setState((s) => ({ ...s, loading: false, streaming: false, error: data.error }));
+        setState((s) => ({
+          ...s,
+          loading: false,
+          streaming: false,
+          error: data.error,
+          errorDetail: data.errorDetail ?? null,
+        }));
         return null;
       }
       setState({
         loading: false,
         streaming: false,
         error: null,
+        errorDetail: null,
         warning: data.warning ?? null,
         analysis: data.analysis,
         mock: data.mock,
@@ -220,6 +230,7 @@ export function useFrameAnalysis() {
               loading: false,
               streaming: false,
               error: event.error,
+              errorDetail: event.errorDetail ?? null,
             }));
             break;
           default:
@@ -311,11 +322,13 @@ export function useFrameAnalysis() {
         const isTimeout =
           err instanceof Error &&
           (err.name === "TimeoutError" || err.name === "AbortError");
-        let message = err instanceof Error ? err.message : "Error de red.";
+        let message = "No se pudo analizar el contenido. Revisa la configuración de la API de OpenAI o inténtalo de nuevo.";
+        let detail = err instanceof Error ? err.message : String(err);
         if (isTimeout) {
           message = "El análisis tardó demasiado y se canceló. Vuelve a intentarlo.";
+          detail = err instanceof Error ? err.message : "timeout";
         }
-        setState((s) => ({ ...s, loading: false, streaming: false, error: message }));
+        setState((s) => ({ ...s, loading: false, streaming: false, error: message, errorDetail: detail }));
         return null;
       } finally {
         inFlight.current = false;

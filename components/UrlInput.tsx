@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { parseYouTubeVideoId } from "@/lib/youtube";
 
 type Props = {
@@ -9,6 +10,7 @@ type Props = {
 };
 
 export default function UrlInput({ onSubmit, disabled }: Props) {
+  const t = useTranslations("studio.urlInput");
   const [value, setValue] = useState("");
   const [error, setError] = useState<string | null>(null);
 
@@ -16,7 +18,7 @@ export default function UrlInput({ onSubmit, disabled }: Props) {
     e.preventDefault();
     const id = parseYouTubeVideoId(value);
     if (!id) {
-      setError("Esa URL no parece válida. Pega un enlace de YouTube (watch, youtu.be o shorts).");
+      setError(t("invalidUrl"));
       return;
     }
     setError(null);
@@ -48,7 +50,7 @@ export default function UrlInput({ onSubmit, disabled }: Props) {
           disabled={disabled}
           className="rounded-xl bg-gradient-to-br from-brand to-magenta px-6 py-3.5 text-sm font-semibold text-white shadow-lg shadow-brand/25 transition hover:brightness-110 active:scale-[0.98] disabled:opacity-50"
         >
-          Cargar vídeo
+          {t("submit")}
         </button>
       </div>
       {error && <p className="mt-2 text-sm text-danger">{error}</p>}

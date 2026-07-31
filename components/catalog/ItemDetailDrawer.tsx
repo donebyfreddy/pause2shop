@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useFormatter, useTranslations } from "next-intl";
 import {
   isDataUrl,
   pickBestRecommendation,
@@ -18,7 +19,7 @@ import {
   ItemThumb,
   MatchTypeBadge,
   StatusBadge,
-  TYPE_LABELS,
+  useTypeLabels,
 } from "./catalogUi";
 
 type Props = {
@@ -43,7 +44,8 @@ export default function ItemDetailDrawer({
   onSearchProducts,
   onSetStatus,
   onRecommendationClick,
-}: Props) {
+}: Readonly<Props>) {
+  const t = useTranslations("publicCatalog.drawer");
   return (
     <>
       <div
@@ -60,10 +62,10 @@ export default function ItemDetailDrawer({
           (open ? "translate-x-0" : "translate-x-full")
         }
         role="dialog"
-        aria-label="Detalle del elemento"
+        aria-label={t("ariaLabel")}
       >
         <header className="flex items-center justify-between border-b border-line px-5 py-4">
-          <h2 className="text-sm font-semibold text-ink">Detalle del elemento</h2>
+          <h2 className="text-sm font-semibold text-ink">{t("title")}</h2>
           <button
             onClick={onClose}
             className="rounded-lg border border-line bg-white/5 px-2.5 py-1 text-sm text-ink-muted transition hover:bg-white/10"
@@ -91,11 +93,12 @@ export default function ItemDetailDrawer({
   );
 }
 
-function EmptyBody({ loadingDetail }: { loadingDetail: boolean }) {
+function EmptyBody({ loadingDetail }: Readonly<{ loadingDetail: boolean }>) {
+  const t = useTranslations("publicCatalog.drawer");
   return loadingDetail ? (
-    <p className="py-12 text-center text-sm text-ink-subtle">Cargando…</p>
+    <p className="py-12 text-center text-sm text-ink-subtle">{t("loading")}</p>
   ) : (
-    <p className="py-12 text-center text-sm text-ink-subtle">Selecciona un elemento.</p>
+    <p className="py-12 text-center text-sm text-ink-subtle">{t("selectItem")}</p>
   );
 }
 
@@ -106,14 +109,17 @@ function DrawerBody({
   onSearchProducts,
   onSetStatus,
   onRecommendationClick,
-}: {
+}: Readonly<{
   item: CatalogItemWithRecommendations;
   searching: boolean;
   busy: boolean;
   onSearchProducts: (item: CatalogItem) => void;
   onSetStatus: (item: CatalogItem, status: CatalogItem["status"]) => void;
   onRecommendationClick: (item: CatalogItem, rec: ProductRecommendation) => void;
-}) {
+}>) {
+  const t = useTranslations("publicCatalog.drawer");
+  const format = useFormatter();
+  const typeLabels = useTypeLabels();
   const best = pickBestRecommendation(item.recommendations);
   const alternatives = item.recommendations.filter((r) => r.id !== best?.id);
 
@@ -121,14 +127,12 @@ function DrawerBody({
     <div className="space-y-5">
       {/* SECCIÓN A — Detectado en el vídeo */}
       <section>
-        <SectionTitle>📸 Detectado en el vídeo</SectionTitle>
+        <SectionTitle>{t("sectionDetected")}</SectionTitle>
         <div className="overflow-hidden rounded-2xl border border-brand-bright/20">
           <ItemThumb item={item} className="aspect-video w-full" />
         </div>
         {!item.imageCropUrl && !item.frameImageUrl && (
-          <p className="mt-2 text-[11px] text-ink-subtle">
-            Aún no hay captura de este objeto — se genera con el matching visual.
-          </p>
+          <p className="mt-2 text-[11px] text-ink-subtle">{t("noCaptureYet")}</p>
         )}
 
         <div className="mt-3">
@@ -138,9 +142,11 @@ function DrawerBody({
           </div>
           <div className="flex flex-wrap items-center gap-1.5">
             <StatusBadge status={item.status} />
-            {item.type && <Chip>{TYPE_LABELS[item.type] ?? item.type}</Chip>}
+            {item.type && <Chip>{typeLabels[item.type] ?? item.type}</Chip>}
             <Chip>{item.category}</Chip>
-            {item.detectionCount > 1 && <Chip>visto ×{item.detectionCount}</Chip>}
+            {item.detectionCount > 1 && (
+              <Chip>{t("seenCount", { count: item.detectionCount })}</Chip>
+            )}
           </div>
           {item.description && (
             <p className="mt-3 text-sm leading-relaxed text-ink-muted">
@@ -150,27 +156,27 @@ function DrawerBody({
         </div>
 
         <div className="mt-3 space-y-1.5">
-          <Spec label="Momento del vídeo" value={formatTimestamp(item.timestampSeconds)} />
-          <Spec label="Subcategoría" value={item.subcategory} />
-          <Spec label="Color" value={item.color} />
-          <Spec label="Otros colores" value={item.secondaryColors.join(", ")} />
-          <Spec label="Estilo" value={item.style} />
-          <Spec label="Patrón" value={item.pattern} />
-          <Spec label="Material (estimado)" value={item.materialGuess} />
-          <Spec label="Ajuste / género" value={item.genderFit} />
-          <Spec label="Marca visible" value={item.visibleBrand} />
+          <Spec label={t("specs.moment")} value={formatTimestamp(item.timestampSeconds)} />
+          <Spec label={t("specs.subcategory")} value={item.subcategory} />
+          <Spec label={t("specs.color")} value={item.color} />
+          <Spec label={t("specs.otherColors")} value={item.secondaryColors.join(", ")} />
+          <Spec label={t("specs.style")} value={item.style} />
+          <Spec label={t("specs.pattern")} value={item.pattern} />
+          <Spec label={t("specs.materialGuess")} value={item.materialGuess} />
+          <Spec label={t("specs.genderFit")} value={item.genderFit} />
+          <Spec label={t("specs.visibleBrand")} value={item.visibleBrand} />
         </div>
 
         {/* Frame de origen completo, si se guardó (contexto de la escena). */}
         {item.frameImageUrl && item.imageCropUrl && (
           <details className="mt-3 rounded-xl border border-line bg-white/[0.02] px-3 py-2">
             <summary className="cursor-pointer select-none text-xs font-medium text-ink-muted">
-              Ver frame original de la escena
+              {t("viewOriginalFrame")}
             </summary>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={item.frameImageUrl}
-              alt={`Frame de origen de ${item.name}`}
+              alt={t("originalFrameAlt", { name: item.name })}
               className="mt-2 w-full rounded-lg"
             />
           </details>
@@ -179,7 +185,7 @@ function DrawerBody({
 
       {/* SECCIÓN B — Mejor coincidencia en Internet */}
       <section className="border-t border-line pt-4">
-        <SectionTitle>🛒 Producto encontrado en Internet</SectionTitle>
+        <SectionTitle>{t("sectionBestMatch")}</SectionTitle>
         {best ? (
           <BestMatchCard
             rec={best}
@@ -187,9 +193,7 @@ function DrawerBody({
           />
         ) : (
           <p className="text-sm text-ink-subtle">
-            {searching
-              ? "Buscando coincidencias visuales…"
-              : "Sin coincidencia fiable todavía. Prueba «Buscar productos»."}
+            {searching ? t("searchingBestMatch") : t("noReliableMatch")}
           </p>
         )}
       </section>
@@ -201,7 +205,7 @@ function DrawerBody({
           disabled={searching}
           className="rounded-lg bg-gradient-to-br from-brand to-magenta px-3.5 py-2 text-xs font-semibold text-white transition hover:brightness-110 disabled:opacity-50"
         >
-          {searching ? "Buscando…" : "🔎 Buscar productos"}
+          {searching ? t("searching") : t("searchProducts")}
         </button>
         {item.status !== "reviewed" && (
           <button
@@ -209,7 +213,7 @@ function DrawerBody({
             disabled={busy}
             className="rounded-lg border border-line bg-white/5 px-3.5 py-2 text-xs font-medium text-ink transition hover:bg-white/10 disabled:opacity-40"
           >
-            Marcar revisado
+            {t("markReviewed")}
           </button>
         )}
         {item.status !== "ignored" ? (
@@ -218,7 +222,7 @@ function DrawerBody({
             disabled={busy}
             className="rounded-lg border border-line bg-white/5 px-3.5 py-2 text-xs font-medium text-ink-muted transition hover:border-danger/30 hover:text-danger disabled:opacity-40"
           >
-            Ignorar
+            {t("ignore")}
           </button>
         ) : (
           <button
@@ -226,19 +230,17 @@ function DrawerBody({
             disabled={busy}
             className="rounded-lg border border-line bg-white/5 px-3.5 py-2 text-xs font-medium text-ink-muted transition hover:text-ink disabled:opacity-40"
           >
-            Reactivar
+            {t("reactivate")}
           </button>
         )}
       </div>
 
       {/* SECCIÓN C — Alternativas */}
       <section className="border-t border-line pt-4">
-        <SectionTitle>
-          Alternativas ({alternatives.length})
-        </SectionTitle>
-        {searching && <p className="mb-3 text-xs text-ink-subtle">Buscando productos…</p>}
+        <SectionTitle>{t("alternativesTitle", { count: alternatives.length })}</SectionTitle>
+        {searching && <p className="mb-3 text-xs text-ink-subtle">{t("searchingProducts")}</p>}
         {alternatives.length === 0 && !searching ? (
-          <p className="text-sm text-ink-subtle">No hay más resultados.</p>
+          <p className="text-sm text-ink-subtle">{t("noMoreResults")}</p>
         ) : (
           <div className="space-y-3">
             {alternatives.map((rec) => (
@@ -255,42 +257,42 @@ function DrawerBody({
       {/* SECCIÓN D — Auditoría (plegable) */}
       <details className="rounded-xl border border-line bg-white/[0.02] px-3 py-2">
         <summary className="cursor-pointer select-none text-xs font-medium text-ink-muted">
-          🔍 Auditoría técnica
+          {t("auditTitle")}
         </summary>
         <div className="mt-2 space-y-1.5">
           <Spec
-            label="Imagen detectada"
+            label={t("audit.detectedImage")}
             value={
               item.imageCropUrl
                 ? isDataUrl(item.imageCropUrl)
-                  ? "crop local (sesión) — storage pendiente"
-                  : "crop en storage"
-                : "sin crop"
+                  ? t("audit.localCrop")
+                  : t("audit.storedCrop")
+                : t("audit.noCrop")
             }
           />
           <Spec
-            label="Frame de origen"
-            value={item.frameImageUrl ? "guardado" : "no guardado"}
+            label={t("audit.originFrame")}
+            value={item.frameImageUrl ? t("audit.saved") : t("audit.notSaved")}
           />
-          <Spec label="Proveedor del match" value={best?.provider} />
+          <Spec label={t("audit.matchProvider")} value={best?.provider} />
           <Spec
-            label="Score del match"
+            label={t("audit.matchScore")}
             value={
               best?.similarityScore != null
                 ? `${Math.round(best.similarityScore * 100)}%`
                 : null
             }
           />
-          <Spec label="Nº de candidatos" value={String(item.recommendations.length)} />
-          <Spec label="Detecciones acumuladas" value={String(item.detectionCount)} />
-          <Spec label="Creado" value={new Date(item.createdAt).toLocaleString()} />
-          <Spec label="Actualizado" value={new Date(item.updatedAt).toLocaleString()} />
-          <Spec label="Query de búsqueda" value={item.searchQuery} mono />
+          <Spec label={t("audit.candidateCount")} value={String(item.recommendations.length)} />
+          <Spec label={t("audit.detectionCount")} value={String(item.detectionCount)} />
+          <Spec label={t("audit.createdAt")} value={format.dateTime(new Date(item.createdAt), "short")} />
+          <Spec label={t("audit.updatedAt")} value={format.dateTime(new Date(item.updatedAt), "short")} />
+          <Spec label={t("audit.searchQuery")} value={item.searchQuery} mono />
         </div>
         {item.marketplaceKeywords.length > 0 && (
           <div className="mt-2">
             <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-ink-subtle">
-              Keywords de marketplace
+              {t("audit.marketplaceKeywords")}
             </p>
             <div className="flex flex-wrap gap-1.5">
               {item.marketplaceKeywords.map((k) => (
@@ -338,10 +340,12 @@ function Spec({
 function BestMatchCard({
   rec,
   onClick,
-}: {
+}: Readonly<{
   rec: ProductRecommendation;
   onClick: () => void;
-}) {
+}>) {
+  const t = useTranslations("publicCatalog.drawer.bestMatch");
+  const format = useFormatter();
   const [broken, setBroken] = useState(false);
   const matchType = recommendationMatchType(rec);
 
@@ -370,11 +374,8 @@ function BestMatchCard({
         <div className="mb-1.5 flex flex-wrap items-center gap-1.5">
           <MatchTypeBadge matchType={matchType} />
           {rec.similarityScore != null && (
-            <span
-              title="Confianza en que el resultado web corresponde al mismo producto."
-              className="text-[10px] text-accent"
-            >
-              {Math.round(rec.similarityScore * 100)}% coincidencia
+            <span title={t("matchScoreTooltip")} className="text-[10px] text-accent">
+              {t("matchPct", { pct: Math.round(rec.similarityScore * 100) })}
             </span>
           )}
         </div>
@@ -386,10 +387,10 @@ function BestMatchCard({
         <div className="mt-1.5 flex items-center justify-between">
           {rec.price != null && (
             <span className="text-base font-semibold text-success">
-              {rec.price.toFixed(2)} {rec.currency ?? "EUR"}
+              {format.number(rec.price, { style: "currency", currency: rec.currency ?? "EUR" })}
             </span>
           )}
-          <span className="text-xs font-semibold text-success">Ver producto ↗</span>
+          <span className="text-xs font-semibold text-success">{t("viewProduct")}</span>
         </div>
       </div>
     </a>
@@ -399,10 +400,12 @@ function BestMatchCard({
 function RecommendationCard({
   rec,
   onClick,
-}: {
+}: Readonly<{
   rec: ProductRecommendation;
   onClick: () => void;
-}) {
+}>) {
+  const t = useTranslations("publicCatalog.drawer.recommendation");
+  const format = useFormatter();
   const [broken, setBroken] = useState(false);
   return (
     <a
@@ -434,12 +437,12 @@ function RecommendationCard({
         <div className="mt-1 flex items-center gap-2">
           {rec.price != null && (
             <span className="text-sm font-semibold text-success">
-              {rec.price.toFixed(2)} {rec.currency ?? "EUR"}
+              {format.number(rec.price, { style: "currency", currency: rec.currency ?? "EUR" })}
             </span>
           )}
           {rec.similarityScore != null && (
             <span className="text-[10px] text-ink-subtle">
-              {Math.round(rec.similarityScore * 100)}% afín
+              {t("affinityPct", { pct: Math.round(rec.similarityScore * 100) })}
             </span>
           )}
         </div>

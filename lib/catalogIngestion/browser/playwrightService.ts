@@ -8,6 +8,12 @@ import {
   ensureRobotsAllowed,
   RobotsDisallowedError,
 } from "../connectors/base/httpClient";
+import {
+  createBrowserProvider,
+  resolveProviderId,
+  type BrowserHealth,
+  type BrowserProvider,
+} from "./providers";
 
 /**
  * Servicio de navegador reutilizable sobre Playwright.
@@ -113,8 +119,9 @@ const CIRCUIT_COOLDOWN_MS = 5 * 60 * 1000;
 export class PlaywrightService {
   private browser: Browser | null = null;
   private launching: Promise<Browser> | null = null;
-  private contexts = new Map<string, BrowserContext>();
-  private circuits = new Map<string, DomainCircuit>();
+  private cachedProvider: BrowserProvider | null = null;
+  private readonly contexts = new Map<string, BrowserContext>();
+  private readonly circuits = new Map<string, DomainCircuit>();
   /** Páginas abiertas ahora mismo — techo duro adicional al semáforo global. */
   private openPages = 0;
   private closed = false;
@@ -142,54 +149,52 @@ export class PlaywrightService {
     if (this.browser?.isConnected()) return this.browser;
     if (this.launching) return this.launching;
 
-    const config = getScraperConfig();
     this.launching = (async () => {
-      const { chromium } = await import("playwright-core");
-
-      // Vía de producción en serverless: navegador remoto por CDP. Empaquetar
-      // Chromium en la función es posible (límite de 5 GB) pero el arranque en
-      // frío lo hace inviable para jobs cortos; un navegador gestionado sí.
-      if (config.browserWsEndpoint) {
-        logger.info("playwright: conectando a navegador remoto", {
-          endpoint: config.browserWsEndpoint.replace(/(token|key)=[^&]+/gi, "$1=***"),
-        });
-        const browser = await chromium.connectOverCDP(config.browserWsEndpoint, {
-          timeout: config.navigationTimeoutMs,
-        });
-        this.browser = browser;
-        return browser;
-      }
-
-      const launchArgs = [
-        "--disable-dev-shm-usage",
-        "--disable-gpu",
-        "--no-sandbox",
-        "--disable-background-networking",
-      ];
+      // De dónde sale el navegador lo decide el provider (local / vercel /
+      // remote), no este servicio. Ver browser/providers.
+      const provider = this.provider();
       try {
-        const browser = await chromium.launch({
-          headless: config.headless,
-          executablePath: config.chromiumPath ?? undefined,
-          args: launchArgs,
-          timeout: config.navigationTimeoutMs,
-        });
+        const browser = await provider.launch();
         this.browser = browser;
-        logger.info("playwright: navegador lanzado", { version: browser.version() });
+        logger.info("playwright: navegador lanzado", {
+          provider: provider.id,
+          version: browser.version(),
+        });
         return browser;
       } catch (err) {
-        const message = err instanceof Error ? err.message : String(err);
-        // El fallo típico: playwright-core no trae binarios. Decimos exactamente
-        // qué hacer en vez de dejar el stack de Playwright.
-        throw new BrowserUnavailableError(
-          `${message.split("\n")[0]} — instala un Chromium (\`npx playwright install chromium\`), ` +
-            "apunta SCRAPER_CHROMIUM_PATH a un binario, o usa SCRAPER_BROWSER_WS_ENDPOINT con un navegador remoto"
-        );
+        const message = (err instanceof Error ? err.message : String(err)).split("\n")[0];
+        throw new BrowserUnavailableError(`[provider=${provider.id}] ${message}`);
       }
     })().finally(() => {
       this.launching = null;
     });
 
     return this.launching;
+  }
+
+  /** Provider activo, memoizado por proceso. */
+  private provider(): BrowserProvider {
+    this.cachedProvider ??= createBrowserProvider();
+    return this.cachedProvider;
+  }
+
+  /**
+   * Estado del navegador para el admin: arranca uno de verdad y lo cierra. Un
+   * health check que solo mira variables de entorno miente en cuanto el binario
+   * no existe, y ese es justo el fallo que hubo en Vercel.
+   */
+  async browserHealth(): Promise<BrowserHealth> {
+    if (!this.isEnabled()) {
+      return {
+        ok: false,
+        provider: resolveProviderId(),
+        browserVersion: null,
+        target: null,
+        reason: "SCRAPER_PLAYWRIGHT_ENABLED=false",
+        durationMs: 0,
+      };
+    }
+    return this.provider().healthCheck();
   }
 
   /**
@@ -416,6 +421,7 @@ export class PlaywrightService {
   /** Estado para el admin: qué dominios están en circuito abierto y por qué. */
   snapshot(): {
     enabled: boolean;
+    provider: string;
     connected: boolean;
     openPages: number;
     contexts: number;
@@ -423,6 +429,7 @@ export class PlaywrightService {
   } {
     return {
       enabled: this.isEnabled(),
+      provider: resolveProviderId(),
       connected: Boolean(this.browser?.isConnected()),
       openPages: this.openPages,
       contexts: this.contexts.size,

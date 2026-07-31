@@ -14,9 +14,13 @@
     "env:check": "node --import tsx scripts/envCheck.ts",
     "scraper:probe": "node --import tsx scripts/scraperProbe.ts",
     "scraper:infer": "node --import tsx scripts/inferProductPatterns.ts",
-    "scraper:smoke": "node --import tsx scripts/scraperSmoke.ts"
+    "scraper:smoke": "node --import tsx scripts/scraperSmoke.ts",
+    "embeddings:install": "npm install --no-save @huggingface/transformers@^3",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui"
   },
   "dependencies": {
+    "@sparticuz/chromium": "149.0.0",
     "cheerio": "^1.2.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
@@ -24,8 +28,9 @@
     "lucide-react": "^1.27.0",
     "motion": "^12.43.0",
     "next": "16.2.9",
+    "next-intl": "^4.13.4",
     "pg": "^8.22.0",
-    "playwright-core": "^1.62.0",
+    "playwright-core": "1.62.0",
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "sharp": "^0.33.5",
@@ -33,6 +38,7 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@playwright/test": "^1.62.1",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/pg": "^8.20.0",

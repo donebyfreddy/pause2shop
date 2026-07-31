@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { motion } from "motion/react";
 import { Skeleton } from "@/components/ui";
 
@@ -9,16 +10,12 @@ import { Skeleton } from "@/components/ui";
  * sensación de "la app se ha quedado colgada" en los 2–3 s de detección.
  */
 
-const STAGES = [
-  "Capturando el frame",
-  "Detectando objetos",
-  "Recortando y deduplicando",
-  "Buscando coincidencias",
-] as const;
+const STAGE_KEYS = ["capture", "detect", "crop", "search"] as const;
 
 export default function LoadingAnalysis() {
+  const t = useTranslations("studio.loadingAnalysis");
   return (
-    <div className="space-y-4" aria-busy="true" aria-label="Analizando frame">
+    <div className="space-y-4" aria-busy="true" aria-label={t("ariaLabel")}>
       <div className="overflow-hidden rounded-xl border border-brand/25 bg-brand/8 px-4 py-3">
         <div className="flex items-center gap-3">
           <span className="relative flex size-2.5">
@@ -26,26 +23,26 @@ export default function LoadingAnalysis() {
             <span className="relative size-2.5 rounded-full bg-brand-bright" />
           </span>
           <span className="text-[13px] font-medium text-brand-bright">
-            Analizando el frame…
+            {t("heading")}
           </span>
         </div>
 
         <ul className="mt-3 space-y-1.5">
-          {STAGES.map((stage, i) => (
+          {STAGE_KEYS.map((stageKey, i) => (
             <motion.li
-              key={stage}
+              key={stageKey}
               initial={{ opacity: 0.25 }}
               animate={{ opacity: [0.25, 1, 0.35] }}
               transition={{
                 duration: 1.6,
                 delay: i * 0.45,
                 repeat: Infinity,
-                repeatDelay: STAGES.length * 0.45 - 1.6,
+                repeatDelay: STAGE_KEYS.length * 0.45 - 1.6,
               }}
               className="flex items-center gap-2 text-[11px] text-ink-muted"
             >
               <span aria-hidden className="size-1 rounded-full bg-current" />
-              {stage}
+              {t(`stages.${stageKey}`)}
             </motion.li>
           ))}
         </ul>

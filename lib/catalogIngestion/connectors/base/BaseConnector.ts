@@ -10,11 +10,12 @@ import type { CatalogStore } from "../../catalog/store";
 import { ingestProduct } from "../../catalog/ingest";
 import {
   discoverSitemapsFromRobots,
-  domainCrawlDelay,
+  domainRobots,
   politeFetch,
   RobotsDisallowedError,
   type FetchFn,
 } from "./httpClient";
+import { robotsAllowsCrawling } from "./robots";
 import {
   allProductUrlPatterns,
   canSpecSync,
@@ -739,15 +740,56 @@ export class BaseConnector implements CatalogConnector {
     const outOfTime = (): boolean => Date.now() - startedAt > timeBudgetMs;
 
     // --- robots.txt --------------------------------------------------------
-    const crawlDelay = await domainCrawlDelay(this.homeUrl).catch(() => null);
+    // Se consulta el DESENLACE, no solo el crawl-delay. Antes esto pedía el
+    // delay, se tragaba cualquier error y escribía "permitido" siempre: Zara y
+    // Mango devuelven 403 hasta en /robots.txt y el job las reportaba como
+    // permitidas y "completed" con 0 productos. Un diagnóstico falso es peor
+    // que un fallo, porque nadie va a mirar donde no parece haber problema.
+    const robots = await domainRobots(this.homeUrl);
+    const crawlDelay = robots.crawlDelaySeconds;
+
+    if (!robotsAllowsCrawling(robots)) {
+      const message =
+        `el servidor deniega /robots.txt (HTTP ${robots.status}): la fuente nos ` +
+        "está bloqueando desde esta red. No se rastrea ni se intenta eludir.";
+      log({
+        stage: "robots",
+        level: "error",
+        message,
+        url: this.homeUrl,
+        metadata: { outcome: robots.outcome, status: robots.status },
+      });
+      // Se corta aquí a propósito: seguir a `discover` solo produciría
+      // "0 URLs descubiertas", que oculta el motivo real. Se devuelve como job
+      // NO completado con su razón, igual que un challenge anti-bot, para que
+      // el admin vea `blocked_or_challenged` y no un falso "completed".
+      progress.errors++;
+      return {
+        progress,
+        completed: false,
+        errors: [{ url: this.homeUrl, message }],
+        stoppedReason: "la fuente deniega el acceso desde esta red; no se intenta eludir",
+      };
+    }
+
+    // No haber podido leer robots.txt no bloquea (puede ser un corte nuestro),
+    // pero no se disfraza de "permitido": se dice lo que se sabe y lo que no.
+    const robotsUnknown = robots.outcome === "unreachable";
+    const delaySuffix = crawlDelay
+      ? `crawl-delay ${crawlDelay.toLocaleString("es-ES")} s`
+      : "sin crawl-delay declarado";
     log({
       stage: "robots",
-      level: "info",
-      message: crawlDelay
-        ? `permitido · crawl-delay ${crawlDelay.toLocaleString("es-ES")} s`
-        : "permitido · sin crawl-delay declarado",
+      level: robotsUnknown ? "warn" : "info",
+      message: robotsUnknown
+        ? `/robots.txt no accesible${robots.status ? ` (HTTP ${robots.status})` : " (sin respuesta)"}: se rastrea con el rate limit conservador`
+        : `permitido · ${delaySuffix}`,
       url: this.homeUrl,
-      metadata: { crawlDelaySeconds: crawlDelay, policy: this.spec.robotsPolicy },
+      metadata: {
+        crawlDelaySeconds: crawlDelay,
+        policy: this.spec.robotsPolicy,
+        robotsOutcome: robots.outcome,
+      },
     });
 
     // --- descubrimiento ----------------------------------------------------
@@ -1054,7 +1096,7 @@ export class BaseConnector implements CatalogConnector {
   async healthCheck(): Promise<ConnectorHealth> {
     const checkedAt = new Date().toISOString();
     const started = Date.now();
-    const crawlDelaySeconds = await domainCrawlDelay(this.homeUrl).catch(() => null);
+    const crawlDelaySeconds = (await domainRobots(this.homeUrl)).crawlDelaySeconds;
     try {
       const res = await this.fetchFn(this.homeUrl);
       const latencyMs = Date.now() - started;

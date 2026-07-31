@@ -1,7 +1,14 @@
 import { getConfig } from "../../config/index";
 import { logger } from "../../observability/logger";
 import { countDomainRequest } from "../../observability/metrics";
-import { parseRobots, isPathAllowed, type RobotsRules } from "./robots";
+import {
+  classifyRobotsStatus,
+  emptyRobots,
+  isPathAllowed,
+  parseRobots,
+  robotsAllowsCrawling,
+  type RobotsRules,
+} from "./robots";
 
 /**
  * Cliente HTTP "educado" compartido por todos los conectores:
@@ -18,9 +25,34 @@ import { parseRobots, isPathAllowed, type RobotsRules } from "./robots";
  */
 
 export class RobotsDisallowedError extends Error {
-  constructor(url: string) {
-    super(`robots.txt no permite acceder a ${url}`);
+  constructor(url: string, reason?: string) {
+    super(`robots.txt no permite acceder a ${url}${reason ? ` (${reason})` : ""}`);
     this.name = "RobotsDisallowedError";
+  }
+}
+
+/**
+ * El dominio nos niega el acceso ya en `/robots.txt` (401/403/429) o no
+ * responde. No es lo mismo que una regla `Disallow`: aquí no hay política que
+ * leer, hay una puerta cerrada. Se distingue con su propio error para que el
+ * admin pueda marcar la fuente `blocked_or_challenged` en vez de dejarla como
+ * "completada con 0 productos", que era el diagnóstico falso de antes.
+ */
+export class RobotsAccessDeniedError extends Error {
+  constructor(
+    readonly url: string,
+    readonly outcome: "denied" | "unreachable",
+    readonly status: number | null
+  ) {
+    super(
+      outcome === "denied"
+        ? `el servidor deniega el acceso a /robots.txt (HTTP ${status}) en ${new URL(url).host}: ` +
+          "no se rastrea, y no se intenta eludir"
+        : `no se pudo leer /robots.txt en ${new URL(url).host}` +
+          (status ? ` (HTTP ${status})` : " (sin respuesta)") +
+          ": no se rastrea sin conocer su política"
+    );
+    this.name = "RobotsAccessDeniedError";
   }
 }
 
@@ -103,18 +135,23 @@ async function getRobots(origin: string, host: string): Promise<RobotsRules> {
   if (state.robots && now - state.robotsFetchedAt < ROBOTS_TTL_MS) return state.robots;
   try {
     const res = await rawFetch(`${origin}/robots.txt`, "text/plain");
-    if (res.status >= 200 && res.status < 300) {
-      state.robots = parseRobots(res.body, getConfig().userAgent);
-    } else {
-      // 4xx = no hay robots → todo permitido. 5xx: permitimos también, pero
-      // el rate limit conservador nos mantiene educados.
-      state.robots = { allows: [], disallows: [], crawlDelaySeconds: null, sitemaps: [] };
-    }
+    const outcome = classifyRobotsStatus(res.status);
+    // Un robots.txt que se puede leer manda. Uno DENEGADO (401/403/429) no
+    // significa "todo permitido": significa que nos están cerrando la puerta, y
+    // seguir pidiendo el resto de URLs sería insistir tras un no. Antes los tres
+    // casos colapsaban en "reglas vacías", y por eso Zara y Mango aparecían como
+    // "ROBOTS permitido" mientras el edge devolvía 403 a todo.
+    state.robots =
+      outcome === "fetched"
+        ? parseRobots(res.body, getConfig().userAgent)
+        : emptyRobots(outcome, res.status);
   } catch {
-    state.robots = { allows: [], disallows: [], crawlDelaySeconds: null, sitemaps: [] };
+    // Sin respuesta: no podemos saber qué permite el dominio, así que no
+    // rastreamos. Es lo prudente y además evita martillear un host caído.
+    state.robots = emptyRobots("unreachable", null);
   }
   state.robotsFetchedAt = now;
-  return state.robots ?? { allows: [], disallows: [], crawlDelaySeconds: null, sitemaps: [] };
+  return state.robots ?? emptyRobots("unreachable", null);
 }
 
 function sleep(ms: number): Promise<void> {
@@ -234,6 +271,23 @@ export async function domainCrawlDelay(url: string): Promise<number | null> {
 }
 
 /**
+ * Estado de robots.txt de un dominio, SIN lanzar.
+ *
+ * Para quien necesita informar de la política (los logs del job) en vez de
+ * decidir si navega. Devolver las reglas completas evita el patrón de antes:
+ * pedir solo el crawl-delay, tragarse el error con `.catch(() => null)` y
+ * escribir "permitido" en el log aunque el servidor hubiese contestado 403.
+ */
+export async function domainRobots(url: string): Promise<RobotsRules> {
+  try {
+    const parsed = new URL(url);
+    return await getRobots(parsed.origin, parsed.host);
+  } catch {
+    return emptyRobots("unreachable", null);
+  }
+}
+
+/**
  * Comprueba robots.txt para una URL y devuelve el crawl-delay declarado.
  * Lanza `RobotsDisallowedError` si la ruta está prohibida.
  *
@@ -248,6 +302,14 @@ export async function ensureRobotsAllowed(url: string): Promise<{
 }> {
   const parsed = new URL(url);
   const robots = await getRobots(parsed.origin, parsed.host);
+  // Primero la puerta: si ni robots.txt se puede leer, no hay nada que rastrear.
+  if (!robotsAllowsCrawling(robots)) {
+    throw new RobotsAccessDeniedError(
+      url,
+      robots.outcome === "denied" ? "denied" : "unreachable",
+      robots.status
+    );
+  }
   if (!isPathAllowed(robots, parsed.pathname + parsed.search)) {
     throw new RobotsDisallowedError(url);
   }

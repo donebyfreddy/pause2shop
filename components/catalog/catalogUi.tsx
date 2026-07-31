@@ -1,31 +1,57 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { itemImageCandidates } from "@/lib/catalog/images";
 import type {
   CatalogItem,
+  FrameSourceType,
   ItemStatus,
   ItemType,
   RecommendationMatchType,
 } from "@/lib/catalog/types";
 import { cn } from "@/lib/utils";
 
-export const TYPE_LABELS: Record<ItemType, string> = {
-  clothing: "Ropa",
-  footwear: "Calzado",
-  accessory: "Accesorio",
-  electronics: "Electrónica",
-  home: "Hogar",
-  beauty: "Belleza",
-  other: "Otro",
-};
+/**
+ * Hooks de traducción para los labels de tipo/estado/match. Se exponen como
+ * hooks (no como Record estático) porque dependen del locale activo.
+ */
+export function useTypeLabels(): Record<ItemType, string> {
+  const t = useTranslations("publicCatalog.itemTypes");
+  return {
+    clothing: t("clothing"),
+    footwear: t("footwear"),
+    accessory: t("accessory"),
+    electronics: t("electronics"),
+    home: t("home"),
+    beauty: t("beauty"),
+    other: t("other"),
+  };
+}
 
-export const STATUS_LABELS: Record<ItemStatus, string> = {
-  detected: "Detectado",
-  reviewed: "Revisado",
-  matched: "Con productos",
-  ignored: "Ignorado",
-};
+export function useStatusLabels(): Record<ItemStatus, string> {
+  const t = useTranslations("publicCatalog.itemStatus");
+  return {
+    detected: t("detected"),
+    reviewed: t("reviewed"),
+    matched: t("matched"),
+    ignored: t("ignored"),
+  };
+}
+
+export function useSourceTypeLabels(): Partial<Record<FrameSourceType, string>> {
+  const t = useTranslations("publicCatalog.sourceTypes");
+  return {
+    youtube: t("youtube"),
+    dailymotion: t("dailymotion"),
+    vimeo: t("vimeo"),
+    direct_mp4: t("directMp4"),
+    hls: t("hls"),
+    uploaded: t("uploaded"),
+    image_upload: t("imageUpload"),
+    screen_capture: t("screenCapture"),
+  };
+}
 
 const STATUS_TONES: Record<ItemStatus, string> = {
   detected: "border-brand-bright/30 bg-brand/15 text-brand-bright",
@@ -35,6 +61,7 @@ const STATUS_TONES: Record<ItemStatus, string> = {
 };
 
 export function StatusBadge({ status }: { status: ItemStatus }) {
+  const labels = useStatusLabels();
   return (
     <span
       className={cn(
@@ -42,16 +69,19 @@ export function StatusBadge({ status }: { status: ItemStatus }) {
         STATUS_TONES[status]
       )}
     >
-      {STATUS_LABELS[status]}
+      {labels[status]}
     </span>
   );
 }
 
-export const MATCH_TYPE_LABELS: Record<RecommendationMatchType, string> = {
-  exact: "Match exacto",
-  near_exact: "Casi exacto",
-  similar: "Similar",
-};
+export function useMatchTypeLabels(): Record<RecommendationMatchType, string> {
+  const t = useTranslations("publicCatalog.matchType");
+  return {
+    exact: t("exact"),
+    near_exact: t("nearExact"),
+    similar: t("similar"),
+  };
+}
 
 const MATCH_TYPE_TONES: Record<RecommendationMatchType, string> = {
   exact: "border-success/30 bg-success/15 text-success",
@@ -65,6 +95,7 @@ export function MatchTypeBadge({
 }: {
   matchType: RecommendationMatchType | null;
 }) {
+  const labels = useMatchTypeLabels();
   if (!matchType) return null;
   return (
     <span
@@ -73,7 +104,7 @@ export function MatchTypeBadge({
         MATCH_TYPE_TONES[matchType]
       )}
     >
-      {MATCH_TYPE_LABELS[matchType]}
+      {labels[matchType]}
     </span>
   );
 }

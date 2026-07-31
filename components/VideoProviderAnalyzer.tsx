@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useFormatter, useTranslations } from "next-intl";
 import {
   detectVideoProvider,
   createUploadedVideoDetection,
@@ -72,18 +73,19 @@ type Props = {
 
 // ─── Phase display helpers ────────────────────────────────────────────────────
 
-const PHASE_LABEL: Record<CapturePhase, string> = {
-  idle: "No activa",
-  requesting_permission: "Solicitando permiso…",
-  capture_active: "Captura activa",
-  capturing_frame: "Capturando frame…",
-  analyzing_frame: "Analizando frame…",
-  waiting_next_interval: "Esperando siguiente intervalo",
-  skipped_similar_frame: "Frame saltado (escena similar)",
-  skipped_busy: "Frame saltado (análisis en curso)",
-  error: "Error",
-  stopped: "Detenida",
-};
+/** Claves de mensajes (namespace studio.videoAnalyzer.phase) por fase de captura. */
+const PHASE_LABEL_KEY = {
+  idle: "phase.idle",
+  requesting_permission: "phase.requestingPermission",
+  capture_active: "phase.captureActive",
+  capturing_frame: "phase.capturingFrame",
+  analyzing_frame: "phase.analyzingFrame",
+  waiting_next_interval: "phase.waitingNextInterval",
+  skipped_similar_frame: "phase.skippedSimilarFrame",
+  skipped_busy: "phase.skippedBusy",
+  error: "phase.error",
+  stopped: "phase.stopped",
+} as const satisfies Record<CapturePhase, string>;
 
 const PHASE_COLOR: Record<CapturePhase, string> = {
   idle: "text-ink-subtle",
@@ -107,6 +109,8 @@ export default function VideoProviderAnalyzer({
   onOverlayItemClick,
   analysisStats,
 }: Props) {
+  const t = useTranslations("studio.videoAnalyzer");
+  const format = useFormatter();
   // --- Video source state ---
   const [videoInputMode, setVideoInputMode] = useState<VideoInputMode>(
     ENABLE_VIDEO_URLS ? "url" : "upload"
@@ -219,9 +223,7 @@ export default function VideoProviderAnalyzer({
       if (!streamActive) {
         // Antes: pausar sin captura activa no hacía NADA (silencio total).
         // Ahora avisamos para que el usuario sepa qué le falta.
-        setPauseHint(
-          "Has pausado el vídeo, pero la captura de pestaña no está activa. Pulsa «Activar captura de pantalla» para poder analizar."
-        );
+        setPauseHint(t("pauseHintNoCapture"));
         return;
       }
       setPauseHint(null);
@@ -394,9 +396,9 @@ export default function VideoProviderAnalyzer({
 
   const analyzeNowDisabled = !streamActive || analyzing || capturePhase === "analyzing_frame";
   const analyzeNowTooltip = !streamActive
-    ? "Activa la captura de pantalla primero"
+    ? t("tooltipActivateFirst")
     : analyzing || capturePhase === "analyzing_frame"
-      ? "Ya hay un análisis en curso"
+      ? t("tooltipAlreadyAnalyzing")
       : undefined;
 
   // "hace Xs" se calcula dentro de CaptureStatusBar con su propio tick para
@@ -414,10 +416,10 @@ export default function VideoProviderAnalyzer({
       {ENABLE_VIDEO_URLS && (
         <div className="flex rounded-xl border border-line bg-white/[0.03] p-1">
           <TabButton active={videoInputMode === "url"} onClick={() => switchTab("url")}>
-            🔗 Pegar link
+            {t("tabs.pasteLink")}
           </TabButton>
           <TabButton active={videoInputMode === "upload"} onClick={() => switchTab("upload")}>
-            📁 Subir vídeo
+            {t("tabs.uploadVideo")}
           </TabButton>
         </div>
       )}
@@ -441,20 +443,20 @@ export default function VideoProviderAnalyzer({
           <div className="flex flex-wrap items-center gap-2 rounded-xl border border-line bg-white/[0.03] px-4 py-3 text-sm">
             {provider === "uploaded_video" ? (
               <span className="text-ink">
-                🎬 <span className="font-medium">{uploadedFile?.name ?? "Vídeo"}</span>
+                🎬 <span className="font-medium">{uploadedFile?.name ?? t("uploadedVideoDefaultName")}</span>
                 <span className="ml-2 text-xs text-success">
-                  Vídeo preparado · El análisis comenzará automáticamente al reproducirlo.
+                  {t("uploadedReadyNote")}
                 </span>
               </span>
             ) : (
               <>
-                <span className="font-medium text-ink">Proveedor detectado:</span>
+                <span className="font-medium text-ink">{t("providerDetectedLabel")}</span>
                 <ProviderBadge provider={provider!} />
                 <span className={canEmbed ? "text-success" : "text-ink-subtle"}>
-                  {canEmbed ? "Embed compatible" : "No embeddable"}
+                  {canEmbed ? t("embedCompatible") : t("notEmbeddable")}
                 </span>
                 {requiresScreenCapture && (
-                  <span className="text-warning">· Requiere pantalla compartida</span>
+                  <span className="text-warning">{t("requiresScreenShare")}</span>
                 )}
               </>
             )}
@@ -467,7 +469,7 @@ export default function VideoProviderAnalyzer({
               }}
               className="ml-auto text-xs text-ink-subtle hover:text-ink"
             >
-              {provider === "uploaded_video" ? "Cambiar vídeo" : "Cambiar URL"}
+              {provider === "uploaded_video" ? t("changeVideo") : t("changeUrl")}
             </button>
           </div>
 
@@ -488,17 +490,15 @@ export default function VideoProviderAnalyzer({
           {/* YouTube warning */}
           {provider === "youtube" && !streamActive && (
             <div className="rounded-xl border border-warning/20 bg-warning/10 px-4 py-3 text-xs leading-relaxed text-warning">
-              <strong className="block mb-1">YouTube requiere captura de pantalla</strong>
-              El navegador bloquea la lectura directa de frames del iframe por restricciones
-              cross-origin. Para analizar:
+              <strong className="block mb-1">{t("youtubeWarning.title")}</strong>
+              {t("youtubeWarning.body")}
               <ol className="mt-1.5 list-decimal list-inside space-y-0.5 text-warning/90">
-                <li>Pulsa <strong>Activar captura de pantalla</strong> abajo</li>
-                <li>Selecciona <strong>Esta pestaña</strong> (no toda la pantalla)</li>
-                <li>Activa auto-captura y reproduce el vídeo</li>
+                <li>{t.rich("youtubeWarning.step1", { b: (chunks) => <strong>{chunks}</strong> })}</li>
+                <li>{t.rich("youtubeWarning.step2", { b: (chunks) => <strong>{chunks}</strong> })}</li>
+                <li>{t("youtubeWarning.step3")}</li>
               </ol>
               <p className="mt-2 text-warning/70">
-                Si quieres evitar compartir pantalla, sube un MP4 con el tab{" "}
-                <strong>Subir vídeo</strong>.
+                {t.rich("youtubeWarning.footer", { b: (chunks) => <strong>{chunks}</strong> })}
               </p>
             </div>
           )}
@@ -513,9 +513,10 @@ export default function VideoProviderAnalyzer({
           {/* Other iframe providers */}
           {requiresScreenCapture && provider !== "youtube" && !streamActive && (
             <div className="rounded-xl border border-warning/20 bg-warning/10 px-4 py-3 text-xs leading-relaxed text-warning">
-              <strong>{PROVIDER_LABELS[provider!]}</strong> no permite leer frames directamente
-              (restricción cross-origin). Activa la captura de pantalla y selecciona{" "}
-              <strong>esta pestaña</strong>.
+              {t.rich("crossOriginWarning", {
+                provider: PROVIDER_LABELS[provider!],
+                b: (chunks) => <strong>{chunks}</strong>,
+              })}
               {captureError && <span className="mt-1 block text-danger">{captureError}</span>}
             </div>
           )}
@@ -527,8 +528,8 @@ export default function VideoProviderAnalyzer({
             preferredCaptureMode === "direct_canvas" &&
             provider !== "unknown" && (
               <div className="rounded-xl border border-success/20 bg-success/10 px-4 py-2.5 text-xs text-success">
-                <strong>Captura directa activa.</strong>{" "}
-                {reason ?? "No necesitas compartir pantalla para analizar este vídeo."}
+                <strong>{t("directCaptureActive")}</strong>{" "}
+                {reason ?? t("directCaptureDefaultReason")}
               </div>
             )}
 
@@ -538,7 +539,7 @@ export default function VideoProviderAnalyzer({
               <span className="text-3xl">🚫</span>
               <p className="max-w-sm text-sm text-danger">{reason}</p>
               <p className="text-xs text-ink-subtle">
-                Cambia al tab <strong>Subir vídeo</strong> o usa una URL .mp4/.m3u8.
+                {t.rich("unknownProviderHint", { b: (chunks) => <strong>{chunks}</strong> })}
               </p>
             </div>
           ) : provider === "youtube" ? (
@@ -584,30 +585,30 @@ export default function VideoProviderAnalyzer({
                     : "rounded-lg bg-gradient-to-br from-success to-accent px-4 py-2 text-xs font-semibold text-white transition hover:brightness-110"
                 }
               >
-                {autoCaptureMode ? "⏹ Detener análisis" : "▶ Reanudar análisis"}
+                {autoCaptureMode ? t("stopAnalysis") : t("resumeAnalysis")}
               </button>
               <span className="text-xs text-ink-muted">
                 {autoCaptureMode
                   ? analyzing
-                    ? "Detectando objetos…"
-                    : "Analizando vídeo en tiempo real · detección al cambiar la escena"
-                  : "Análisis en pausa"}
+                    ? t("detectingObjectsInline")
+                    : t("analyzingRealtime")
+                  : t("analysisPaused")}
               </span>
               <details className="ml-auto text-xs">
                 <summary className="cursor-pointer select-none text-ink-subtle transition hover:text-ink-muted">
-                  Opciones técnicas
+                  {t("technicalOptions")}
                 </summary>
                 <div className="mt-2 flex flex-wrap items-center gap-3">
                   <label className="flex cursor-pointer items-center gap-2 text-ink-muted">
                     <Toggle checked={autoAnalyze} onChange={setAutoAnalyze} />
-                    Analizar al pausar
+                    {t("analyzeOnPause")}
                   </label>
                   <button
                     onClick={() => directEngine.captureNow()}
                     disabled={analyzing}
                     className="rounded-lg border border-line bg-white/5 px-3 py-1.5 font-medium text-ink transition hover:bg-white/10 disabled:opacity-40"
                   >
-                    Forzar análisis de este frame
+                    {t("forceAnalyzeFrame")}
                   </button>
                 </div>
               </details>
@@ -619,15 +620,17 @@ export default function VideoProviderAnalyzer({
             <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-line bg-white/[0.03] p-4">
               <label className="flex cursor-pointer items-center gap-2.5 text-sm text-ink">
                 <Toggle checked={autoAnalyze} onChange={setAutoAnalyze} />
-                Analizar al pausar
+                {t("analyzeOnPause")}
               </label>
 
               <label className="flex cursor-pointer items-center gap-2.5 text-sm text-ink">
                 <Toggle checked={autoCaptureMode} onChange={setAutoCaptureMode} color="emerald" />
                 <span>
-                  Auto-captura
+                  {t("autoCapture")}
                   {autoCaptureMode && (
-                    <span className="ml-1 text-xs text-success">cada {intervalSeconds}s</span>
+                    <span className="ml-1 text-xs text-success">
+                      {t("autoCaptureInterval", { seconds: intervalSeconds })}
+                    </span>
                   )}
                 </span>
               </label>
@@ -655,15 +658,15 @@ export default function VideoProviderAnalyzer({
                         className="rounded-lg bg-white/10 px-3.5 py-2 text-xs font-semibold text-white transition hover:bg-white/20 disabled:opacity-40"
                       >
                         {capturePhase === "requesting_permission"
-                          ? "Solicitando permiso…"
-                          : "Activar captura de pantalla"}
+                          ? t("phase.requestingPermission")
+                          : t("activateScreenCapture")}
                       </button>
                     ) : (
                       <button
                         onClick={stopCapture}
                         className="rounded-lg border border-line bg-transparent px-3.5 py-2 text-xs font-medium text-ink-muted transition hover:bg-white/10"
                       >
-                        Detener captura
+                        {t("stopCapture")}
                       </button>
                     )}
 
@@ -673,7 +676,7 @@ export default function VideoProviderAnalyzer({
                         disabled={analyzeNowDisabled}
                         className="rounded-lg bg-gradient-to-br from-brand to-magenta px-3.5 py-2 text-xs font-semibold text-white transition hover:brightness-110 disabled:opacity-40"
                       >
-                        Analizar captura de pantalla
+                        {t("analyzeScreenshot")}
                       </button>
                       {analyzeNowTooltip && (
                         <div className="pointer-events-none absolute bottom-full left-1/2 mb-2 -translate-x-1/2 whitespace-nowrap rounded-lg border border-line bg-canvas-raised px-3 py-1.5 text-[11px] text-ink-muted opacity-0 transition group-hover:opacity-100">
@@ -692,31 +695,28 @@ export default function VideoProviderAnalyzer({
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-xl border border-success/20 bg-success/10 px-4 py-2.5 text-xs text-success">
               <span className="flex items-center gap-2 font-medium">
                 <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-success" />
-                Analizando productos en tiempo real
+                {t("realtimeIndicator")}
               </span>
               {preferredCaptureMode === "direct_canvas" ? (
                 <span className="text-success/80">
-                  Frame {frameLoop.processedFrameCount.toLocaleString("es-ES")}
-                  {frameLoop.fps > 0 && ` · ${frameLoop.fps} fps`}
+                  {t("frameCounter", { count: format.number(frameLoop.processedFrameCount) })}
+                  {frameLoop.fps > 0 && ` ${t("fpsSuffix", { fps: frameLoop.fps })}`}
                   {analysisStats && (
                     <>
                       {analysisStats.persons > 0 &&
-                        ` · ${analysisStats.persons} persona${analysisStats.persons === 1 ? "" : "s"}`}
+                        ` · ${t("statsPersons", { count: analysisStats.persons })}`}
                       {" · "}
-                      {analysisStats.trackedObjects} producto
-                      {analysisStats.trackedObjects === 1 ? "" : "s"} seguido
-                      {analysisStats.trackedObjects === 1 ? "" : "s"}
+                      {t("statsTracked", { count: analysisStats.trackedObjects })}
                       {" · "}
-                      {analysisStats.uniqueProducts} único
-                      {analysisStats.uniqueProducts === 1 ? "" : "s"}
+                      {t("statsUnique", { count: analysisStats.uniqueProducts })}
                       {analysisStats.matchedProducts > 0 &&
-                        ` · ${analysisStats.matchedProducts} identificado${analysisStats.matchedProducts === 1 ? "" : "s"}`}
+                        ` · ${t("statsMatched", { count: analysisStats.matchedProducts })}`}
                     </>
                   )}
                 </span>
               ) : (
                 <span className="text-success/80">
-                  captura cada {intervalSeconds}s · solo frames nuevos
+                  {t("intervalOnlyNewFrames", { seconds: intervalSeconds })}
                 </span>
               )}
             </div>
@@ -724,7 +724,7 @@ export default function VideoProviderAnalyzer({
 
           {provider === "youtube" && streamActive && (
             <p className="text-center text-[11px] text-ink-faint">
-              Posición actual: {formatTimestamp(ytGetCurrentTime())}
+              {t("currentPosition", { timestamp: formatTimestamp(ytGetCurrentTime()) })}
             </p>
           )}
 
@@ -809,13 +809,15 @@ function UrlInputPanel({
   onChangeUrl: (v: string) => void;
   onLoad: () => void;
 }) {
+  const t = useTranslations("studio.videoAnalyzer");
+  const tStudio = useTranslations("studio");
   return (
     <div className="flex aspect-video w-full flex-col items-center justify-center gap-4 rounded-2xl border border-dashed border-line bg-white/[0.02]">
       <span className="text-4xl">📺</span>
       <div className="text-center">
-        <p className="text-sm font-medium text-ink">Pega una URL de vídeo</p>
+        <p className="text-sm font-medium text-ink">{t("urlPanel.title")}</p>
         <p className="mt-1 text-xs text-ink-subtle">
-          YouTube · Dailymotion · Vimeo · enlace directo .mp4 / .m3u8
+          {t("urlPanel.subtitle")}
         </p>
       </div>
       <div className="flex w-full max-w-md flex-col gap-2 px-6">
@@ -831,7 +833,7 @@ function UrlInputPanel({
           disabled={!rawUrl.trim()}
           className="rounded-xl bg-gradient-to-br from-brand to-magenta py-2.5 text-sm font-semibold text-white transition hover:brightness-110 disabled:opacity-40"
         >
-          Cargar vídeo
+          {tStudio("urlInput.submit")}
         </button>
       </div>
     </div>
@@ -851,6 +853,8 @@ function UploadDropZone({
   onDrop: (e: React.DragEvent) => void;
   onFileChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
 }) {
+  const t = useTranslations("studio.videoAnalyzer");
+  const tStudio = useTranslations("studio");
   return (
     <label
       onDragOver={onDragOver}
@@ -866,16 +870,14 @@ function UploadDropZone({
       <span className="text-4xl">{isDragging ? "⬇️" : "🎬"}</span>
       <div>
         <p className="text-sm font-medium text-ink">
-          {isDragging
-            ? "Suelta el vídeo aquí"
-            : "Sube un vídeo para analizar sus productos automáticamente."}
+          {isDragging ? t("upload.dropHint") : t("upload.uploadHint")}
         </p>
         <p className="mt-1 text-xs text-ink-subtle">
-          MP4, WebM o MOV (si tu navegador lo reproduce) · arrastra o selecciona el archivo
+          {t("upload.formatsHint")}
         </p>
       </div>
       <span className="rounded-xl border border-line bg-white/5 px-4 py-2 text-xs font-medium text-ink-muted transition hover:bg-white/10">
-        Seleccionar archivo
+        {tStudio("selectFile")}
       </span>
       <input
         type="file"
@@ -938,26 +940,27 @@ function CaptureStatusBar({
     ["capture_active", "waiting_next_interval", "analyzing_frame", "capturing_frame"].includes(phase)
       ? "animate-pulse"
       : "";
+  const t = useTranslations("studio.videoAnalyzer");
   return (
     <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 rounded-xl border border-line bg-white/[0.03] px-4 py-2.5 text-xs">
       <span className={`flex items-center gap-1.5 font-medium ${PHASE_COLOR[phase]}`}>
         <span className={`h-1.5 w-1.5 rounded-full bg-current ${dot}`} />
-        {PHASE_LABEL[phase]}
+        {t(PHASE_LABEL_KEY[phase])}
       </span>
       {streamActive && (
         <>
           {secondsAgo !== null && (
-            <span className="text-ink-subtle">Último frame: hace {secondsAgo}s</span>
+            <span className="text-ink-subtle">{t("status.lastFrame", { seconds: secondsAgo })}</span>
           )}
           {isLooping && (
-            <span className="text-ink-subtle">Intervalo: {intervalSeconds}s</span>
+            <span className="text-ink-subtle">{t("status.intervalLabel", { seconds: intervalSeconds })}</span>
           )}
           {frameCount > 0 && (
             <span className="text-ink-subtle">
-              Capturados: <span className="text-ink-muted">{frameCount}</span>
-              {" · "}Analizados: <span className="text-success">{analyzedCount}</span>
+              {t("status.captured")} <span className="text-ink-muted">{frameCount}</span>
+              {" · "}{t("status.analyzed")} <span className="text-success">{analyzedCount}</span>
               {skippedCount > 0 && (
-                <>{" · "}Saltados: <span className="text-ink-muted">{skippedCount}</span></>
+                <>{" · "}{t("status.skipped")} <span className="text-ink-muted">{skippedCount}</span></>
               )}
             </span>
           )}
@@ -984,6 +987,7 @@ function DebugPanel({
   analyzedCount: number;
   skippedCount: number;
 }) {
+  const t = useTranslations("studio.videoAnalyzer");
   return (
     <div className="rounded-xl border border-line bg-white/[0.02] text-xs">
       <button
@@ -991,7 +995,7 @@ function DebugPanel({
         className="flex w-full items-center justify-between px-4 py-2.5 text-left text-ink-muted hover:text-ink"
       >
         <span className="font-medium">
-          Debug captura
+          {t("debugTitle")}
           {entries.length > 0 && (
             <span className="ml-2 rounded-full bg-white/10 px-1.5 py-0.5 text-[10px] text-ink-muted">
               {entries.length}
@@ -1006,18 +1010,18 @@ function DebugPanel({
           {frameCount > 0 && (
             <div className="flex items-center justify-between gap-3 px-4 py-2 text-ink-subtle">
               <span>
-                Frames: {frameCount} · Analizados: {analyzedCount} · Saltados: {skippedCount}
+                {t("debugFramesSummary", { frameCount, analyzedCount, skippedCount })}
               </span>
               {entries.length > 0 && (
                 <button onClick={onClear} className="text-ink-faint transition hover:text-ink-muted">
-                  Limpiar
+                  {t("debugClear")}
                 </button>
               )}
             </div>
           )}
           <div className="max-h-52 overflow-y-auto px-4 pb-3 font-mono">
             {entries.length === 0 ? (
-              <p className="py-2 text-ink-faint">Sin eventos todavía.</p>
+              <p className="py-2 text-ink-faint">{t("debugNoEvents")}</p>
             ) : (
               entries.map((entry, i) => (
                 <div key={i} className="py-[3px] leading-tight">
@@ -1064,6 +1068,7 @@ function YouTubeEmbed({
   overlayItems: DetectedItem[];
   onOverlayItemClick?: (item: DetectedItem) => void;
 }) {
+  const t = useTranslations("studio.videoAnalyzer");
   return (
     <div className="relative overflow-hidden rounded-2xl border border-line bg-black shadow-2xl shadow-black/50">
       <div className="aspect-video w-full">
@@ -1072,7 +1077,7 @@ function YouTubeEmbed({
       <VideoOverlay items={overlayItems} onItemClick={onOverlayItemClick} />
       {status === "loading" && (
         <div className="absolute inset-0 flex items-center justify-center bg-black/60 text-sm text-ink-muted">
-          Cargando reproductor…
+          {t("loadingPlayer")}
         </div>
       )}
       {analyzing && <AnalyzingOverlay />}
@@ -1161,11 +1166,12 @@ function DirectVideoPlayer({
  * desenfoca la escena durante el análisis.
  */
 function AnalyzingOverlay() {
+  const t = useTranslations("studio.videoAnalyzer");
   return (
     <div className="pointer-events-none absolute right-3 top-3 z-20">
       <div className="flex items-center gap-2 rounded-full border border-white/15 bg-black/70 px-3 py-1.5 text-[11px] font-medium text-white shadow-lg">
         <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-brand-bright" />
-        Detectando objetos…
+        {t("detectingObjectsOverlay")}
       </div>
     </div>
   );

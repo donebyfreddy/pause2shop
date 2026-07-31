@@ -1,5 +1,7 @@
 "use client";
 
+import { useFormatter, useTranslations } from "next-intl";
+
 type CostData = {
   openaiVisionCalls: number;
   openaiVisionCostUsd: number;
@@ -28,13 +30,27 @@ type Props = {
   itemsDetected: number;
 };
 
-function usd(n: number) {
-  if (n === 0) return "$0.0000";
-  if (n < 0.001) return `$${(n * 1000).toFixed(3)}m`;
-  return `$${n.toFixed(4)}`;
-}
-
 export default function CostPanel({ costs, itemsDetected }: Props) {
+  const t = useTranslations("studio.cost");
+  const format = useFormatter();
+
+  function usd(n: number) {
+    if (n < 0.001 && n !== 0) {
+      return `${format.number(n * 1000, {
+        style: "currency",
+        currency: "USD",
+        minimumFractionDigits: 3,
+        maximumFractionDigits: 3,
+      })}m`;
+    }
+    return format.number(n, {
+      style: "currency",
+      currency: "USD",
+      minimumFractionDigits: 4,
+      maximumFractionDigits: 4,
+    });
+  }
+
   const data = costs ?? {
     openaiVisionCalls: 0,
     openaiVisionCostUsd: 0,
@@ -52,47 +68,47 @@ export default function CostPanel({ costs, itemsDetected }: Props) {
     <div className="panel p-4">
       <div className="mb-3 flex items-center justify-between">
         <h3 className="text-[10px] font-semibold tracking-[0.12em] text-ink-faint uppercase">
-          Consumo y coste de IA
+          {t("heading")}
         </h3>
         {isDemo && (
           <span className="rounded-full border border-warning/25 bg-warning/10 px-2 py-0.5 text-[10px] font-medium text-warning">
-            modo demo
+            {t("demoMode")}
           </span>
         )}
         {!isDemo && costs && (
           <span className="rounded-full border border-success/25 bg-success/10 px-2 py-0.5 text-[10px] font-medium text-success">
-            real
+            {t("real")}
           </span>
         )}
       </div>
 
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-        <Stat label="Coste total" value={usd(data.totalCostUsd)} highlight />
-        <Stat label="Llamadas API" value={String(totalCalls)} />
-        <Stat label="Cache hits" value={String(data.cacheHits)} accent="emerald" />
-        <Stat label="Items detectados" value={String(itemsDetected)} />
+        <Stat label={t("totalCost")} value={usd(data.totalCostUsd)} highlight />
+        <Stat label={t("apiCalls")} value={String(totalCalls)} />
+        <Stat label={t("cacheHits")} value={String(data.cacheHits)} accent="emerald" />
+        <Stat label={t("itemsDetected")} value={String(itemsDetected)} />
       </div>
 
       <div className="mt-3 grid grid-cols-2 gap-2">
         <SubStat
-          label="OpenAI Vision"
+          label={t("openaiVision")}
           calls={data.openaiVisionCalls}
-          cost={data.openaiVisionCostUsd}
+          cost={usd(data.openaiVisionCostUsd)}
         />
         <SubStat
-          label="Sugerencias IA"
+          label={t("aiSuggestions")}
           calls={data.openaiProductCalls}
-          cost={data.openaiProductCostUsd}
+          cost={usd(data.openaiProductCostUsd)}
         />
         <SubStat
-          label="Reverse search (Lens)"
+          label={t("reverseSearch")}
           calls={data.lensSearchCalls ?? 0}
-          cost={data.lensSearchCostUsd ?? 0}
+          cost={usd(data.lensSearchCostUsd ?? 0)}
         />
         <SubStat
-          label="Shopping"
+          label={t("shopping")}
           calls={data.shoppingSearchCalls ?? 0}
-          cost={data.shoppingSearchCostUsd ?? 0}
+          cost={usd(data.shoppingSearchCostUsd ?? 0)}
         />
       </div>
 
@@ -105,14 +121,14 @@ export default function CostPanel({ costs, itemsDetected }: Props) {
             </span>
           ))}
           {(data.fallbacksUsed ?? 0) > 0 && (
-            <span className="text-warning">fallbacks: {data.fallbacksUsed}</span>
+            <span className="text-warning">{t("fallbacksUsed", { count: data.fallbacksUsed ?? 0 })}</span>
           )}
         </div>
       )}
 
       {data.mockCalls > 0 && (
         <p className="mt-2 text-[10px] text-ink-faint">
-          {data.mockCalls} llamada{data.mockCalls === 1 ? "" : "s"} en modo demo (sin coste)
+          {t("mockCallsNote", { count: data.mockCalls })}
         </p>
       )}
     </div>
@@ -156,15 +172,17 @@ function SubStat({
 }: {
   label: string;
   calls: number;
-  cost: number;
+  /** Coste ya formateado (moneda) por el padre — ver `usd()` en CostPanel. */
+  cost: string;
 }) {
+  const t = useTranslations("studio.cost");
   return (
     <div className="flex items-center justify-between rounded-xl border border-line bg-white/[0.03] px-3 py-2">
       <div>
         <p className="text-[10px] text-ink-subtle">{label}</p>
-        <p className="text-xs font-medium text-ink-muted">{calls} llamadas</p>
+        <p className="text-xs font-medium text-ink-muted">{t("callsCount", { count: calls })}</p>
       </div>
-      <p className="text-xs font-bold tabular-nums text-ink">{usd(cost)}</p>
+      <p className="text-xs font-bold tabular-nums text-ink">{cost}</p>
     </div>
   );
 }

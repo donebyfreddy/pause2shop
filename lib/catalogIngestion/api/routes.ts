@@ -335,6 +335,12 @@ export function buildRouter(store: CatalogStore): Router {
         headless: config.headless,
         unavailableReason: browserReason,
         remoteEndpointConfigured: Boolean(config.browserWsEndpoint),
+        /**
+         * Health MEDIDO: arranca un navegador de verdad y lo cierra. Es lo único
+         * que distingue "configurado" de "funciona", y esa distinción es
+         * exactamente la que faltaba cuando Vercel no encontraba browsers.json.
+         */
+        health: config.playwrightEnabled ? await playwright.browserHealth() : null,
       },
       limits: {
         maxConcurrency: config.maxConcurrency,

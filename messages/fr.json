@@ -1,0 +1,1467 @@
+{
+  "common": {
+    "loading": "Chargement…",
+    "error": "Erreur",
+    "retry": "Réessayer",
+    "cancel": "Annuler",
+    "save": "Enregistrer",
+    "close": "Fermer",
+    "search": "Rechercher",
+    "noResults": "Aucun résultat",
+    "comingSoon": "Bientôt disponible",
+    "seeMore": "Voir plus",
+    "seeLess": "Voir moins",
+    "page": "Page {page} sur {totalPages}"
+  },
+  "navigation": {
+    "studio": "Studio",
+    "catalog": "Catalogue",
+    "demoVideo": "Démo vidéo",
+    "admin": "Admin",
+    "openMenu": "Ouvrir le menu",
+    "closeMenu": "Fermer le menu",
+    "mainNav": "Navigation principale",
+    "mobileNav": "Navigation mobile"
+  },
+  "actions": {
+    "tryNow": "Essayer maintenant",
+    "viewCatalogPanel": "Panneau d'opérations du catalogue",
+    "analyzeVideo": "Analyser la vidéo",
+    "analyzeImage": "Analyser l'image",
+    "upload": "Charger",
+    "export": "Exporter",
+    "sync": "Synchroniser",
+    "pause": "Mettre en pause",
+    "resume": "Reprendre",
+    "viewDetails": "Voir les détails",
+    "viewCatalog": "Voir le catalogue",
+    "viewDemo": "Voir la démo",
+    "activate": "Activer",
+    "deactivate": "Désactiver",
+    "cancelJob": "Annuler",
+    "retryJob": "Réessayer",
+    "reindex": "Réindexer les embeddings"
+  },
+  "languageSelector": {
+    "trigger": "Langue : {language}",
+    "searchPlaceholder": "Rechercher une langue…",
+    "noMatches": "Aucune correspondance",
+    "currentLanguage": "Langue actuelle : {language}",
+    "listLabel": "Sélecteur de langue"
+  },
+  "toast": {
+    "dismiss": "Fermer la notification",
+    "catalog": {
+      "searchFailed": "La recherche a échoué",
+      "noResultsAboveThreshold": "Aucun résultat au-dessus du seuil",
+      "imageSearchFailed": "La recherche par image a échoué",
+      "notAnImage": "Ce fichier n'est pas une image",
+      "productDeactivated": "Produit désactivé",
+      "productActivated": "Produit activé",
+      "statusChangeFailed": "Impossible de changer le statut",
+      "matchesFound": "{count, plural, one{# correspondance} other{# correspondances}}",
+      "matchCascadeDescription": "Cascade : hash exact → hash perceptuel → embedding visuel"
+    },
+    "jobs": {
+      "cancelFailed": "Impossible d'annuler",
+      "retryFailed": "Impossible de réessayer",
+      "actionSucceeded": "{action} avec succès",
+      "cancelRequested": "Annulation demandée",
+      "retryQueued": "Nouvelle tentative mise en file",
+      "retryQueuedDetail": "Nouveau job {jobId} — reprend depuis le checkpoint",
+      "reindexFailed": "Impossible de lancer la réindexation",
+      "reindexQueued": "Réindexation des embeddings mise en file",
+      "reindexQueuedDetail": "Job {jobId}"
+    },
+    "connectors": {
+      "actionFailed": "Impossible de {action}",
+      "paused": "{id} mis en pause",
+      "resumed": "{id} repris",
+      "syncFailed": "Impossible de lancer la synchronisation"
+    }
+  },
+  "errors": {
+    "generic": "Une erreur s'est produite",
+    "network": "Erreur réseau. Vérifiez votre connexion.",
+    "unauthorized": "Non autorisé",
+    "notFound": "Introuvable",
+    "validation": {
+      "required": "Ce champ est obligatoire"
+    },
+    "upload": {
+      "tooLarge": "Le fichier est trop volumineux",
+      "unsupportedFormat": "Format non compatible"
+    }
+  },
+  "landing": {
+    "hero": {
+      "badge": "Détection visuelle de produits en vidéo, en temps réel",
+      "title": "Mets la vidéo sur pause.",
+      "subtitle": "Trouve le produit.",
+      "description": "Pause2Shop analyse vidéo et image, détecte chaque vêtement, chaussure ou accessoire et le croise avec un catalogue de mode propriétaire et une recherche visuelle inversée. Avec provenance et niveau de confiance pour chaque résultat.",
+      "ctaPrimary": "Essayer maintenant",
+      "ctaSecondary": "Voir le catalogue",
+      "ctaTertiary": "Voir la démo"
+    },
+    "howItWorks": {
+      "title": "Comment ça marche",
+      "step1": {
+        "title": "Pause",
+        "description": "Arrête la vidéo au moment exact."
+      },
+      "step2": {
+        "title": "Détecte",
+        "description": "L'IA localise les produits visibles dans l'image."
+      },
+      "step3": {
+        "title": "Trouve",
+        "description": "Correspondance avec le catalogue et recherche visuelle inversée."
+      },
+      "heading": "Cinq étapes entre une image et un produit achetable",
+      "description": "Le pipeline complet s'exécute pour chaque objet détecté, avec un budget d'appels et un cache à chaque étape.",
+      "steps": {
+        "capture": {
+          "title": "Capture des frames",
+          "body": "Des frames candidates sont extraites de la vidéo (chargée, YouTube ou écran) selon le FPS et la détection de changement de scène. Les frames quasi identiques sont écartées par hash perceptuel : elles ne passent jamais par la détection.",
+          "meta": "rVFC · diff de scène · hash perceptuel"
+        },
+        "detect": {
+          "title": "Détection multimodale",
+          "body": "Un modèle de vision localise chaque objet avec une boîte, une catégorie, une couleur et une relation avec la personne (porté, tenu, arrière-plan). Seules les catégories que vous avez choisies sont analysées.",
+          "meta": "bounding boxes · relation · confiance"
+        },
+        "dedupe": {
+          "title": "Suivi et déduplication",
+          "body": "Les objets conservent leur identité entre les frames et sont fusionnés globalement : une même veste qui réapparaît dix fois devient un seul produit, avec son meilleur recadrage sélectionné.",
+          "meta": "trackIds · NMS · meilleur recadrage"
+        },
+        "match": {
+          "title": "Correspondance avec le catalogue",
+          "body": "Chaque recadrage est d'abord recherché dans notre propre catalogue en cascade : hash exact → hash perceptuel → embedding visuel. En l'absence de correspondance suffisante, on recourt à la recherche visuelle inversée.",
+          "meta": "catalog-first · pgvector · CLIP"
+        },
+        "result": {
+          "title": "Résultat avec provenance",
+          "body": "Chaque résultat arrive avec un score, l'étape qui l'a résolu et son origine (catalogue ou fournisseur externe). Rien n'est publié en dessous du seuil de confiance configuré.",
+          "meta": "score · matchStage · origin"
+        }
+      }
+    },
+    "useCases": {
+      "title": "Cas d'usage",
+      "heading": "Conçu pour des catalogues vidéo, pas pour une simple photo",
+      "primary": {
+        "title": "VOD et vidéo à la demande",
+        "body": "Transforme un catalogue vidéo en catalogue de produits. La vidéo complète est analysée, ce qui réapparaît est dédupliqué, et vous obtenez la liste des produits avec l'horodatage de leur apparition.",
+        "point1": "Vidéos jusqu'à 2 minutes par job (configurable)",
+        "point2": "Horodatage et frame d'origine par produit",
+        "point3": "Budget d'appels et coût par vidéo"
+      },
+      "secondary": {
+        "discovery": {
+          "title": "Découverte de produit",
+          "body": "L'utilisateur voit quelque chose à l'écran et veut savoir ce que c'est. Une image suffit pour lancer la recherche."
+        },
+        "catalogMatch": {
+          "title": "Correspondance avec le catalogue",
+          "body": "Croise les détections avec votre propre catalogue avant de sortir sur le web : plus de précision, coût réduit."
+        },
+        "visualShopping": {
+          "title": "Shopping visuel",
+          "body": "Résultats achetables avec prix, disponibilité et lien direct vers la fiche de la boutique."
+        },
+        "clientDemos": {
+          "title": "Démos client",
+          "body": "Mode présentation, panneau de coûts et données d'exemple prêtes à montrer sans dépendre d'identifiants."
+        }
+      }
+    },
+    "capabilities": {
+      "title": "Fonctionnalités",
+      "heading": "Tout ce qui fonctionne déjà, avec un lien direct pour le vérifier",
+      "verifiableBadge": "Démo technique vérifiable",
+      "ctaOpenStudio": "Ouvrir le studio",
+      "ctaViewInStudio": "Voir dans le studio",
+      "features": {
+        "video": {
+          "body": "Vidéo chargée, YouTube ou capture d'écran, avec analyse continue et overlay des détections sur le lecteur."
+        },
+        "image": {
+          "body": "Chargez une image et obtenez les objets détectés avec leurs recadrages, prêts à être recherchés."
+        },
+        "connectors": {
+          "title": "Connecteurs de catalogue",
+          "body": "Registre modulaire de sources de mode avec statut réel : implémenté, non vérifié, ou en attente d'un accord commercial.",
+          "cta": "Voir les connecteurs"
+        },
+        "embeddings": {
+          "title": "Embeddings visuels",
+          "body": "CLIP local ou fournisseur de hash déterministe pour la démo. Réindexation complète depuis l'admin quand le modèle change.",
+          "cta": "Voir les réglages",
+          "badge": "CLIP optionnel"
+        },
+        "catalog": {
+          "title": "Catalogue normalisé",
+          "body": "Schéma unique de produit avec marque et catégorie normalisées, historique des prix, déduplication multiniveau et traçabilité de la source.",
+          "cta": "Explorer le catalogue"
+        },
+        "cost": {
+          "title": "Coût et budget",
+          "body": "Compteurs d'appels par fournisseur, plafond de coût par vidéo et cache pour ne jamais répéter des recherches payantes."
+        }
+      },
+      "complianceNote": {
+        "lead": "Une ingestion avec des règles.",
+        "body": "robots.txt vérifié avant chaque requête, <code>Crawl-delay</code> respecté, User-Agent identifiable avec contact et aucune évasion anti-bot. Les sources qui exigent un accord partenaire ou d'affiliation ne sont pas ingérées avant de l'avoir obtenu."
+      }
+    },
+    "cta": {
+      "title": "Commencez maintenant",
+      "action": "Essayer maintenant",
+      "heading": "Essayez-le avec votre propre vidéo",
+      "description": "Choisissez les catégories à rechercher, ajustez l'intensité de l'analyse et regardez apparaître les correspondances image par image. Sans inscription.",
+      "operationsPanel": "Panneau d'opérations"
+    },
+    "sourceMarquee": {
+      "label": "Sources connectées",
+      "registryLabel": "Registre des sources de mode",
+      "totalLabel": "sources",
+      "verifiedLabel": "vérifiées avec fixtures",
+      "partnerLabel": "nécessitent un accord",
+      "footnote": "Liste issue du registre de connecteurs du service de catalogue. Figurer ici indique que la source est enregistrée avec son statut réel d'implémentation et de conformité — <emphasis>cela n'implique ni relation commerciale ni permission accordée</emphasis>."
+    },
+    "stats": {
+      "productsIndexed": "{count, plural, one{# produit indexé} other{# produits indexés}}",
+      "catalogProducts": "Produits au catalogue",
+      "visualEmbeddingCoverage": "Avec embedding visuel",
+      "detectableCategories": "Catégories détectables"
+    },
+    "heroVisual": {
+      "windowStatus": "studio · analyse continue · 00:42",
+      "liveBadge": "en direct",
+      "boxes": {
+        "jacket": "Veste en lin",
+        "bag": "Sac cabas",
+        "sneaker": "Sneaker blanche"
+      },
+      "detectionSummary": "3 objets · 1 personne · dédup active",
+      "matchesTitle": "Correspondances",
+      "matchesSource": "catalogue + Lens",
+      "match1": {
+        "title": "Veste en lin relaxed",
+        "store": "Catalogue · Zara"
+      },
+      "match2": {
+        "title": "Sac cabas en cuir",
+        "store": "Catalogue · Mango"
+      },
+      "match3": {
+        "title": "Sneaker low white",
+        "store": "Google Lens"
+      },
+      "latencyLabel": "Latence moyenne",
+      "latencyValue": "1,4 s / frame"
+    },
+    "studioSection": {
+      "label": "Le studio",
+      "heading": "Analysez une vidéo ou une image maintenant",
+      "description": "Choisissez les catégories et l'intensité, chargez le contenu et observez les détections et correspondances en temps réel.",
+      "openFullscreen": "Ouvrir en plein écran",
+      "loading": "Chargement du studio d'analyse…"
+    },
+    "footer": {
+      "tagline": "Mets la vidéo sur pause, trouve le produit.",
+      "description": "Détection visuelle de produits en vidéo et en image, avec correspondance contre un catalogue propriétaire et recherche visuelle inversée. Les résultats proviennent de sources réelles : aucune marque, prix ni lien n'est inventé.",
+      "product": {
+        "title": "Produit",
+        "studio": "Studio d'analyse",
+        "catalog": "Catalogue détecté",
+        "demo": "Démo vidéo"
+      },
+      "operations": {
+        "title": "Opérations",
+        "admin": "Panneau d'administration",
+        "connectors": "Connecteurs",
+        "jobs": "Jobs d'ingestion",
+        "logs": "Monitoring"
+      },
+      "copyright": "© {year} {appName}. Démo technique.",
+      "complianceNote": "Ingestion de catalogue avec respect du robots.txt, limitation de débit par domaine et sans évasion anti-bot."
+    }
+  },
+  "studio": {
+    "page": {
+      "title": "Studio d'analyse",
+      "description": "Détectez des produits dans une vidéo ou une image et retrouvez-les dans le catalogue. Configurez les catégories à rechercher et leur intensité avant de commencer."
+    },
+    "demoBadge": "Mode démo",
+    "technicalPanel": "Panneau technique (consommation et appels)",
+    "selectFile": "Sélectionner un fichier",
+    "analysisType": {
+      "label": "Type d'analyse",
+      "video": "Analyser la vidéo",
+      "image": "Analyser l'image"
+    },
+    "urlInput": {
+      "placeholder": "https://www.youtube.com/watch?v=...",
+      "label": "URL de la vidéo",
+      "submit": "Charger la vidéo",
+      "invalidUrl": "Cette URL ne semble pas valide. Collez un lien YouTube (watch, youtu.be ou shorts)."
+    },
+    "liveStats": {
+      "peopleDetected": "{count, plural, one{<value>#</value> personne} other{<value>#</value> personnes}}",
+      "tracking": "{count, plural, one{<value>#</value> en suivi} other{<value>#</value> en suivi}}",
+      "uniqueProducts": "{count, plural, one{<value>#</value> produit unique} other{<value>#</value> produits uniques}}",
+      "withMatch": "avec correspondance"
+    },
+    "product": {
+      "fallbackTitle": "Objet",
+      "brand": "Marque : {brand}",
+      "seenCount": "Vu {count, plural, one{# fois} other{# fois}}",
+      "imageAlt": "image"
+    },
+    "loading": {
+      "processing": "Analyse du contenu en cours"
+    },
+    "cost": {
+      "title": "Coût",
+      "heading": "Consommation et coût de l'IA",
+      "demoMode": "mode démo",
+      "real": "réel",
+      "totalCost": "Coût total",
+      "apiCalls": "Appels API",
+      "cacheHits": "Cache hits",
+      "itemsDetected": "Éléments détectés",
+      "openaiVision": "OpenAI Vision",
+      "aiSuggestions": "Suggestions IA",
+      "reverseSearch": "Recherche inversée (Lens)",
+      "shopping": "Shopping",
+      "callsCount": "{count, plural, one{# appel} other{# appels}}",
+      "fallbacksUsed": "fallbacks : {count}",
+      "mockCallsNote": "{count, plural, one{# appel en mode démo (sans coût)} other{# appels en mode démo (sans coût)}}"
+    },
+    "overlayDetail": {
+      "subtitle": "{category} · {color} · {confidence}% de confiance",
+      "matchesTitle": "Correspondances trouvées",
+      "searchingMatches": "Recherche de correspondances visuelles pour cet objet…"
+    },
+    "history": {
+      "title": "Frames analysées",
+      "clear": "Effacer",
+      "frameAlt": "frame analysée",
+      "itemCount": "{count, plural, one{# objet} other{# objets}}",
+      "locatedCount": "{count, plural, one{# objet localisé} other{# objets localisés}}"
+    },
+    "videoAnalyzer": {
+      "phase": {
+        "idle": "Inactif",
+        "requestingPermission": "Demande d'autorisation…",
+        "captureActive": "Capture active",
+        "capturingFrame": "Capture de la frame…",
+        "analyzingFrame": "Analyse de la frame…",
+        "waitingNextInterval": "En attente du prochain intervalle",
+        "skippedSimilarFrame": "Frame ignorée (scène similaire)",
+        "skippedBusy": "Frame ignorée (analyse en cours)",
+        "error": "Erreur",
+        "stopped": "Arrêtée"
+      },
+      "tabs": {
+        "pasteLink": "🔗 Coller un lien",
+        "uploadVideo": "📁 Charger une vidéo"
+      },
+      "uploadedVideoDefaultName": "Vidéo",
+      "uploadedReadyNote": "Vidéo prête · L'analyse démarrera automatiquement à la lecture.",
+      "providerDetectedLabel": "Fournisseur détecté :",
+      "embedCompatible": "Intégration compatible",
+      "notEmbeddable": "Non intégrable",
+      "requiresScreenShare": "· Nécessite le partage d'écran",
+      "changeVideo": "Changer de vidéo",
+      "changeUrl": "Changer l'URL",
+      "youtubeWarning": {
+        "title": "YouTube nécessite une capture d'écran",
+        "body": "Le navigateur bloque la lecture directe des frames de l'iframe en raison de restrictions cross-origin. Pour analyser :",
+        "step1": "Cliquez sur <b>Activer la capture d'écran</b> ci-dessous",
+        "step2": "Sélectionnez <b>Cet onglet</b> (pas tout l'écran)",
+        "step3": "Activez la capture automatique et lancez la vidéo",
+        "footer": "Pour éviter de partager votre écran, chargez un MP4 depuis l'onglet <b>Charger une vidéo</b>."
+      },
+      "pauseHintNoCapture": "Vous avez mis la vidéo en pause, mais la capture d'onglet n'est pas active. Cliquez sur « Activer la capture d'écran » pour pouvoir analyser.",
+      "crossOriginWarning": "<b>{provider}</b> ne permet pas de lire les frames directement (restriction cross-origin). Activez la capture d'écran et sélectionnez <b>cet onglet</b>.",
+      "directCaptureActive": "Capture directe active.",
+      "directCaptureDefaultReason": "Vous n'avez pas besoin de partager votre écran pour analyser cette vidéo.",
+      "unknownProviderHint": "Passez à l'onglet <b>Charger une vidéo</b> ou utilisez une URL .mp4/.m3u8.",
+      "urlPanel": {
+        "title": "Collez une URL de vidéo",
+        "subtitle": "YouTube · Dailymotion · Vimeo · lien direct .mp4 / .m3u8"
+      },
+      "upload": {
+        "dropHint": "Déposez la vidéo ici",
+        "uploadHint": "Chargez une vidéo pour analyser automatiquement ses produits.",
+        "formatsHint": "MP4, WebM ou MOV (si votre navigateur le lit) · glissez ou sélectionnez le fichier"
+      },
+      "status": {
+        "lastFrame": "Dernière frame : il y a {seconds}s",
+        "intervalLabel": "Intervalle : {seconds}s",
+        "captured": "Capturées :",
+        "analyzed": "Analysées :",
+        "skipped": "Ignorées :"
+      },
+      "stopAnalysis": "⏹ Arrêter l'analyse",
+      "resumeAnalysis": "▶ Reprendre l'analyse",
+      "detectingObjectsInline": "Détection des objets…",
+      "analyzingRealtime": "Analyse de la vidéo en temps réel · détection au changement de scène",
+      "analysisPaused": "Analyse en pause",
+      "technicalOptions": "Options techniques",
+      "analyzeOnPause": "Analyser à la pause",
+      "forceAnalyzeFrame": "Forcer l'analyse de cette frame",
+      "autoCapture": "Capture automatique",
+      "autoCaptureInterval": "toutes les {seconds}s",
+      "activateScreenCapture": "Activer la capture d'écran",
+      "stopCapture": "Arrêter la capture",
+      "analyzeScreenshot": "Analyser la capture d'écran",
+      "tooltipActivateFirst": "Activez d'abord la capture d'écran",
+      "tooltipAlreadyAnalyzing": "Une analyse est déjà en cours",
+      "realtimeIndicator": "Analyse des produits en temps réel",
+      "frameCounter": "Frame {count}",
+      "fpsSuffix": "· {fps} fps",
+      "statsPersons": "{count, plural, one{# personne} other{# personnes}}",
+      "statsTracked": "{count, plural, one{# produit suivi} other{# produits suivis}}",
+      "statsUnique": "{count, plural, one{# unique} other{# uniques}}",
+      "statsMatched": "{count, plural, one{# identifié} other{# identifiés}}",
+      "intervalOnlyNewFrames": "capture toutes les {seconds}s · frames nouvelles uniquement",
+      "currentPosition": "Position actuelle : {timestamp}",
+      "debugTitle": "Debug de la capture",
+      "debugNoEvents": "Aucun événement pour l'instant.",
+      "debugFramesSummary": "Frames : {frameCount} · Analysées : {analyzedCount} · Ignorées : {skippedCount}",
+      "debugClear": "Effacer",
+      "loadingPlayer": "Chargement du lecteur…",
+      "detectingObjectsOverlay": "Détection des objets…",
+      "analyzeFrameNow": "Analyser cette frame maintenant",
+      "captureHint": {
+        "idle": "Capture inactive",
+        "active": "Capture active",
+        "denied": "Autorisation refusée",
+        "needsSelection": "Sélectionnez cet onglet ou cette fenêtre",
+        "error": "Erreur de capture"
+      },
+      "youtubeCaptureRequired": "Pour analyser des vidéos YouTube, j'ai besoin de l'autorisation de capture d'écran. C'est nécessaire car YouTube ne permet pas de lire les frames directement depuis l'iframe. En l'activant, sélectionnez <b>cet onglet ou cette fenêtre</b>.",
+      "analyzingFrameOverlay": "Analyse de la frame…"
+    },
+    "localVideo": {
+      "uploadHint": "Chargez une vidéo (.mp4, .mov, .webm)",
+      "uploadSubHint": "Idéal pour des tests rapides — sans capture d'écran",
+      "defaultTitle": "Vidéo locale"
+    },
+    "imageAnalyzer": {
+      "unsupportedFormat": "Format non compatible : {format}. Utilisez JPG, PNG ou WebP.",
+      "unknownFormat": "inconnu",
+      "emptyFile": "Le fichier est vide.",
+      "tooLarge": "L'image dépasse la limite de {maxMb} Mo.",
+      "readError": "Impossible de lire l'image.",
+      "dropHere": "Déposez l'image ici",
+      "uploadPrompt": "Chargez, glissez ou collez une image",
+      "pasteHint": "JPG, PNG, WebP — max. {maxMb} Mo · <kbd>Ctrl+V</kbd> pour coller",
+      "analyzingOverlay": "Analyse de l'image…",
+      "analyzedBadge": "Analysée ✓",
+      "analyzingLabel": "Analyse en cours…",
+      "analyzeAnother": "Analyser une autre image",
+      "changeImage": "Changer d'image",
+      "fileInfo": "{sizeKb} Ko · image chargée",
+      "previewAlt": "Aperçu"
+    },
+    "configSelector": {
+      "title": "Que voulez-vous trouver ?",
+      "subtitle": "Seules les catégories choisies sont analysées : le reste ne consomme ni IA ni recherches.",
+      "activeCount": "{count, plural, one{# active} other{# actives}}",
+      "intensity": {
+        "fast": {
+          "label": "Rapide",
+          "hint": "Moins de passes · idéal pour tester"
+        },
+        "standard": {
+          "label": "Standard",
+          "hint": "Équilibre précision / coût"
+        },
+        "exhaustive": {
+          "label": "Exhaustive",
+          "hint": "Précision maximale · vidéos courtes"
+        }
+      },
+      "intensityLabel": "Intensité de l'analyse",
+      "personCentricNote": "Mode centré sur la personne : les vêtements et accessoires portés ou tenus par les personnes sont analysés, et l'arrière-plan de la scène est ignoré."
+    },
+    "loadingAnalysis": {
+      "ariaLabel": "Analyse de la frame",
+      "heading": "Analyse de la frame en cours…",
+      "stages": {
+        "capture": "Capture de la frame",
+        "detect": "Détection des objets",
+        "crop": "Recadrage et déduplication",
+        "search": "Recherche de correspondances"
+      }
+    },
+    "productCard": {
+      "detectionTooltip": "Confiance que l'objet et ses attributs ont été correctement identifiés dans la vidéo.",
+      "detectionPct": "{pct}% détection",
+      "matchTooltip": "Confiance que le résultat web correspond au même produit.",
+      "matchPct": "{pct}% correspondance",
+      "matchLabel": {
+        "exact": "Produit exact",
+        "nearExact": "Presque exact",
+        "similar": "Similaire"
+      },
+      "evidenceTitle": "Correspond sur",
+      "sourcesTitle": "Sources de recherche",
+      "internalScore": "Score interne : {score} pts · moteur : {source}",
+      "debugTitle": "Debug du matching",
+      "debugReverseSearch": "Recherche d'image inversée : oui (recadrage envoyé, recherche visuelle pure en premier)",
+      "debugProvider": "Fournisseur : {provider}",
+      "debugFallback": "Fallback utilisé : {value}",
+      "debugCacheHit": "Cache hit : {value}",
+      "debugLatency": "Latence : {ms} ms",
+      "debugDetail": "Détail : {detail}",
+      "debugDataForSeoNote": "DataForSEO : enrichissement prix/boutiques uniquement (pas d'identité)",
+      "yes": "oui",
+      "no": "non",
+      "sourceLabel": {
+        "searchapiGoogleLens": "Google Lens",
+        "serpapiGoogleLens": "Google Lens (fallback)",
+        "serpapiGoogleShopping": "Google Shopping",
+        "dataforseoGoogleShopping": "Google Shopping (DataForSEO)"
+      },
+      "candidateCount": "{count, plural, one{# candidat} other{# candidats}}",
+      "confirmedBySources": "✓ Confirmé par {count} sources",
+      "waitingBetterFrame": "En attente d'un meilleur cadrage…",
+      "searchingByImage": "Recherche par image (Google Lens)…",
+      "statusMessage": {
+        "noMatch": "Aucune correspondance exacte — les produits visuellement les plus proches sont affichés ci-dessous.",
+        "budgetExhausted": "Pas de recherche externe (limite de consommation atteinte).",
+        "providerError": "Recherche visuelle indisponible pour le moment."
+      },
+      "evidenceVisibleText": "texte visible : « {text} »",
+      "evidenceLogoDesc": "logo : {description}",
+      "evidenceLogoVisible": "logo reconnaissable sur le produit",
+      "brandEvidenceTitle": "Marque affirmée par preuve — {evidence}",
+      "brandGuess": "≈ {brand} ?",
+      "logoVisibleBadge": "logo visible",
+      "visibleTextLabel": "Texte : « {text} »",
+      "logoDescLine": "Logo : {description}",
+      "similarLabel": {
+        "withMatch": "Également similaires :",
+        "withoutMatch": "Produits visuellement similaires :"
+      }
+    },
+    "resultsPanel": {
+      "title": "Résultats",
+      "subtitle": "Objets détectés et leurs correspondances",
+      "reanalyzeTooltip": "Réanalyse la dernière frame en ignorant le cache",
+      "reanalyzeAction": "Analyser à nouveau",
+      "scopeAriaLabel": "Portée des résultats",
+      "thisFrame": "Cette frame",
+      "wholeVideo": "Toute la vidéo",
+      "demoModeNotice": "Mode démo (pas de <code>OPENAI_API_KEY</code>) : affichage de données d'exemple réalistes.",
+      "savedInCatalog": "{count, plural, one{# élément enregistré dans le catalogue} other{# éléments enregistrés dans le catalogue}}",
+      "view": "Voir",
+      "localSaveNotice": "Sauvegarde locale de cette session active ; la synchronisation sera réessayée automatiquement.",
+      "sessionSummary": "{count, plural, one{# objet unique dans la vidéo, déjà dédupliqué entre les frames.} other{# objets uniques dans la vidéo, déjà dédupliqués entre les frames.}}",
+      "analyzeErrorTitle": "Analyse impossible",
+      "technicalDetails": "Détails techniques",
+      "detectingMore": "Détection d'autres objets dans cette scène…",
+      "styleDetectedLabel": "Style détecté :",
+      "noItemsTitle": "Aucun objet achetable clairement identifié",
+      "noItemsDescription": "Cette frame ne contient pas de produits suffisamment bien définis. Essayez une frame plus rapprochée ou mieux éclairée.",
+      "readyTitle": "Prêt à analyser",
+      "readyDescription": "Lancez la vidéo et mettez-la en pause au moment qui vous intéresse, ou chargez une image. L'analyse démarre dès qu'une frame est disponible.",
+      "privacyNote": "La capture n'est utilisée que pour détecter des objets achetables. Nous n'identifions pas les personnes et ne stockons pas d'images sur le serveur.",
+      "memoryFallbackNote": " (base de données indisponible — enregistré pour cette session, nouvelle tentative automatique)",
+      "localSessionNote": " (session locale)",
+      "memoryNote": " (en mémoire — configurez <code>DATABASE_URL</code> pour persister)",
+      "groups": {
+        "worn": "Ce qu'elle porte",
+        "heldOrUsed": "Ce qu'elle tient ou utilise",
+        "nearPerson": "Près de la personne",
+        "otherObjects": "Autres objets de la scène ({count})",
+        "lowPriority": "priorité basse"
+      }
+    }
+  },
+  "analysis": {
+    "processing": "Analyse du contenu en cours",
+    "queued": "En file d'attente",
+    "done": "Terminé",
+    "failed": "Échoué",
+    "noItemsDetected": "Aucun produit détecté"
+  },
+  "catalog": {
+    "products": "Produits",
+    "empty": "Aucun produit correspondant",
+    "status": {
+      "active": "Actif",
+      "inactive": "Inactif"
+    },
+    "filters": {
+      "searchPlaceholder": "Rechercher marque, groupe, région…",
+      "titleSearchPlaceholder": "Rechercher par titre, marque…",
+      "sourceAriaLabel": "Source",
+      "allSources": "Toutes les sources",
+      "originAriaLabel": "Origine",
+      "allOrigins": "Toute origine",
+      "statusAriaLabel": "Statut",
+      "allStatuses": "Actifs et inactifs",
+      "onlyActive": "Actifs uniquement",
+      "onlyInactive": "Inactifs uniquement"
+    },
+    "pagination": "{count} produits · page {page} sur {totalPages}",
+    "modeAriaLabel": "Mode d'exploration",
+    "modes": {
+      "browse": "Explorer",
+      "text": "Rechercher par texte",
+      "image": "Rechercher par image"
+    },
+    "viewAriaLabel": "Vue",
+    "view": {
+      "grid": "Grille",
+      "list": "Liste"
+    },
+    "actions": {
+      "refresh": "Actualiser",
+      "previousPage": "Précédent",
+      "nextPage": "Suivant"
+    },
+    "origin": {
+      "scraped": "Ingéré depuis la boutique",
+      "external": "Découvert en externe"
+    },
+    "textSearch": {
+      "placeholder": "robe rouge satinée, blazer en maille noir…"
+    },
+    "imageSearch": {
+      "urlPlaceholder": "https://…/image.jpg",
+      "searchByUrl": "Rechercher par URL",
+      "dropHint": "Glissez une image ou cliquez pour la choisir",
+      "dropSubHint": "Envoyée en base64 au endpoint de recherche visuelle du catalogue"
+    },
+    "originFilterNotice": "Le filtre d'origine s'applique à la page chargée : le service pagine avant de filtrer par origine.",
+    "errors": {
+      "loadFailed": "Impossible de charger le catalogue"
+    },
+    "grid": {
+      "emptyTitle": "Le catalogue est vide avec ces filtres",
+      "emptyDescription": "Lancez une synchronisation depuis Connecteurs ou exécutez le seed de fixtures (npm run catalog:seed à la racine) pour obtenir des données de démo."
+    },
+    "table": {
+      "product": "Produit",
+      "source": "Source",
+      "category": "Catégorie",
+      "price": "Prix",
+      "indexes": "Index",
+      "lastSeen": "Vu",
+      "status": "Statut",
+      "emptyTitle": "Aucun produit",
+      "emptyDescription": "Ajustez les filtres ou ingérez le catalogue depuis Connecteurs."
+    },
+    "badges": {
+      "inactive": "inactif",
+      "external": "externe",
+      "hasImageEmbeddingTooltip": "Avec embedding visuel"
+    },
+    "noCategory": "sans catégorie",
+    "card": {
+      "lastSeenPrefix": "vu"
+    },
+    "matches": {
+      "countLabel": "{count, plural, one{# correspondance} other{# correspondances}} triées par score",
+      "backToBrowse": "Retour à l'exploration",
+      "emptyTitle": "Aucune correspondance au-dessus du seuil",
+      "emptyDescription": "Le catalogue n'a rien de suffisamment proche. C'est le comportement attendu : nous préférons ne rien renvoyer plutôt que quelque chose de douteux.",
+      "viewListing": "Fiche"
+    },
+    "drawer": {
+      "fallbackTitle": "Produit",
+      "loading": "Chargement de la fiche…",
+      "hasImageEmbeddingBadge": "embedding visuel",
+      "hasPerceptualHashBadge": "hash perceptuel",
+      "normalizedDataTitle": "Données normalisées",
+      "price": "Prix",
+      "originalPrice": "Prix d'origine",
+      "availability": "Disponibilité",
+      "category": "Catégorie",
+      "subcategory": "Sous-catégorie",
+      "gender": "Genre",
+      "color": "Couleur",
+      "firstSeen": "Vu pour la première fois",
+      "lastSeen": "Vu pour la dernière fois",
+      "externalScore": "Score externe",
+      "perceptualHash": "Hash perceptuel",
+      "id": "ID",
+      "extractionTitle": "Comment cela a été extrait",
+      "primaryExtractor": "Extracteur principal",
+      "extractorsUsed": "Extracteurs appliqués",
+      "aiLabel": "IA",
+      "aiUsedAsFallback": "utilisée en fallback",
+      "aiNotNeeded": "non nécessaire",
+      "browserLabel": "Navigateur",
+      "browserUsedYes": "rendu avec Playwright",
+      "browserNotNeeded": "non nécessaire",
+      "confidence": "Confiance",
+      "extractedAt": "Extrait",
+      "evidenceField": "Champ",
+      "evidenceSource": "Origine",
+      "evidenceSnippet": "Preuve",
+      "viewInStore": "Voir en boutique",
+      "copyId": "Copier l'ID"
+    }
+  },
+  "jobs": {
+    "running": "En cours",
+    "queued": "En file d'attente",
+    "completed": "Terminé",
+    "failed": "Échoué",
+    "table": {
+      "job": "Job",
+      "type": "Type",
+      "status": "Statut",
+      "progress": "Progression",
+      "duration": "Durée",
+      "cost": "Coût",
+      "startedAt": "Démarré",
+      "actions": "Actions"
+    },
+    "filters": {
+      "statusAriaLabel": "Filtrer par statut",
+      "sourceAriaLabel": "Filtrer par source",
+      "all": "Tous",
+      "running": "En cours",
+      "completed": "Terminés",
+      "failed": "En échec",
+      "allSources": "Toutes les sources"
+    },
+    "actions": {
+      "refresh": "Actualiser"
+    },
+    "callout": "Les jobs persistent leur checkpoint à chaque avancée : un job annulé ou en échec reprend avec <ink>Réessayer</ink> sans redécouvrir le catalogue.",
+    "empty": {
+      "errorTitle": "Impossible de charger les jobs",
+      "noneTitle": "Aucun job avec ces filtres",
+      "noneDescription": "Lancez une synchronisation depuis Connecteurs ou changez le filtre de statut."
+    },
+    "drawer": {
+      "breakdown": "Détail",
+      "discovered": "Découverts",
+      "fetched": "Téléchargés",
+      "new": "Nouveaux",
+      "updated": "Mis à jour",
+      "duplicates": "Doublons",
+      "ignored": "Ignorés",
+      "errors": "Erreurs",
+      "withoutAi": "Sans IA",
+      "withAi": "Avec IA",
+      "withBrowser": "Avec navigateur",
+      "retries": "Nouvelles tentatives",
+      "aiCostLine": "coût IA estimé : {cost} · {tokens} tokens",
+      "aiRatioSuffix": "{pct}% des fiches avec IA",
+      "checkpoint": "checkpoint : reprendrait à l'index {index}",
+      "checkpointUrlsSuffix": "sur {total} URLs",
+      "checkpointStageSuffix": "étape {stage}",
+      "errorsTitle": "Erreurs ({count})",
+      "noErrors": "Aucune erreur enregistrée.",
+      "activityTitle": "Activité du job"
+    }
+  },
+  "connectors": {
+    "kpi": {
+      "registered": "Sources enregistrées",
+      "registeredHint": "toutes les boutiques du registre",
+      "syncable": "Synchronisables maintenant",
+      "syncableHint": "avec implémentation et identifiants",
+      "verifiedLive": "Vérifiées en direct",
+      "verifiedLiveHint": "avec des produits réels déjà au catalogue",
+      "requireAgreement": "Nécessitent un accord",
+      "requireAgreementHint": "partenaire ou réseau d'affiliation"
+    },
+    "filters": {
+      "searchPlaceholder": "Rechercher marque, groupe, région…",
+      "segmentLabel": "Segment de boutique",
+      "allSegments": "Tous les segments",
+      "filterAriaLabel": "Filtrer les connecteurs",
+      "group": {
+        "all": "Toutes",
+        "syncable": "Synchronisables",
+        "partner": "Nécessitent un accord",
+        "paused": "En pause",
+        "problem": "Avec problème"
+      }
+    },
+    "table": {
+      "source": "Source",
+      "realStatus": "Statut réel",
+      "health": "Santé",
+      "discovery": "Découverte",
+      "compliance": "Conformité",
+      "products": "Produits",
+      "extraction": "Extraction",
+      "lastSync": "Dernière synchro",
+      "actions": "Actions"
+    },
+    "actionLabels": {
+      "test": "tester le connecteur",
+      "resume": "reprendre",
+      "pause": "mettre en pause",
+      "checkHealth": "vérifier l'état"
+    },
+    "actions": {
+      "healthLiveTitle": "Vérifie en direct l'état des sources synchronisables (requêtes réelles)",
+      "healthLiveActive": "Health live actif",
+      "healthLiveCheck": "Vérifier le health live",
+      "refresh": "Actualiser",
+      "syncFullTitle": "Lance une synchronisation complète (limitée à 25 fiches)",
+      "syncShort": "Synchro",
+      "testTitle": "Teste le pipeline avec une fiche réelle",
+      "resumeTitle": "Reprendre",
+      "pauseTitle": "Mettre en pause"
+    },
+    "badges": {
+      "paused": "En pause"
+    },
+    "callout": {
+      "title": "Comment lire ce tableau",
+      "body": "<muted>Statut réel</muted> est l'étiquette honnête : elle n'indique <em>vérifié</em> que si cette source a des produits réels dans le catalogue extraits par le pipeline — l'existence du code ne suffit pas. <muted>Santé</muted> indique ce que répond la boutique en ce moment, et <muted>extraction</muted> mesure quel pourcentage de fiches a été résolu sans IA (avec des données structurées ou le DOM) ; l'IA n'est qu'un dernier recours. La vérification en direct ne se fait pas automatiquement pour toutes les sources : ce serait discourtois envers les boutiques."
+    },
+    "empty": {
+      "noMatchTitle": "Aucune source ne correspond",
+      "noMatchDescription": "Essayez un autre terme ou retirez les filtres actifs.",
+      "clearFilters": "Effacer les filtres"
+    },
+    "errors": {
+      "loadFailed": "Impossible de charger le registre"
+    },
+    "extraction": {
+      "withoutAiPct": "{pct}% sans IA",
+      "withAiCost": "{count} avec IA · {cost}",
+      "noAiCalls": "0 appel IA"
+    },
+    "footer": {
+      "showingCount": "Affichage de {filtered} sur {total} sources enregistrées."
+    },
+    "syncMode": {
+      "full": "complète",
+      "incremental": "incrémentale"
+    },
+    "toast": {
+      "testSucceeded": "{label} : pipeline réussi",
+      "testSample": "Fiche d'exemple : {sampleTitle} ({duration})",
+      "testFailed": "{label} : échec à « {step} »",
+      "noDetail": "aucun détail",
+      "healthChecked": "{id} : {label}",
+      "syncQueued": "Synchronisation {mode} mise en file",
+      "syncQueuedDetail": "Job {jobId} · suivez la progression dans l'onglet Jobs"
+    },
+    "drawer": {
+      "checkStatusButton": "Vérifier l'état",
+      "testPipelineButton": "Tester le pipeline",
+      "syncIncrementalButton": "Synchro incrémentale",
+      "syncFullButton": "Synchro complète",
+      "loading": "Chargement du détail…",
+      "sourceStatusTitle": "Statut de la source",
+      "missingTitle": "Ce qu'il manque pour l'activer",
+      "missingEnvLabel": "Variables d'environnement manquantes",
+      "lastErrorTitle": "Dernière erreur enregistrée",
+      "extractionLabel": "Extraction mesurée",
+      "extractionEmpty": "Il n'y a encore aucun produit de cette source dans le catalogue : rien n'est mesuré. Lancez une synchronisation pour obtenir des données réelles.",
+      "productsWithMetadata": "Produits avec métadonnées",
+      "resolvedWithoutAi": "Résolus sans IA",
+      "resolvedWithAi": "Résolus avec IA",
+      "neededBrowser": "Ont nécessité un navigateur",
+      "avgConfidence": "Confiance moyenne",
+      "estimatedAiCost": "Coût IA (estimé)",
+      "primaryExtractor": "Extracteur principal",
+      "techSheetLabel": "Fiche technique",
+      "implementation": "Implémentation",
+      "robotsPolicy": "Politique robots.txt",
+      "robotsAlwaysRespected": "toujours respectée",
+      "crawlDelay": "crawl-delay déclaré : {seconds} s",
+      "declaredSelectors": "Sélecteurs déclarés",
+      "none": "aucun",
+      "urlPattern": "Modèle d'URL de fiche",
+      "accessMethod": "Voie d'accès",
+      "verification": "Vérification",
+      "syncModes": "Modes de synchro",
+      "segments": "Segments",
+      "categories": "Catégories",
+      "markets": "Marchés",
+      "productsInCatalog": "Produits au catalogue",
+      "healthCheckedAt": "Health vérifié",
+      "store": "Boutique",
+      "program": "Programme",
+      "sitemapsLabel": "Sitemaps déclarés",
+      "sitemapsHint": "Si aucun ne répond, le connecteur recherche les sitemaps déclarés dans le robots.txt de la boutique.",
+      "recentJobsLabel": "Jobs récents de cette source",
+      "noJobs": "Cette source n'a encore exécuté aucun job.",
+      "logsLabel": "Logs de la source",
+      "noLogs": "Aucun événement enregistré pour cette source dans le buffer actuel."
+    }
+  },
+  "settings": {
+    "title": "Réglages",
+    "keys": "Clés",
+    "storage": "Stockage",
+    "embeddings": "Embeddings",
+    "matching": "Correspondance",
+    "compliance": "Conformité",
+    "refresh": "Actualiser",
+    "empty": {
+      "errorTitle": "Impossible de charger la configuration"
+    },
+    "banner": {
+      "body": "Ces valeurs sont lues depuis l'environnement du service de catalogue et affichées en lecture seule : la configuration se change dans son <code>.env</code> et s'applique au redémarrage. Cela garde les changements traçables et évite que les répliques divergent."
+    },
+    "sections": {
+      "keys": {
+        "title": "Clés d'API",
+        "description": "La clé du service ne quitte jamais le serveur : l'admin lui parle via le proxy de l'app.",
+        "authBadgeOn": "Auth active",
+        "authBadgeOff": "Auth désactivée",
+        "configured": "configurée · {count} caractères",
+        "notConfigured": "non configurée",
+        "portLabel": "Port du service",
+        "authWarning": "Sans <code>CATALOG_SERVICE_API_KEY</code> le service accepte n'importe quelle requête. Acceptable en local ; jamais dans un environnement accessible depuis l'extérieur."
+      },
+      "storage": {
+        "description": "Backend choisi automatiquement selon la présence d'une connection string valide.",
+        "configured": "configurée",
+        "missing": "absente ou non postgres://",
+        "dataDirLabel": "Répertoire de données",
+        "imagesDirLabel": "Répertoire d'images",
+        "fileWarning": "Mode fichier : le catalogue persiste en JSON et la recherche vectorielle se fait en mémoire. Configurez une connection string <code>postgres://</code> (endpoint <code>-pooler</code> de Neon) et exécutez les migrations pour activer pgvector."
+      },
+      "embeddings": {
+        "reindex": "Réindexer",
+        "description": "Changer de fournisseur change la dimension : il faut réindexer, sinon les anciens vecteurs ne sont plus comparables.",
+        "imageProviderLabel": "Fournisseur d'image",
+        "imageModelLabel": "Modèle d'image",
+        "textProviderLabel": "Fournisseur de texte",
+        "activeNowLabel": "Actif maintenant",
+        "hashWarning": "Fournisseur <code>hash</code> : vecteurs déterministes à 64 dimensions pour la démo et les tests. Il ne fait pas de similarité visuelle réelle — installez le fournisseur local avec <code>npm run embeddings:install</code> dans catalog-scraper et définissez <code>CATALOG_IMAGE_EMBEDDING_PROVIDER=local</code>.",
+        "reindexSuccessTitle": "Réindexation mise en file",
+        "reindexSuccessBody": "Job {jobId}",
+        "reindexErrorTitle": "Impossible de lancer la réindexation"
+      },
+      "matching": {
+        "title": "Seuils de matching et de déduplication",
+        "description": "Rien n'est publié en dessous du score minimum : nous préférons ne renvoyer aucun résultat plutôt qu'un résultat douteux.",
+        "minImageScoreLabel": "Score minimum d'image",
+        "perceptualHashLabel": "Distance max. de hash perceptuel",
+        "dedupThresholdLabel": "Seuil de déduplication par embedding",
+        "jobsWorkersLabel": "Workers de jobs"
+      },
+      "compliance": {
+        "title": "Limites d'ingestion et conformité",
+        "description": "Les valeurs par défaut sont délibérément conservatrices : mieux vaut prendre plus de temps que de déranger une boutique.",
+        "robotsBadge": "robots.txt respecté",
+        "rateLimitLabel": "Intervalle minimum par domaine",
+        "concurrencyLabel": "Concurrence globale",
+        "timeoutLabel": "Timeout par requête",
+        "retriesLabel": "Nouvelles tentatives",
+        "circuitBreakerLabel": "Seuil du circuit breaker",
+        "circuitBreakerSuffix": "échecs consécutifs",
+        "userAgentLabel": "User-Agent",
+        "policyTitle": "Politique appliquée",
+        "policyBody": "{policy}. De plus : <code>Crawl-delay</code> respecté quand la boutique le déclare, User-Agent identifiable avec contact, et circuit breaker qui cesse d'insister en cas de blocages soutenus. Les sources nécessitant un accord partenaire ou d'affiliation ne sont pas ingérées avant de l'avoir obtenu."
+      },
+      "observability": {
+        "title": "Observabilité et cache",
+        "logsLabel": "Logs",
+        "logsValue": "Buffer circulaire en mémoire (750 événements) + JSON structuré vers stdout",
+        "healthCacheLabel": "Cache de santé des connecteurs",
+        "healthCacheValue": "10 minutes par source ; la vérification en direct est manuelle",
+        "metricsLabel": "Métriques",
+        "metricsValue": "Compteurs en mémoire exposés sur <code>/stats</code> et <code>/overview</code>",
+        "footnote": "Tout l'état observable appartient au processus : redémarrer le service réinitialise les compteurs et le buffer de logs. Pour un historique réel, récupérez le stdout et utilisez le backend Postgres."
+      }
+    }
+  },
+  "overview": {
+    "title": "Résumé",
+    "recentActivity": "Activité récente",
+    "sectionLabel": {
+      "status": "État général"
+    },
+    "status": {
+      "updated": "mis à jour {time}",
+      "loading": "chargement…"
+    },
+    "errorState": {
+      "title": "Impossible d'atteindre le service de catalogue",
+      "description": "{message}. Le moteur de catalogue s'exécute intégré à cette même app : vérifiez que <code>DATABASE_URL</code> pointe vers une instance Postgres valide et que les migrations ont été appliquées (<code>npm run db:migrate</code>)."
+    },
+    "kpi": {
+      "products": "Produits",
+      "productsHint": "{active} actifs · {withImages} avec image",
+      "connectors": "Connecteurs",
+      "connectorsHint": "{syncable} synchronisables · {paused} en pause",
+      "throughput": "Débit",
+      "throughputValue": "{perMinute}/min",
+      "throughputHint": "{products} nouveaux produits en {minutes} min",
+      "errorRate": "Taux d'erreur",
+      "errorRateHint": "requêtes échouées sur tentatives, dans les jobs récents"
+    },
+    "degraded": {
+      "title": "Persistance en mode dégradé",
+      "body": "Le service utilise le store en fichier car il n'y a pas de <code>DATABASE_URL</code> Postgres valide. Tout fonctionne, mais sans pgvector la recherche vectorielle se fait en mémoire et ne monte pas en charge."
+    },
+    "embeddings": {
+      "title": "Embeddings",
+      "indexedOf": "{indexed} sur {total} produits indexés",
+      "dimensions": "{count} dimensions",
+      "coverageLabel": "Couverture des embeddings",
+      "hashNote": "Fournisseur <code>hash</code> : vecteurs déterministes à 64 dimensions, valables pour la démo et les tests mais pas pour une similarité visuelle réelle. Installez le fournisseur local (CLIP) et réindexez pour la production."
+    },
+    "queue": {
+      "title": "File d'ingestion",
+      "viewAll": "Voir tout",
+      "noJobsYet": "Aucun job n'a encore été exécuté.",
+      "progressLine": "{new} nouveaux · {updated} maj · {duplicates} doublons · {errors} err",
+      "emptyTitle": "Aucun job pour l'instant",
+      "emptyDescription": "Lancez une synchronisation depuis Connecteurs pour remplir le catalogue.",
+      "goToConnectors": "Aller aux connecteurs →"
+    },
+    "registry": {
+      "title": "Maturité du registre de sources",
+      "lastSync": "Dernière synchro"
+    },
+    "logs": {
+      "viewAll": "Voir les logs",
+      "emptyTitle": "Aucune activité enregistrée",
+      "emptyDescription": "Le buffer de logs se remplit quand le service commence à travailler."
+    },
+    "misc": {
+      "duplicatesDetected": "Doublons détectés",
+      "externalOrigin": "Origine externe",
+      "serviceUptime": "Uptime du service"
+    }
+  },
+  "logs": {
+    "title": "Registre d'événements",
+    "level": {
+      "error": "Erreur",
+      "warn": "Avertissement",
+      "info": "Info",
+      "debug": "Debug"
+    },
+    "ariaLabels": {
+      "logType": "Type de log",
+      "minLevel": "Niveau minimum",
+      "source": "Source",
+      "refresh": "Actualiser"
+    },
+    "views": {
+      "ingest": "Ingestion",
+      "process": "Processus"
+    },
+    "status": {
+      "aiExtractor": "Extracteur IA",
+      "disabled": "désactivé",
+      "aiDetailFallback": "uniquement en fallback · cache {cache}",
+      "cachePersistent": "persistant",
+      "cacheInMemory": "en mémoire",
+      "browser": "Navigateur",
+      "connected": "connecté",
+      "available": "disponible",
+      "browserDetail": "{contexts} contextes · {pages} pages ouvertes",
+      "catalog": "Catalogue",
+      "productionPersistence": "persistance de production",
+      "fileStoreWarning": "store en fichier : n'est PAS une persistance de production",
+      "respected": "respecté",
+      "rateLimitDetail": "{delay} ms entre les requêtes · {concurrency} en parallèle",
+      "circuitBreakersOpen": "Circuit breakers ouverts",
+      "subsystemWarnings": "Avertissements du sous-système"
+    },
+    "about": {
+      "title": "À propos de ces logs",
+      "defaultRetention": "Buffer circulaire en mémoire du service.",
+      "minLevelLabel": "Niveau minimum émis :",
+      "configuredVia": "(configuré avec",
+      "stdoutNote": "). Pour une rétention réelle, récupérez le stdout du service avec votre plateforme de logs."
+    },
+    "filters": {
+      "all": "Tout",
+      "infoPlus": "Info+",
+      "warnPlus": "Avertissements+",
+      "errors": "Erreurs",
+      "searchPlaceholder": "Filtrer par message ou contexte…",
+      "sourceLabel": "Source",
+      "allSources": "Toutes les sources"
+    },
+    "actions": {
+      "pauseStream": "Mettre le flux en pause"
+    },
+    "table": {
+      "eventsCount": "{count} événements · les plus récents en premier",
+      "live": "en direct"
+    },
+    "empty": {
+      "errorTitle": "Impossible de lire les logs",
+      "noEventsTitle": "Aucun événement avec ces filtres",
+      "noEventsDescription": "Le buffer ne contient que ce qui s'est produit depuis le dernier démarrage du service. Lancez une synchronisation pour générer de l'activité."
+    },
+    "console": {
+      "filterPlaceholder": "Filtrer par message ou URL…",
+      "levelAriaLabel": "Niveau minimum",
+      "levels": {
+        "all": "Tout",
+        "debug": "Debug+",
+        "info": "Info+",
+        "success": "OK+",
+        "warn": "Avertissements+",
+        "error": "Erreurs"
+      },
+      "stageAriaLabel": "Étape",
+      "allStages": "Toutes les étapes",
+      "sourceAriaLabel": "Source",
+      "allSources": "Toutes les sources",
+      "copyAriaLabel": "Copier les logs",
+      "downloadAriaLabel": "Télécharger les logs",
+      "reloadAriaLabel": "Recharger",
+      "copyError": "le navigateur n'a pas autorisé la copie dans le presse-papiers",
+      "lineCount": "{count, plural, one{# ligne} other{# lignes}}",
+      "errorCount": "{count, plural, one{# erreur} other{# erreurs}}",
+      "warnCount": "{count, plural, one{# avertissement} other{# avertissements}}",
+      "aiCost": "IA ≈ {cost}",
+      "autoScroll": "défilement auto",
+      "status": {
+        "streaming": "streaming",
+        "polling": "polling {seconds}s",
+        "connecting": "connexion…",
+        "paused": "en pause",
+        "memoryAndDb": "mémoire + BD",
+        "memoryOnly": "mémoire uniquement"
+      },
+      "readErrorTitle": "Impossible de lire les logs",
+      "emptyTitle": "Aucune activité avec ces filtres",
+      "emptyDescription": "Lancez une synchronisation depuis Connecteurs pour voir le pipeline étape par étape.",
+      "detail": {
+        "closeAriaLabel": "Fermer le détail",
+        "moment": "Moment",
+        "duration": "Durée",
+        "job": "Job",
+        "product": "Produit",
+        "retry": "Nouvelle tentative",
+        "url": "URL",
+        "metadata": "Métadonnées"
+      },
+      "transportNote": {
+        "title": "Portée de ces logs",
+        "persistentBody": "Les événements sont persistés dans la base de données : la console affiche aussi l'historique des jobs précédents. Le streaming SSE ne livre que les événements de <strong>cette invocation</strong> ; le reste arrive par polling.",
+        "ephemeralBody": "Aucune base de données n'est configurée, donc les logs vivent <strong>uniquement en mémoire</strong> et sont perdus au redémarrage du processus. Configurez <code>DATABASE_URL</code> (chaîne <code>postgres://</code>) et exécutez <code>npm run db:migrate</code> pour avoir un historique."
+      }
+    }
+  },
+  "admin": {
+    "shell": {
+      "operationsLabel": "Opérations",
+      "sectionsNav": "Sections de l'admin",
+      "closeNav": "Fermer la navigation",
+      "openNav": "Ouvrir la navigation",
+      "backToProduct": "Retour au produit",
+      "nav": {
+        "overview": "Résumé",
+        "connectors": "Connecteurs",
+        "jobs": "Jobs",
+        "catalog": "Catalogue",
+        "logs": "Monitoring",
+        "settings": "Réglages"
+      },
+      "servicePill": {
+        "unavailable": "Service indisponible",
+        "checking": "vérification…",
+        "postgres": "Postgres + pgvector",
+        "fileStore": "Store en fichier",
+        "productsSummary": "{count} produits · {provider} {dimension}d"
+      }
+    },
+    "overview": {
+      "title": "Résumé des opérations",
+      "description": "État du catalogue, connecteurs, file d'ingestion et activité récente"
+    },
+    "connectors": {
+      "title": "Connecteurs de catalogue",
+      "description": "Registre des sources de mode avec leur maturité d'implémentation et leur statut opérationnel réel"
+    },
+    "settings": {
+      "title": "Réglages du service",
+      "description": "Configuration effective des clés, du stockage, des embeddings, du matching et de la conformité"
+    },
+    "catalog": {
+      "title": "Explorateur de catalogue",
+      "description": "Produits normalisés, état des index et recherche par texte ou par image"
+    },
+    "logs": {
+      "title": "Monitoring",
+      "description": "Événements du service de catalogue avec filtres par niveau, source et texte"
+    },
+    "jobs": {
+      "title": "Jobs d'ingestion",
+      "description": "Progression, erreurs et nouvelle tentative depuis le checkpoint pour chaque job du service"
+    }
+  },
+  "publicCatalog": {
+    "meta": {
+      "title": "Catalogue",
+      "description": "Catalogue interne des éléments détectés lors de l'analyse des vidéos : vêtements, accessoires et objets achetables, avec leurs correspondances de produit."
+    },
+    "page": {
+      "heading": "Catalogue des éléments détectés",
+      "description": "Tout ce que l'analyse a détecté dans vos vidéos et images. Filtrez, examinez et recherchez des produits correspondants.",
+      "openScraper": "Ouvrir le scraper",
+      "ingestedCatalog": "Catalogue ingéré"
+    },
+    "empty": {
+      "filtered": "Aucun élément ne correspond aux filtres. Essayez de les ajuster ou de les effacer.",
+      "noItems": "Votre catalogue est vide. Mettez une vidéo en pause dans {appName} pour commencer à détecter des éléments.",
+      "cta": "Aller analyser une vidéo"
+    },
+    "errors": {
+      "network": "Erreur réseau."
+    },
+    "filters": {
+      "searchPlaceholder": "Rechercher par nom, description, style…",
+      "typeAriaLabel": "Type",
+      "allTypes": "Tous les types",
+      "statusAriaLabel": "Statut",
+      "anyStatus": "Tout statut",
+      "originAriaLabel": "Origine",
+      "anyOrigin": "Toute origine",
+      "categoryPlaceholder": "Catégorie",
+      "colorPlaceholder": "Couleur",
+      "itemCount": "{count, plural, one{# élément} other{# éléments}}",
+      "localSaveTitle": "La base de données n'est pas disponible : les éléments et leurs images sont conservés pour cette session et seront synchronisés dès le retour de la connexion.",
+      "localSaveBadge": "Enregistré pour cette session · synchronisation en attente",
+      "videoBadge": "vidéo : {id}…",
+      "clearFilters": "Effacer les filtres"
+    },
+    "sourceTypes": {
+      "youtube": "YouTube",
+      "dailymotion": "Dailymotion",
+      "vimeo": "Vimeo",
+      "directMp4": "MP4 direct",
+      "hls": "HLS / Stream",
+      "uploaded": "Vidéo locale",
+      "imageUpload": "Image chargée",
+      "screenCapture": "Capture d'écran"
+    },
+    "itemTypes": {
+      "clothing": "Vêtements",
+      "footwear": "Chaussures",
+      "accessory": "Accessoire",
+      "electronics": "Électronique",
+      "home": "Maison",
+      "beauty": "Beauté",
+      "other": "Autre"
+    },
+    "itemStatus": {
+      "detected": "Détecté",
+      "reviewed": "Examiné",
+      "matched": "Avec produits",
+      "ignored": "Ignoré"
+    },
+    "matchType": {
+      "exact": "Correspondance exacte",
+      "nearExact": "Presque exacte",
+      "similar": "Similaire"
+    },
+    "card": {
+      "viewDetailTitle": "Voir le détail et les recommandations",
+      "detectedInVideo": "📸 Détecté dans la vidéo",
+      "foundProductTitle": "Produit trouvé : {title}",
+      "matchPct": "{pct}% de correspondance",
+      "matchScoreTooltip": "Confiance que le résultat web correspond au même produit.",
+      "searchingMatches": "Recherche de correspondances visuelles…",
+      "localOnlyNotice": "Disponible pour cette session · synchronisation en attente",
+      "brandPrefix": "marque : {brand}",
+      "viewDetail": "Voir le détail",
+      "viewProduct": "Voir le produit ↗",
+      "markReviewed": "Marquer comme examiné",
+      "ignore": "Ignorer",
+      "reactivate": "Réactiver",
+      "originImage": "🖼️ image chargée",
+      "originScreen": "🖥️ capture d'écran"
+    },
+    "drawer": {
+      "ariaLabel": "Détail de l'élément",
+      "title": "Détail de l'élément",
+      "loading": "Chargement…",
+      "selectItem": "Sélectionnez un élément.",
+      "sectionDetected": "📸 Détecté dans la vidéo",
+      "noCaptureYet": "Pas encore de capture de cet objet — elle est générée avec le matching visuel.",
+      "seenCount": "vu ×{count}",
+      "specs": {
+        "moment": "Moment de la vidéo",
+        "subcategory": "Sous-catégorie",
+        "color": "Couleur",
+        "otherColors": "Autres couleurs",
+        "style": "Style",
+        "pattern": "Motif",
+        "materialGuess": "Matière (estimée)",
+        "genderFit": "Coupe / genre",
+        "visibleBrand": "Marque visible"
+      },
+      "viewOriginalFrame": "Voir le frame original de la scène",
+      "originalFrameAlt": "Frame d'origine de {name}",
+      "sectionBestMatch": "🛒 Produit trouvé en ligne",
+      "searchingBestMatch": "Recherche de correspondances visuelles…",
+      "noReliableMatch": "Pas encore de correspondance fiable. Essayez « Rechercher des produits ».",
+      "searchProducts": "🔎 Rechercher des produits",
+      "searching": "Recherche…",
+      "markReviewed": "Marquer comme examiné",
+      "ignore": "Ignorer",
+      "reactivate": "Réactiver",
+      "alternativesTitle": "Alternatives ({count})",
+      "searchingProducts": "Recherche de produits…",
+      "noMoreResults": "Aucun résultat supplémentaire.",
+      "auditTitle": "🔍 Audit technique",
+      "audit": {
+        "detectedImage": "Image détectée",
+        "localCrop": "recadrage local (session) — stockage en attente",
+        "storedCrop": "recadrage en stockage",
+        "noCrop": "aucun recadrage",
+        "originFrame": "Frame d'origine",
+        "saved": "enregistré",
+        "notSaved": "non enregistré",
+        "matchProvider": "Fournisseur du match",
+        "matchScore": "Score du match",
+        "candidateCount": "Nombre de candidats",
+        "detectionCount": "Détections accumulées",
+        "createdAt": "Créé",
+        "updatedAt": "Mis à jour",
+        "searchQuery": "Requête de recherche",
+        "marketplaceKeywords": "Mots-clés de marketplace"
+      },
+      "bestMatch": {
+        "matchScoreTooltip": "Confiance que le résultat web correspond au même produit.",
+        "matchPct": "{pct}% de correspondance",
+        "viewProduct": "Voir le produit ↗"
+      },
+      "recommendation": {
+        "affinityPct": "{pct}% d'affinité"
+      }
+    }
+  },
+  "demo": {
+    "page": {
+      "title": "Démo vidéo complète",
+      "description": "Analyse asynchrone d'une vidéo chargée : job avec checkpoint, détection de scènes, tracking et déduplication globale des produits.",
+      "goToStudio": "Aller à l'atelier interactif →"
+    },
+    "upload": {
+      "title": "Chargez une vidéo (max. {seconds}s)",
+      "description": "Le navigateur extrait les frames ; le serveur maintient un job asynchrone avec checkpoint, scènes, tracking et déduplication globale. Les recherches coûteuses ne sont payées qu'une seule fois par produit unique.",
+      "notVideoError": "Le fichier doit être une vidéo (mp4, webm…).",
+      "durationError": "La vidéo dure {seconds}s ; le maximum de la démo est {maxSeconds}s."
+    },
+    "matchingMode": {
+      "title": "Mode de matching",
+      "catalogOnly": {
+        "label": "Catalogue uniquement",
+        "hint": "sans recherches externes"
+      },
+      "catalogFirst": {
+        "label": "Catalogue en premier",
+        "hint": "externe seulement si non résolu"
+      },
+      "externalOnly": {
+        "label": "Recherche externe uniquement",
+        "hint": "pipeline Lens classique"
+      },
+      "hybrid": {
+        "label": "Hybride",
+        "hint": "les deux, classement commun"
+      }
+    },
+    "actions": {
+      "analyze": "Analyser la vidéo",
+      "analyzing": "Analyse en cours…",
+      "cancel": "Annuler",
+      "boundingBoxes": "Boîtes englobantes"
+    },
+    "errors": {
+      "createJobFailed": "Impossible de créer le job.",
+      "frameBatchFailed": "Erreur lors du traitement du lot de frames.",
+      "finalizeFailed": "Erreur lors de la finalisation du job.",
+      "unknown": "Erreur inconnue."
+    },
+    "job": {
+      "title": "Job d'analyse",
+      "idLabel": "id : {jobId}",
+      "stats": {
+        "framesReceived": "Frames reçues",
+        "framesAnalyzed": "Frames analysées",
+        "scenes": "Scènes",
+        "tracks": "Tracks",
+        "uniqueProducts": "Produits uniques",
+        "externalSearches": "Recherches externes"
+      }
+    },
+    "savings": {
+      "title": "Appels coûteux évités",
+      "framesDedup": "Frames dédupliquées (hash)",
+      "tracksMerged": "Tracks fusionnés",
+      "cacheHits": "Cache hits",
+      "catalogHits": "Catalogue hits"
+    },
+    "timings": {
+      "title": "Temps par étape",
+      "hashScenes": "Hash/scènes",
+      "detection": "Détection",
+      "tracking": "Tracking",
+      "globalDedup": "Dédup globale",
+      "matching": "Matching",
+      "total": "Total"
+    },
+    "status": {
+      "notStarted": "non démarré",
+      "creatingJob": "création du job…",
+      "scanningFrames": "extraction des frames…",
+      "matchingProducts": "matching par produit…"
+    },
+    "products": {
+      "title": "Produits uniques ({count})",
+      "tracksMerged": "{count} tracks fusionnés",
+      "scoreLine": "score {score} · source {source} ({provider})",
+      "matchingSkipped": "matching ignoré : {reason}",
+      "noProductsDetected": "Aucun produit n'a été détecté dans les catégories sélectionnées.",
+      "segmentTooltip": "{start} – {end}"
+    },
+    "check": {
+      "title": "Préflight de la démo",
+      "description": "Vérifie les services externes, la base de données et les permissions du navigateur avant de commencer. N'affiche aucune clé.",
+      "back": "← Retour",
+      "runButton": "Exécuter la vérification complète",
+      "running": "Vérification en cours…",
+      "runError": "Impossible d'exécuter la vérification (timeout ou serveur indisponible).",
+      "overall": {
+        "ok": "Tout est prêt pour la démo.",
+        "warning": "La démo peut se dérouler, mais il y a des avertissements : examinez les actions recommandées.",
+        "error": "Il y a des erreurs qui affectent la démo : corrigez-les ou utilisez le plan B du runbook."
+      },
+      "emptyHint": "Cliquez sur le bouton pour lancer toutes les vérifications.",
+      "status": {
+        "ok": "OK",
+        "warning": "Avertissement",
+        "error": "Erreur"
+      },
+      "browserChecks": {
+        "displayMedia": {
+          "label": "Capture d'onglet (getDisplayMedia)",
+          "okDetail": "Le navigateur prend en charge la capture d'onglet pour YouTube.",
+          "errorDetail": "Ce navigateur ne prend pas en charge getDisplayMedia : le flux YouTube ne fonctionnera pas.",
+          "action": "Utilisez Chrome/Edge sur ordinateur."
+        },
+        "clipboard": {
+          "label": "Presse-papiers (coller une image)",
+          "okDetail": "Le collage avec Ctrl+V est disponible.",
+          "warningDetail": "API de presse-papiers limitée ; utilisez le glisser-déposer."
+        }
+      }
+    }
+  }
+}

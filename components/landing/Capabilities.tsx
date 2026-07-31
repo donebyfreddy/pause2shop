@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import type { ReactNode } from "react";
 import { motion } from "motion/react";
 import {
   ArrowUpRight,
@@ -12,6 +13,7 @@ import {
   ShieldCheck,
   Video,
 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { Badge, Reveal, RevealGroup, RevealItem } from "@/components/ui";
 
 /**
@@ -20,58 +22,52 @@ import { Badge, Reveal, RevealGroup, RevealItem } from "@/components/ui";
  * demo técnica, no un folleto.
  */
 
-const FEATURES = [
-  {
-    icon: Video,
-    title: "Analizar vídeo",
-    body: "Vídeo subido, YouTube o captura de pantalla, con análisis continuo y overlay de detecciones sobre el reproductor.",
-    href: "/studio",
-    cta: "Abrir estudio",
-    badge: null as null | { text: string; tone: "warning" | "muted" },
-  },
-  {
-    icon: ImageIcon,
-    title: "Analizar imagen",
-    body: "Sube una imagen y obtén los objetos detectados con sus recortes, listos para buscar.",
-    href: "/studio",
-    cta: "Abrir estudio",
-    badge: null,
-  },
-  {
-    icon: Plug,
-    title: "Conectores de catálogo",
-    body: "Registro modular de fuentes de moda con estado real: implementado, sin verificar, o pendiente de acuerdo comercial.",
-    href: "/admin/connectors",
-    cta: "Ver conectores",
-    badge: null,
-  },
-  {
-    icon: Binary,
-    title: "Embeddings visuales",
-    body: "CLIP local o proveedor hash determinista para demo. Reindexado completo desde el admin cuando cambia el modelo.",
-    href: "/admin/settings",
-    cta: "Ver ajustes",
-    badge: { text: "CLIP opcional", tone: "muted" as const },
-  },
-  {
-    icon: Database,
-    title: "Catálogo normalizado",
-    body: "Esquema único de producto con marca y categoría normalizadas, histórico de precios, dedup multinivel y trazabilidad de fuente.",
-    href: "/admin/catalog",
-    cta: "Explorar catálogo",
-    badge: null,
-  },
-  {
-    icon: Gauge,
-    title: "Coste y presupuesto",
-    body: "Contadores de llamadas por proveedor, tope de coste por vídeo y caché para no repetir búsquedas pagadas.",
-    href: "/studio",
-    cta: "Ver en el estudio",
-    badge: null,
-  },
-];
+const FEATURE_META = [
+  { key: "video", icon: Video, href: "/studio", titleKey: "actions.analyzeVideo" as const },
+  { key: "image", icon: ImageIcon, href: "/studio", titleKey: "actions.analyzeImage" as const },
+  { key: "connectors", icon: Plug, href: "/admin/connectors" },
+  { key: "embeddings", icon: Binary, href: "/admin/settings" },
+  { key: "catalog", icon: Database, href: "/admin/catalog" },
+  { key: "cost", icon: Gauge, href: "/studio" },
+] as const;
+
+function ComplianceCode({ children }: Readonly<{ children: ReactNode }>) {
+  return <code className="font-mono text-[11px]">{children}</code>;
+}
 
 export function Capabilities() {
+  const t = useTranslations("landing.capabilities");
+  const tRoot = useTranslations();
+
+  const ctaFor = (meta: (typeof FEATURE_META)[number]) => {
+    switch (meta.key) {
+      case "video":
+      case "image":
+        return t("ctaOpenStudio");
+      case "cost":
+        return t("ctaViewInStudio");
+      case "connectors":
+        return t("features.connectors.cta");
+      case "embeddings":
+        return t("features.embeddings.cta");
+      case "catalog":
+        return t("features.catalog.cta");
+    }
+  };
+
+  const features = FEATURE_META.map((meta) => ({
+    key: meta.key,
+    icon: meta.icon,
+    href: meta.href,
+    title: "titleKey" in meta ? tRoot(meta.titleKey) : t(`features.${meta.key}.title`),
+    body: t(`features.${meta.key}.body`),
+    cta: ctaFor(meta),
+    badge:
+      meta.key === "embeddings"
+        ? { text: t("features.embeddings.badge"), tone: "muted" as const }
+        : null,
+  }));
+
   return (
     <section className="relative py-24 sm:py-28">
       {/* separador luminoso */}
@@ -84,20 +80,18 @@ export function Capabilities() {
         <Reveal className="flex flex-wrap items-end justify-between gap-6">
           <div className="max-w-2xl">
             <p className="text-[10px] font-semibold tracking-[0.16em] text-accent uppercase">
-              Capacidades
+              {t("title")}
             </p>
-            <h2 className="display mt-3 text-3xl text-ink sm:text-4xl">
-              Todo lo que ya funciona, con enlace directo para comprobarlo
-            </h2>
+            <h2 className="display mt-3 text-3xl text-ink sm:text-4xl">{t("heading")}</h2>
           </div>
           <Badge tone="brand" size="md" dot>
-            Demo técnica verificable
+            {t("verifiableBadge")}
           </Badge>
         </Reveal>
 
         <RevealGroup className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {FEATURES.map((feature) => (
-            <RevealItem key={feature.title}>
+          {features.map((feature) => (
+            <RevealItem key={feature.key}>
               <motion.div
                 whileHover={{ y: -4 }}
                 transition={{ type: "spring", stiffness: 320, damping: 26 }}
@@ -136,10 +130,10 @@ export function Capabilities() {
           <div className="panel flex flex-wrap items-center gap-x-6 gap-y-3 px-5 py-4">
             <ShieldCheck className="size-4 shrink-0 text-success" aria-hidden />
             <p className="text-xs leading-relaxed text-ink-muted">
-              <span className="font-medium text-ink">Ingesta con reglas.</span> robots.txt
-              comprobado antes de cada petición, <code className="font-mono text-[11px]">Crawl-delay</code>{" "}
-              respetado, User-Agent identificable con contacto y cero evasión anti-bot. Las
-              fuentes que exigen acuerdo de partner o afiliación no se ingieren hasta tenerlo.
+              <span className="font-medium text-ink">{t("complianceNote.lead")}</span>{" "}
+              {t.rich("complianceNote.body", {
+                code: (chunks) => <ComplianceCode>{chunks}</ComplianceCode>,
+              })}
             </p>
           </div>
         </Reveal>

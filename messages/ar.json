@@ -1,0 +1,1467 @@
+{
+  "common": {
+    "loading": "جارٍ التحميل…",
+    "error": "خطأ",
+    "retry": "إعادة المحاولة",
+    "cancel": "إلغاء",
+    "save": "حفظ",
+    "close": "إغلاق",
+    "search": "بحث",
+    "noResults": "لا توجد نتائج",
+    "comingSoon": "قريبًا",
+    "seeMore": "عرض المزيد",
+    "seeLess": "عرض أقل",
+    "page": "صفحة {page} من {totalPages}"
+  },
+  "navigation": {
+    "studio": "الاستوديو",
+    "catalog": "الكتالوج",
+    "demoVideo": "فيديو تجريبي",
+    "admin": "الإدارة",
+    "openMenu": "فتح القائمة",
+    "closeMenu": "إغلاق القائمة",
+    "mainNav": "التنقل الرئيسي",
+    "mobileNav": "تنقل الجوال"
+  },
+  "actions": {
+    "tryNow": "جرّبه الآن",
+    "viewCatalogPanel": "لوحة تشغيل الكتالوج",
+    "analyzeVideo": "تحليل الفيديو",
+    "analyzeImage": "تحليل الصورة",
+    "upload": "رفع",
+    "export": "تصدير",
+    "sync": "مزامنة",
+    "pause": "إيقاف مؤقت",
+    "resume": "استئناف",
+    "viewDetails": "عرض التفاصيل",
+    "viewCatalog": "عرض الكتالوج",
+    "viewDemo": "عرض العرض التجريبي",
+    "activate": "تفعيل",
+    "deactivate": "تعطيل",
+    "cancelJob": "إلغاء",
+    "retryJob": "إعادة المحاولة",
+    "reindex": "إعادة فهرسة embeddings"
+  },
+  "languageSelector": {
+    "trigger": "اللغة: {language}",
+    "searchPlaceholder": "البحث عن لغة…",
+    "noMatches": "لا توجد تطابقات",
+    "currentLanguage": "اللغة الحالية: {language}",
+    "listLabel": "منتقي اللغة"
+  },
+  "toast": {
+    "dismiss": "إغلاق الإشعار",
+    "catalog": {
+      "searchFailed": "فشل البحث",
+      "noResultsAboveThreshold": "لا توجد نتائج تتجاوز الحد الأدنى",
+      "imageSearchFailed": "فشل البحث بالصورة",
+      "notAnImage": "هذا الملف ليس صورة",
+      "productDeactivated": "تم تعطيل المنتج",
+      "productActivated": "تم تفعيل المنتج",
+      "statusChangeFailed": "تعذّر تغيير الحالة",
+      "matchesFound": "{count, plural, one{تطابق واحد} other{# تطابقات}}",
+      "matchCascadeDescription": "تتالٍ: hash دقيق ← hash إدراكي ← تمثيل مرئي (embedding)"
+    },
+    "jobs": {
+      "cancelFailed": "تعذّر الإلغاء",
+      "retryFailed": "تعذّرت إعادة المحاولة",
+      "actionSucceeded": "تم {action} بنجاح",
+      "cancelRequested": "تم طلب الإلغاء",
+      "retryQueued": "تمت جدولة إعادة المحاولة",
+      "retryQueuedDetail": "مهمة جديدة {jobId} — تستأنف من نقطة التحقق",
+      "reindexFailed": "تعذّر بدء إعادة الفهرسة",
+      "reindexQueued": "تمت جدولة إعادة فهرسة embeddings",
+      "reindexQueuedDetail": "المهمة {jobId}"
+    },
+    "connectors": {
+      "actionFailed": "تعذّر {action}",
+      "paused": "تم إيقاف {id} مؤقتًا",
+      "resumed": "تم استئناف {id}",
+      "syncFailed": "تعذّر بدء المزامنة"
+    }
+  },
+  "errors": {
+    "generic": "حدث خطأ",
+    "network": "خطأ في الشبكة. تحقق من اتصالك.",
+    "unauthorized": "غير مصرَّح",
+    "notFound": "غير موجود",
+    "validation": {
+      "required": "هذا الحقل مطلوب"
+    },
+    "upload": {
+      "tooLarge": "الملف أكبر من الحجم المسموح",
+      "unsupportedFormat": "الصيغة غير مدعومة"
+    }
+  },
+  "landing": {
+    "hero": {
+      "badge": "كشف بصري للمنتجات في الفيديو، في الوقت الفعلي",
+      "title": "أوقف الفيديو.",
+      "subtitle": "اعثر على المنتج.",
+      "description": "يحلّل Pause2Shop الفيديو والصور، ويكشف كل قطعة ملابس أو حذاء أو إكسسوار، ويطابقه مع كتالوج أزياء خاص وبحث بصري عكسي. مع مصدر ودرجة ثقة لكل نتيجة.",
+      "ctaPrimary": "جرّبه الآن",
+      "ctaSecondary": "عرض الكتالوج",
+      "ctaTertiary": "عرض العرض التجريبي"
+    },
+    "howItWorks": {
+      "title": "كيف يعمل",
+      "step1": {
+        "title": "أوقف",
+        "description": "أوقف الفيديو في اللحظة المطلوبة بالضبط."
+      },
+      "step2": {
+        "title": "اكشف",
+        "description": "يحدد الذكاء الاصطناعي المنتجات الظاهرة في الإطار."
+      },
+      "step3": {
+        "title": "اعثر",
+        "description": "مطابقة مع الكتالوج وبحث بصري عكسي."
+      },
+      "heading": "خمس خطوات بين إطار فيديو ومنتج قابل للشراء",
+      "description": "يعمل خط المعالجة الكامل لكل عنصر مكتشف، بحدّ لعدد الطلبات وذاكرة تخزين مؤقت في كل مرحلة.",
+      "steps": {
+        "capture": {
+          "title": "التقاط الإطارات",
+          "body": "تُستخرج إطارات مرشحة من الفيديو (مرفوع، من يوتيوب، أو مشاركة شاشة) حسب معدل الإطارات وكشف تغيّر المشهد. تُستبعد الإطارات المتشابهة جدًا عبر hash إدراكي: فلا تُكلّف عملية الكشف.",
+          "meta": "rVFC · فرق المشهد · hash إدراكي"
+        },
+        "detect": {
+          "title": "كشف متعدد الوسائط",
+          "body": "يحدد نموذج رؤية كل منتج بمربع تحديد وفئة وألوان وعلاقة بالشخص (يرتديه، يحمله، في الخلفية). تُحلَّل فقط الفئات التي اخترتها.",
+          "meta": "مربعات تحديد · العلاقة · درجة الثقة"
+        },
+        "dedupe": {
+          "title": "التتبع وإزالة التكرار",
+          "body": "تحتفظ المنتجات بهويتها بين الإطارات وتُدمج على مستوى عام: السترة نفسها التي تظهر عشر مرات هي منتج واحد، تُختار له أفضل صورة مقصوصة.",
+          "meta": "معرّفات التتبع · NMS · أفضل قصّة"
+        },
+        "match": {
+          "title": "المطابقة مع الكتالوج",
+          "body": "تُبحث كل صورة مقصوصة أولًا في الكتالوج الخاص بترتيب تصاعدي: hash دقيق ← hash إدراكي ← تمثيل مرئي (embedding). وإن لم توجد مطابقة كافية، يُستخدم البحث البصري العكسي.",
+          "meta": "الكتالوج أولًا · pgvector · CLIP"
+        },
+        "result": {
+          "title": "نتيجة موثّقة المصدر",
+          "body": "تصل كل نتيجة بدرجة ثقة، والمرحلة التي حلّتها، ومصدرها (كتالوج أو مزوّد خارجي). لا يُنشر أي شيء دون الحد الأدنى المُعدّ لدرجة الثقة.",
+          "meta": "الدرجة · مرحلة المطابقة · المصدر"
+        }
+      }
+    },
+    "useCases": {
+      "title": "حالات الاستخدام",
+      "heading": "مصمَّم لكتالوجات الفيديو، لا لصورة واحدة معزولة",
+      "primary": {
+        "title": "الفيديو عند الطلب (VOD)",
+        "body": "حوّل كتالوج فيديو إلى كتالوج منتجات. يُحلَّل الفيديو كاملًا، ويُزال تكرار ما يظهر مجددًا، وتُسلَّم قائمة المنتجات مع الطابع الزمني لظهور كل منها.",
+        "point1": "فيديوهات تصل إلى دقيقتين لكل مهمة (قابل للتهيئة)",
+        "point2": "طابع زمني وإطار مصدر لكل منتج",
+        "point3": "حدّ للطلبات وتكلفة لكل فيديو"
+      },
+      "secondary": {
+        "discovery": {
+          "title": "اكتشاف المنتج",
+          "body": "يرى المستخدم شيئًا على الشاشة ويريد معرفة ما هو. تكفي صورة واحدة لبدء البحث."
+        },
+        "catalogMatch": {
+          "title": "مطابقة مع الكتالوج",
+          "body": "يطابق الاكتشافات مع كتالوجك الخاص قبل الخروج إلى الإنترنت: دقة أعلى وتكلفة أقل."
+        },
+        "visualShopping": {
+          "title": "تسوّق بصري",
+          "body": "نتائج قابلة للشراء مع السعر والتوفر ورابط مباشر لصفحة المتجر."
+        },
+        "clientDemos": {
+          "title": "عروض توضيحية للعملاء",
+          "body": "وضع عرض تقديمي، لوحة تكاليف، وبيانات نموذجية جاهزة للعرض دون الحاجة إلى بيانات اعتماد."
+        }
+      }
+    },
+    "capabilities": {
+      "title": "القدرات",
+      "heading": "كل ما يعمل بالفعل، مع رابط مباشر للتحقق منه",
+      "verifiableBadge": "عرض تقني قابل للتحقق",
+      "ctaOpenStudio": "فتح الاستوديو",
+      "ctaViewInStudio": "عرضه في الاستوديو",
+      "features": {
+        "video": {
+          "body": "فيديو مرفوع، من يوتيوب، أو التقاط شاشة، مع تحليل متواصل وطبقة عرض للاكتشافات فوق المشغّل."
+        },
+        "image": {
+          "body": "ارفع صورة واحصل على المنتجات المكتشفة مع صور مقصوصة جاهزة للبحث."
+        },
+        "connectors": {
+          "title": "موصِّلات الكتالوج",
+          "body": "سجل معياري لمصادر الأزياء بحالة حقيقية: مُنفَّذ، غير مُتحقَّق منه، أو معلَّق بانتظار اتفاق تجاري.",
+          "cta": "عرض الموصِّلات"
+        },
+        "embeddings": {
+          "title": "تمثيلات مرئية (embeddings)",
+          "body": "CLIP محلي أو مزوّد hash حتمي للعرض التوضيحي. إعادة فهرسة كاملة من لوحة الإدارة عند تغيير النموذج.",
+          "cta": "عرض الإعدادات",
+          "badge": "CLIP اختياري"
+        },
+        "catalog": {
+          "title": "كتالوج موحّد",
+          "body": "مخطط منتج واحد بعلامة تجارية وفئة موحّدتين، وسجل تاريخي للأسعار، وإزالة تكرار متعددة المستويات، وقابلية تتبع المصدر.",
+          "cta": "استكشاف الكتالوج"
+        },
+        "cost": {
+          "title": "التكلفة والحدّ الأقصى",
+          "body": "عدّادات طلبات لكل مزوّد، وسقف تكلفة لكل فيديو، وذاكرة تخزين مؤقت لعدم تكرار عمليات البحث المدفوعة."
+        }
+      },
+      "complianceNote": {
+        "lead": "استيراد بقواعد.",
+        "body": "يُفحص ملف robots.txt قبل كل طلب، ويُحترم <code>Crawl-delay</code>، ووكيل المستخدم (User-Agent) قابل للتعرّف مع بيانات اتصال، ودون أي محاولة للتحايل على أنظمة مكافحة الروبوتات. المصادر التي تتطلب اتفاق شراكة أو انتساب لا تُستورد قبل الحصول عليه."
+      }
+    },
+    "cta": {
+      "title": "ابدأ الآن",
+      "action": "جرّبه الآن",
+      "heading": "جرّبه مع فيديوك الخاص",
+      "description": "اختر الفئات التي تريد البحث عنها، واضبط شدة التحليل، وشاهد ظهور المطابقات إطارًا بإطار. دون تسجيل.",
+      "operationsPanel": "لوحة التشغيل"
+    },
+    "sourceMarquee": {
+      "label": "المصادر المتصلة",
+      "registryLabel": "سجل مصادر الأزياء",
+      "totalLabel": "مصادر",
+      "verifiedLabel": "متحقَّق منها بعيّنات اختبار",
+      "partnerLabel": "تتطلب اتفاقًا",
+      "footnote": "قائمة من سجل موصِّلات خدمة الكتالوج. ظهور مصدر هنا يعني أنه مسجَّل بحالته الحقيقية من التنفيذ والامتثال — <emphasis>ولا يعني وجود علاقة تجارية أو إذنًا ممنوحًا</emphasis>."
+    },
+    "stats": {
+      "productsIndexed": "{count, plural, one{منتج واحد مفهرَس} other{# منتجات مفهرَسة}}",
+      "catalogProducts": "منتجات في الكتالوج",
+      "visualEmbeddingCoverage": "بتمثيل مرئي",
+      "detectableCategories": "فئات قابلة للكشف"
+    },
+    "heroVisual": {
+      "windowStatus": "الاستوديو · تحليل متواصل · 00:42",
+      "liveBadge": "مباشر",
+      "boxes": {
+        "jacket": "سترة كتّان",
+        "bag": "حقيبة تسوّق",
+        "sneaker": "حذاء رياضي أبيض"
+      },
+      "detectionSummary": "3 منتجات · شخص واحد · إزالة التكرار نشِطة",
+      "matchesTitle": "المطابقات",
+      "matchesSource": "الكتالوج + Lens",
+      "match1": {
+        "title": "سترة كتّان بقصّة مريحة",
+        "store": "الكتالوج · Zara"
+      },
+      "match2": {
+        "title": "حقيبة تسوّق جلدية",
+        "store": "الكتالوج · Mango"
+      },
+      "match3": {
+        "title": "حذاء رياضي أبيض منخفض",
+        "store": "Google Lens"
+      },
+      "latencyLabel": "متوسط الاستجابة",
+      "latencyValue": "1.4 ثانية / إطار"
+    },
+    "studioSection": {
+      "label": "الاستوديو",
+      "heading": "حلّل فيديو أو صورة الآن",
+      "description": "اختر الفئات والشدة، وحمّل المحتوى، وشاهد الاكتشافات والمطابقات في الوقت الفعلي.",
+      "openFullscreen": "فتح بملء الشاشة",
+      "loading": "جارٍ تحميل استوديو التحليل…"
+    },
+    "footer": {
+      "tagline": "أوقف الفيديو، اعثر على المنتج.",
+      "description": "كشف بصري للمنتجات في الفيديو والصور، مع مطابقة بكتالوج خاص وبحث بصري عكسي. النتائج تأتي من مصادر حقيقية: لا تُبتكَر أي علامات تجارية أو أسعار أو روابط.",
+      "product": {
+        "title": "المنتج",
+        "studio": "استوديو التحليل",
+        "catalog": "الكتالوج المكتشَف",
+        "demo": "عرض الفيديو التجريبي"
+      },
+      "operations": {
+        "title": "التشغيل",
+        "admin": "لوحة الإدارة",
+        "connectors": "الموصِّلات",
+        "jobs": "مهام الاستيراد",
+        "logs": "المراقبة"
+      },
+      "copyright": "© {year} {appName}. عرض تقني.",
+      "complianceNote": "استيراد الكتالوج مع احترام robots.txt، وحدّ معدّل لكل نطاق، ودون أي تحايل على أنظمة مكافحة الروبوتات."
+    }
+  },
+  "studio": {
+    "page": {
+      "title": "استوديو التحليل",
+      "description": "اكتشف المنتجات في الفيديو أو الصورة واعثر عليها في الكتالوج. حدد الفئات المطلوب البحث فيها ومستوى الدقة قبل البدء."
+    },
+    "demoBadge": "وضع العرض التوضيحي",
+    "technicalPanel": "لوحة تقنية (الاستهلاك والطلبات)",
+    "selectFile": "اختيار ملف",
+    "analysisType": {
+      "label": "نوع التحليل",
+      "video": "تحليل الفيديو",
+      "image": "تحليل الصورة"
+    },
+    "urlInput": {
+      "placeholder": "https://www.youtube.com/watch?v=...",
+      "label": "رابط الفيديو",
+      "submit": "تحميل الفيديو",
+      "invalidUrl": "هذا الرابط لا يبدو صحيحًا. ألصق رابط يوتيوب (watch أو youtu.be أو shorts)."
+    },
+    "liveStats": {
+      "peopleDetected": "{count, plural, one{<value>#</value> شخص} other{<value>#</value> أشخاص}}",
+      "tracking": "{count, plural, one{<value>#</value> قيد التتبع} other{<value>#</value> قيد التتبع}}",
+      "uniqueProducts": "{count, plural, one{<value>#</value> منتج فريد} other{<value>#</value> منتجات فريدة}}",
+      "withMatch": "بمطابقة"
+    },
+    "product": {
+      "fallbackTitle": "منتج",
+      "brand": "العلامة التجارية: {brand}",
+      "seenCount": "شوهد {count, plural, one{مرة واحدة} other{# مرات}}",
+      "imageAlt": "صورة"
+    },
+    "loading": {
+      "processing": "جارٍ تحليل المحتوى"
+    },
+    "cost": {
+      "title": "التكلفة",
+      "heading": "استهلاك وتكلفة الذكاء الاصطناعي",
+      "demoMode": "وضع العرض التوضيحي",
+      "real": "حقيقي",
+      "totalCost": "التكلفة الإجمالية",
+      "apiCalls": "طلبات API",
+      "cacheHits": "نتائج من الذاكرة المؤقتة",
+      "itemsDetected": "عناصر مكتشَفة",
+      "openaiVision": "OpenAI Vision",
+      "aiSuggestions": "اقتراحات الذكاء الاصطناعي",
+      "reverseSearch": "بحث عكسي (Lens)",
+      "shopping": "التسوّق",
+      "callsCount": "{count, plural, one{طلب واحد} other{# طلبات}}",
+      "fallbacksUsed": "الحلول البديلة: {count}",
+      "mockCallsNote": "{count, plural, one{طلب واحد في وضع العرض التوضيحي (دون تكلفة)} other{# طلبات في وضع العرض التوضيحي (دون تكلفة)}}"
+    },
+    "overlayDetail": {
+      "subtitle": "{category} · {color} · {confidence}% ثقة",
+      "matchesTitle": "المطابقات الموجودة",
+      "searchingMatches": "جارٍ البحث عن مطابقات بصرية لهذا المنتج…"
+    },
+    "history": {
+      "title": "الإطارات المحلَّلة",
+      "clear": "مسح",
+      "frameAlt": "إطار محلَّل",
+      "itemCount": "{count, plural, one{منتج واحد} other{# منتجات}}",
+      "locatedCount": "{count, plural, one{منتج واحد مُحدَّد} other{# منتجات محدَّدة}}"
+    },
+    "videoAnalyzer": {
+      "phase": {
+        "idle": "غير نشِط",
+        "requestingPermission": "جارٍ طلب الإذن…",
+        "captureActive": "الالتقاط نشِط",
+        "capturingFrame": "جارٍ التقاط الإطار…",
+        "analyzingFrame": "جارٍ تحليل الإطار…",
+        "waitingNextInterval": "في انتظار الفترة التالية",
+        "skippedSimilarFrame": "تم تجاوز الإطار (مشهد مشابه)",
+        "skippedBusy": "تم تجاوز الإطار (تحليل قيد التنفيذ)",
+        "error": "خطأ",
+        "stopped": "متوقف"
+      },
+      "tabs": {
+        "pasteLink": "🔗 لصق رابط",
+        "uploadVideo": "📁 رفع فيديو"
+      },
+      "uploadedVideoDefaultName": "فيديو",
+      "uploadedReadyNote": "الفيديو جاهز · سيبدأ التحليل تلقائيًا عند تشغيله.",
+      "providerDetectedLabel": "المزوّد المكتشَف:",
+      "embedCompatible": "متوافق مع التضمين",
+      "notEmbeddable": "غير قابل للتضمين",
+      "requiresScreenShare": "· يتطلب مشاركة الشاشة",
+      "changeVideo": "تغيير الفيديو",
+      "changeUrl": "تغيير الرابط",
+      "youtubeWarning": {
+        "title": "يوتيوب يتطلب التقاط الشاشة",
+        "body": "يحظر المتصفح القراءة المباشرة لإطارات iframe بسبب قيود المصدر المتقاطع (cross-origin). للتحليل:",
+        "step1": "اضغط <b>تفعيل التقاط الشاشة</b> أدناه",
+        "step2": "اختر <b>هذا التبويب</b> (لا الشاشة كاملة)",
+        "step3": "فعّل الالتقاط التلقائي وشغّل الفيديو",
+        "footer": "إن كنت تريد تجنّب مشاركة الشاشة، ارفع ملف MP4 عبر تبويب <b>رفع فيديو</b>."
+      },
+      "pauseHintNoCapture": "لقد أوقفت الفيديو، لكن التقاط التبويب غير نشِط. اضغط «تفعيل التقاط الشاشة» لتتمكن من التحليل.",
+      "crossOriginWarning": "<b>{provider}</b> لا يسمح بقراءة الإطارات مباشرة (قيد المصدر المتقاطع). فعّل التقاط الشاشة واختر <b>هذا التبويب</b>.",
+      "directCaptureActive": "الالتقاط المباشر نشِط.",
+      "directCaptureDefaultReason": "لست بحاجة لمشاركة الشاشة لتحليل هذا الفيديو.",
+      "unknownProviderHint": "انتقل إلى تبويب <b>رفع فيديو</b> أو استخدم رابط .mp4/.m3u8.",
+      "urlPanel": {
+        "title": "ألصق رابط فيديو",
+        "subtitle": "يوتيوب · Dailymotion · Vimeo · رابط مباشر .mp4 / .m3u8"
+      },
+      "upload": {
+        "dropHint": "أسقط الفيديو هنا",
+        "uploadHint": "ارفع فيديو ليتم تحليل منتجاته تلقائيًا.",
+        "formatsHint": "MP4 أو WebM أو MOV (إن كان متصفحك يشغّله) · اسحب الملف أو اخترْه"
+      },
+      "status": {
+        "lastFrame": "آخر إطار: منذ {seconds} ثانية",
+        "intervalLabel": "الفترة: {seconds} ثانية",
+        "captured": "المُلتقطة:",
+        "analyzed": "المُحلَّلة:",
+        "skipped": "المتجاوَزة:"
+      },
+      "stopAnalysis": "⏹ إيقاف التحليل",
+      "resumeAnalysis": "▶ استئناف التحليل",
+      "detectingObjectsInline": "جارٍ كشف المنتجات…",
+      "analyzingRealtime": "تحليل الفيديو في الوقت الفعلي · الكشف عند تغيّر المشهد",
+      "analysisPaused": "التحليل متوقف مؤقتًا",
+      "technicalOptions": "خيارات تقنية",
+      "analyzeOnPause": "التحليل عند الإيقاف المؤقت",
+      "forceAnalyzeFrame": "إجبار تحليل هذا الإطار",
+      "autoCapture": "التقاط تلقائي",
+      "autoCaptureInterval": "كل {seconds} ثانية",
+      "activateScreenCapture": "تفعيل التقاط الشاشة",
+      "stopCapture": "إيقاف الالتقاط",
+      "analyzeScreenshot": "تحليل لقطة الشاشة",
+      "tooltipActivateFirst": "فعّل التقاط الشاشة أولًا",
+      "tooltipAlreadyAnalyzing": "يوجد تحليل قيد التنفيذ بالفعل",
+      "realtimeIndicator": "جارٍ تحليل المنتجات في الوقت الفعلي",
+      "frameCounter": "الإطار {count}",
+      "fpsSuffix": "· {fps} إطار/ثانية",
+      "statsPersons": "{count, plural, one{شخص واحد} other{# أشخاص}}",
+      "statsTracked": "{count, plural, one{منتج واحد متتبَّع} other{# منتجات متتبَّعة}}",
+      "statsUnique": "{count, plural, one{واحد فريد} other{# فريدة}}",
+      "statsMatched": "{count, plural, one{واحد محدَّد} other{# محدَّدة}}",
+      "intervalOnlyNewFrames": "التقاط كل {seconds} ثانية · فقط الإطارات الجديدة",
+      "currentPosition": "الموضع الحالي: {timestamp}",
+      "debugTitle": "تصحيح الالتقاط",
+      "debugNoEvents": "لا توجد أحداث بعد.",
+      "debugFramesSummary": "الإطارات: {frameCount} · المحلَّلة: {analyzedCount} · المتجاوَزة: {skippedCount}",
+      "debugClear": "مسح",
+      "loadingPlayer": "جارٍ تحميل المشغّل…",
+      "detectingObjectsOverlay": "جارٍ كشف المنتجات…",
+      "analyzeFrameNow": "تحليل هذا الإطار الآن",
+      "captureHint": {
+        "idle": "الالتقاط غير نشِط",
+        "active": "الالتقاط نشِط",
+        "denied": "تم رفض الإذن",
+        "needsSelection": "اختر هذا التبويب أو النافذة",
+        "error": "خطأ في الالتقاط"
+      },
+      "youtubeCaptureRequired": "لتحليل فيديوهات يوتيوب أحتاج إلى إذن التقاط الشاشة. هذا ضروري لأن يوتيوب لا يسمح بقراءة الإطارات مباشرة من iframe. عند تفعيله، اختر <b>هذا التبويب أو النافذة</b>.",
+      "analyzingFrameOverlay": "جارٍ تحليل الإطار…"
+    },
+    "localVideo": {
+      "uploadHint": "ارفع فيديو (.mp4، .mov، .webm)",
+      "uploadSubHint": "مثالي للاختبارات السريعة — دون التقاط الشاشة",
+      "defaultTitle": "فيديو محلي"
+    },
+    "imageAnalyzer": {
+      "unsupportedFormat": "صيغة غير مدعومة: {format}. استخدم JPG أو PNG أو WebP.",
+      "unknownFormat": "غير معروفة",
+      "emptyFile": "الملف فارغ.",
+      "tooLarge": "الصورة تتجاوز الحد الأقصى {maxMb} ميغابايت.",
+      "readError": "تعذّرت قراءة الصورة.",
+      "dropHere": "أسقط الصورة هنا",
+      "uploadPrompt": "ارفع، اسحب، أو ألصق صورة",
+      "pasteHint": "JPG، PNG، WebP — حد أقصى {maxMb} ميغابايت · <kbd>Ctrl+V</kbd> للّصق",
+      "analyzingOverlay": "جارٍ تحليل الصورة…",
+      "analyzedBadge": "تم التحليل ✓",
+      "analyzingLabel": "جارٍ التحليل…",
+      "analyzeAnother": "تحليل صورة أخرى",
+      "changeImage": "تغيير الصورة",
+      "fileInfo": "{sizeKb} كيلوبايت · صورة مرفوعة",
+      "previewAlt": "معاينة"
+    },
+    "configSelector": {
+      "title": "ما الذي تريد العثور عليه؟",
+      "subtitle": "تُحلَّل فقط الفئات المختارة: البقية لا تستهلك ذكاءً اصطناعيًا ولا عمليات بحث.",
+      "activeCount": "{count, plural, one{واحدة نشِطة} other{# نشِطة}}",
+      "intensity": {
+        "fast": {
+          "label": "سريع",
+          "hint": "عدد أقل من المرات · مثالي للتجربة"
+        },
+        "standard": {
+          "label": "قياسي",
+          "hint": "توازن بين الدقة والتكلفة"
+        },
+        "exhaustive": {
+          "label": "شامل",
+          "hint": "أقصى دقة · للفيديوهات القصيرة"
+        }
+      },
+      "intensityLabel": "شدة التحليل",
+      "personCentricNote": "وضع مركّز على الأشخاص: تُحلَّل الملابس والإكسسوارات التي يرتديها أو يحملها الأشخاص، ويُتجاهَل خلفية المشهد."
+    },
+    "loadingAnalysis": {
+      "ariaLabel": "جارٍ تحليل الإطار",
+      "heading": "جارٍ تحليل الإطار…",
+      "stages": {
+        "capture": "جارٍ التقاط الإطار",
+        "detect": "جارٍ كشف المنتجات",
+        "crop": "جارٍ القصّ وإزالة التكرار",
+        "search": "جارٍ البحث عن مطابقات"
+      }
+    },
+    "productCard": {
+      "detectionTooltip": "درجة الثقة في أن المنتج وخصائصه تم تحديدهم بشكل صحيح في الفيديو.",
+      "detectionPct": "{pct}% كشف",
+      "matchTooltip": "درجة الثقة في أن النتيجة على الويب تطابق المنتج نفسه.",
+      "matchPct": "{pct}% تطابق",
+      "matchLabel": {
+        "exact": "منتج مطابق تمامًا",
+        "nearExact": "مطابق تقريبًا",
+        "similar": "مشابه"
+      },
+      "evidenceTitle": "يتطابق في",
+      "sourcesTitle": "مصادر البحث",
+      "internalScore": "الدرجة الداخلية: {score} نقطة · المحرّك: {source}",
+      "debugTitle": "تصحيح المطابقة",
+      "debugReverseSearch": "بحث عكسي بالصورة: نعم (صورة مقصوصة مُرسَلة، بحث بصري خالص أولًا)",
+      "debugProvider": "المزوّد: {provider}",
+      "debugFallback": "الحل البديل المستخدم: {value}",
+      "debugCacheHit": "نتيجة من الذاكرة المؤقتة: {value}",
+      "debugLatency": "زمن الاستجابة: {ms} مللي ثانية",
+      "debugDetail": "التفصيل: {detail}",
+      "debugDataForSeoNote": "DataForSEO: فقط لإغناء السعر/المتاجر (لا لتحديد الهوية)",
+      "yes": "نعم",
+      "no": "لا",
+      "sourceLabel": {
+        "searchapiGoogleLens": "Google Lens",
+        "serpapiGoogleLens": "Google Lens (حل بديل)",
+        "serpapiGoogleShopping": "Google Shopping",
+        "dataforseoGoogleShopping": "Google Shopping (DataForSEO)"
+      },
+      "candidateCount": "{count, plural, one{مرشَّح واحد} other{# مرشَّحين}}",
+      "confirmedBySources": "✓ مؤكَّد من {count} مصادر",
+      "waitingBetterFrame": "في انتظار إطار أفضل…",
+      "searchingByImage": "جارٍ البحث بالصورة (Google Lens)…",
+      "statusMessage": {
+        "noMatch": "لا توجد مطابقة تامة — تُعرض أدناه المنتجات الأقرب بصريًا.",
+        "budgetExhausted": "لا يوجد بحث خارجي (تم الوصول إلى حد الاستهلاك).",
+        "providerError": "البحث البصري غير متاح في الوقت الحالي."
+      },
+      "evidenceVisibleText": "نص ظاهر: “{text}”",
+      "evidenceLogoDesc": "شعار: {description}",
+      "evidenceLogoVisible": "شعار واضح على المنتج",
+      "brandEvidenceTitle": "علامة تجارية مؤكَّدة بدليل — {evidence}",
+      "brandGuess": "≈ {brand}؟",
+      "logoVisibleBadge": "شعار ظاهر",
+      "visibleTextLabel": "النص: “{text}”",
+      "logoDescLine": "الشعار: {description}",
+      "similarLabel": {
+        "withMatch": "مشابهة أيضًا:",
+        "withoutMatch": "منتجات مشابهة بصريًا:"
+      }
+    },
+    "resultsPanel": {
+      "title": "النتائج",
+      "subtitle": "المنتجات المكتشَفة ومطابقاتها",
+      "reanalyzeTooltip": "أعِد تحليل آخر إطار متجاوزًا الذاكرة المؤقتة",
+      "reanalyzeAction": "تحليل مرة أخرى",
+      "scopeAriaLabel": "نطاق النتائج",
+      "thisFrame": "هذا الإطار",
+      "wholeVideo": "الفيديو كاملًا",
+      "demoModeNotice": "وضع العرض التوضيحي (دون <code>OPENAI_API_KEY</code>): تُعرض بيانات نموذجية واقعية.",
+      "savedInCatalog": "{count, plural, one{عنصر واحد محفوظ في الكتالوج} other{# عناصر محفوظة في الكتالوج}}",
+      "view": "عرض",
+      "localSaveNotice": "الحفظ المحلي لهذه الجلسة نشِط؛ تُعاد المزامنة تلقائيًا.",
+      "sessionSummary": "{count, plural, one{منتج واحد فريد خلال الفيديو، مع إزالة التكرار بين الإطارات مسبقًا.} other{# منتجات فريدة خلال الفيديو، مع إزالة التكرار بين الإطارات مسبقًا.}}",
+      "analyzeErrorTitle": "تعذّر التحليل",
+      "technicalDetails": "تفاصيل تقنية",
+      "detectingMore": "جارٍ كشف منتجات إضافية في هذا المشهد…",
+      "styleDetectedLabel": "الأسلوب المكتشَف:",
+      "noItemsTitle": "لا توجد منتجات قابلة للشراء بوضوح",
+      "noItemsDescription": "لا يحتوي هذا الإطار على منتجات محدَّدة بدقة كافية. جرّب إطارًا أقرب أو بإضاءة أفضل.",
+      "readyTitle": "جاهز للتحليل",
+      "readyDescription": "شغّل الفيديو وأوقفه في اللحظة التي تهمّك، أو ارفع صورة. يبدأ التحليل بمجرد توفر إطار.",
+      "privacyNote": "يُستخدم الالتقاط فقط لكشف المنتجات القابلة للشراء. لا نحدد هوية الأشخاص ولا نخزّن الصور على الخادم.",
+      "memoryFallbackNote": " (قاعدة البيانات غير متاحة — محفوظ في هذه الجلسة، وتُعاد المحاولة تلقائيًا)",
+      "localSessionNote": " (جلسة محلية)",
+      "memoryNote": " (في الذاكرة — اضبط <code>DATABASE_URL</code> للحفظ الدائم)",
+      "groups": {
+        "worn": "ما يرتديه",
+        "heldOrUsed": "ما يحمله أو يستخدمه",
+        "nearPerson": "قريب من الشخص",
+        "otherObjects": "منتجات أخرى في المشهد ({count})",
+        "lowPriority": "أولوية منخفضة"
+      }
+    }
+  },
+  "analysis": {
+    "processing": "جارٍ تحليل المحتوى",
+    "queued": "في قائمة الانتظار",
+    "done": "مكتمل",
+    "failed": "فاشل",
+    "noItemsDetected": "لم يتم كشف منتجات"
+  },
+  "catalog": {
+    "products": "المنتجات",
+    "empty": "لا توجد منتجات مطابقة",
+    "status": {
+      "active": "نشِط",
+      "inactive": "غير نشِط"
+    },
+    "filters": {
+      "searchPlaceholder": "البحث عن علامة تجارية، مجموعة، منطقة…",
+      "titleSearchPlaceholder": "البحث بالعنوان، العلامة التجارية…",
+      "sourceAriaLabel": "المصدر",
+      "allSources": "جميع المصادر",
+      "originAriaLabel": "الأصل",
+      "allOrigins": "جميع الأصول",
+      "statusAriaLabel": "الحالة",
+      "allStatuses": "نشِط وغير نشِط",
+      "onlyActive": "النشِط فقط",
+      "onlyInactive": "غير النشِط فقط"
+    },
+    "pagination": "{count} منتج · صفحة {page} من {totalPages}",
+    "modeAriaLabel": "وضع الاستعراض",
+    "modes": {
+      "browse": "استعراض",
+      "text": "بحث بالنص",
+      "image": "بحث بالصورة"
+    },
+    "viewAriaLabel": "العرض",
+    "view": {
+      "grid": "شبكة",
+      "list": "قائمة"
+    },
+    "actions": {
+      "refresh": "تحديث",
+      "previousPage": "السابق",
+      "nextPage": "التالي"
+    },
+    "origin": {
+      "scraped": "مستورَد من متجر",
+      "external": "مُكتشَف خارجيًا"
+    },
+    "textSearch": {
+      "placeholder": "فستان أحمر ساتان، بليزر كنيت أسود…"
+    },
+    "imageSearch": {
+      "urlPlaceholder": "https://…/صورة.jpg",
+      "searchByUrl": "بحث بالرابط",
+      "dropHint": "اسحب صورة أو اضغط لاختيارها",
+      "dropSubHint": "تُرسل بترميز base64 إلى نقطة البحث البصري في الكتالوج"
+    },
+    "originFilterNotice": "يُطبَّق مرشّح الأصل على الصفحة المحمَّلة: الخدمة تُقسّم الصفحات قبل التصفية بالأصل.",
+    "errors": {
+      "loadFailed": "تعذّرت قراءة الكتالوج"
+    },
+    "grid": {
+      "emptyTitle": "الكتالوج فارغ مع هذه المرشِّحات",
+      "emptyDescription": "شغّل مزامنة من الموصِّلات أو نفّذ زرع العيّنات (npm run catalog:seed في الجذر) للحصول على بيانات تجريبية."
+    },
+    "table": {
+      "product": "المنتج",
+      "source": "المصدر",
+      "category": "الفئة",
+      "price": "السعر",
+      "indexes": "الفهارس",
+      "lastSeen": "آخر ظهور",
+      "status": "الحالة",
+      "emptyTitle": "لا توجد منتجات",
+      "emptyDescription": "عدّل المرشِّحات أو استورد الكتالوج من الموصِّلات."
+    },
+    "badges": {
+      "inactive": "غير نشِط",
+      "external": "خارجي",
+      "hasImageEmbeddingTooltip": "بتمثيل مرئي"
+    },
+    "noCategory": "بلا فئة",
+    "card": {
+      "lastSeenPrefix": "شوهد"
+    },
+    "matches": {
+      "countLabel": "{count, plural, one{تطابق واحد} other{# تطابقات}} مرتَّبة حسب الدرجة",
+      "backToBrowse": "الرجوع إلى الاستعراض",
+      "emptyTitle": "لا توجد مطابقات تتجاوز الحد الأدنى",
+      "emptyDescription": "لا يحتوي الكتالوج على شيء مشابه بما يكفي. هذا هو التصرف الصحيح: نفضّل ألا نُعيد أي نتيجة على أن نُعيد نتيجة غير موثوقة.",
+      "viewListing": "الصفحة"
+    },
+    "drawer": {
+      "fallbackTitle": "منتج",
+      "loading": "جارٍ تحميل الصفحة…",
+      "hasImageEmbeddingBadge": "تمثيل مرئي",
+      "hasPerceptualHashBadge": "hash إدراكي",
+      "normalizedDataTitle": "بيانات موحَّدة",
+      "price": "السعر",
+      "originalPrice": "السعر الأصلي",
+      "availability": "التوفر",
+      "category": "الفئة",
+      "subcategory": "الفئة الفرعية",
+      "gender": "الجنس",
+      "color": "اللون",
+      "firstSeen": "أول ظهور",
+      "lastSeen": "آخر ظهور",
+      "externalScore": "الدرجة الخارجية",
+      "perceptualHash": "hash إدراكي",
+      "id": "المعرّف",
+      "extractionTitle": "كيف تم الاستخراج",
+      "primaryExtractor": "المستخرِج الأساسي",
+      "extractorsUsed": "المستخرِجات المُطبَّقة",
+      "aiLabel": "الذكاء الاصطناعي",
+      "aiUsedAsFallback": "استُخدم كحل بديل",
+      "aiNotNeeded": "غير ضروري",
+      "browserLabel": "المتصفح",
+      "browserUsedYes": "تم العرض باستخدام Playwright",
+      "browserNotNeeded": "غير ضروري",
+      "confidence": "درجة الثقة",
+      "extractedAt": "تاريخ الاستخراج",
+      "evidenceField": "الحقل",
+      "evidenceSource": "المصدر",
+      "evidenceSnippet": "الدليل",
+      "viewInStore": "عرضه في المتجر",
+      "copyId": "نسخ المعرّف"
+    }
+  },
+  "jobs": {
+    "running": "قيد التنفيذ",
+    "queued": "في قائمة الانتظار",
+    "completed": "مكتمل",
+    "failed": "فاشل",
+    "table": {
+      "job": "المهمة",
+      "type": "النوع",
+      "status": "الحالة",
+      "progress": "التقدّم",
+      "duration": "المدة",
+      "cost": "التكلفة",
+      "startedAt": "بدأت",
+      "actions": "الإجراءات"
+    },
+    "filters": {
+      "statusAriaLabel": "التصفية حسب الحالة",
+      "sourceAriaLabel": "التصفية حسب المصدر",
+      "all": "الكل",
+      "running": "قيد التنفيذ",
+      "completed": "مكتملة",
+      "failed": "بها فشل",
+      "allSources": "جميع المصادر"
+    },
+    "actions": {
+      "refresh": "تحديث"
+    },
+    "callout": "تحفظ المهام نقطة تحققها مع كل تقدّم: المهمة المُلغاة أو التي تعطَّلت تُستأنف بـ<ink>إعادة المحاولة</ink> دون إعادة اكتشاف الكتالوج.",
+    "empty": {
+      "errorTitle": "تعذّرت قراءة المهام",
+      "noneTitle": "لا توجد مهام بهذه المرشِّحات",
+      "noneDescription": "شغّل مزامنة من الموصِّلات أو غيّر مرشّح الحالة."
+    },
+    "drawer": {
+      "breakdown": "التفصيل",
+      "discovered": "المكتشَفة",
+      "fetched": "المحمَّلة",
+      "new": "الجديدة",
+      "updated": "المحدَّثة",
+      "duplicates": "المكرَّرة",
+      "ignored": "المتجاهَلة",
+      "errors": "الأخطاء",
+      "withoutAi": "دون ذكاء اصطناعي",
+      "withAi": "بذكاء اصطناعي",
+      "withBrowser": "بمتصفح",
+      "retries": "إعادات المحاولة",
+      "aiCostLine": "التكلفة التقديرية للذكاء الاصطناعي: {cost} · {tokens} رمزًا",
+      "aiRatioSuffix": "{pct}% من الصفحات بذكاء اصطناعي",
+      "checkpoint": "نقطة التحقق: ستُستأنف عند الفهرس {index}",
+      "checkpointUrlsSuffix": "من {total} رابطًا",
+      "checkpointStageSuffix": "المرحلة {stage}",
+      "errorsTitle": "الأخطاء ({count})",
+      "noErrors": "لا توجد أخطاء مسجَّلة.",
+      "activityTitle": "نشاط المهمة"
+    }
+  },
+  "connectors": {
+    "kpi": {
+      "registered": "المصادر المسجَّلة",
+      "registeredHint": "جميع المتاجر في السجل",
+      "syncable": "قابلة للمزامنة الآن",
+      "syncableHint": "بتنفيذ وبيانات اعتماد",
+      "verifiedLive": "متحقَّق منها مباشرة",
+      "verifiedLiveHint": "بمنتجات حقيقية في الكتالوج فعليًا",
+      "requireAgreement": "تتطلب اتفاقًا",
+      "requireAgreementHint": "شراكة أو شبكة انتساب"
+    },
+    "filters": {
+      "searchPlaceholder": "البحث عن علامة تجارية، مجموعة، منطقة…",
+      "segmentLabel": "شريحة المتجر",
+      "allSegments": "جميع الشرائح",
+      "filterAriaLabel": "تصفية الموصِّلات",
+      "group": {
+        "all": "الكل",
+        "syncable": "قابلة للمزامنة",
+        "partner": "تتطلب اتفاقًا",
+        "paused": "متوقفة مؤقتًا",
+        "problem": "بها مشكلة"
+      }
+    },
+    "table": {
+      "source": "المصدر",
+      "realStatus": "الحالة الحقيقية",
+      "health": "الصحة",
+      "discovery": "الاكتشاف",
+      "compliance": "الامتثال",
+      "products": "المنتجات",
+      "extraction": "الاستخراج",
+      "lastSync": "آخر مزامنة",
+      "actions": "الإجراءات"
+    },
+    "actionLabels": {
+      "test": "اختبار الموصِّل",
+      "resume": "استئناف",
+      "pause": "إيقاف مؤقت",
+      "checkHealth": "فحص الحالة"
+    },
+    "actions": {
+      "healthLiveTitle": "تحقّق مباشرة من حالة المصادر القابلة للمزامنة (طلبات حقيقية)",
+      "healthLiveActive": "فحص الحالة المباشر نشِط",
+      "healthLiveCheck": "فحص الحالة المباشر",
+      "refresh": "تحديث",
+      "syncFullTitle": "شغّل مزامنة كاملة (محدودة بـ25 صفحة)",
+      "syncShort": "مزامنة",
+      "testTitle": "اختبر خط المعالجة بصفحة حقيقية",
+      "resumeTitle": "استئناف",
+      "pauseTitle": "إيقاف مؤقت"
+    },
+    "badges": {
+      "paused": "متوقف مؤقتًا"
+    },
+    "callout": {
+      "title": "كيفية قراءة هذا الجدول",
+      "body": "<muted>الحالة الحقيقية</muted> هي الوسم الصادق: لا يقول <em>متحقَّق منه</em> إلا إذا كان لهذا المصدر منتجات حقيقية في الكتالوج مستخرجة عبر خط المعالجة — لا يكفي أن يكون الكود موجودًا. <muted>الصحة</muted> هي ما يردّ به المتجر الآن، و<muted>الاستخراج</muted> يقيس النسبة من الصفحات التي حُلّت دون ذكاء اصطناعي (ببيانات مبنيَّة أو DOM)؛ الذكاء الاصطناعي هو الملاذ الأخير فقط. الفحص المباشر لا يعمل تلقائيًا لجميع المصادر: سيكون ذلك غير مراعٍ للمتاجر."
+    },
+    "empty": {
+      "noMatchTitle": "لا يوجد مصدر مطابق",
+      "noMatchDescription": "جرّب مصطلحًا آخر أو أزِل المرشِّحات النشِطة.",
+      "clearFilters": "إزالة المرشِّحات"
+    },
+    "errors": {
+      "loadFailed": "تعذّرت قراءة السجل"
+    },
+    "extraction": {
+      "withoutAiPct": "{pct}% دون ذكاء اصطناعي",
+      "withAiCost": "{count} بذكاء اصطناعي · {cost}",
+      "noAiCalls": "0 طلبات ذكاء اصطناعي"
+    },
+    "footer": {
+      "showingCount": "يُعرض {filtered} من {total} مصادر مسجَّلة."
+    },
+    "syncMode": {
+      "full": "كامل",
+      "incremental": "تزايدي"
+    },
+    "toast": {
+      "testSucceeded": "{label}: خط المعالجة يعمل بنجاح",
+      "testSample": "صفحة نموذجية: {sampleTitle} ({duration})",
+      "testFailed": "{label}: فشل في «{step}»",
+      "noDetail": "بلا تفاصيل",
+      "healthChecked": "{id}: {label}",
+      "syncQueued": "تمت جدولة مزامنة {mode}",
+      "syncQueuedDetail": "المهمة {jobId} · تابع التقدّم في تبويب المهام"
+    },
+    "drawer": {
+      "checkStatusButton": "فحص الحالة",
+      "testPipelineButton": "اختبار خط المعالجة",
+      "syncIncrementalButton": "مزامنة تزايدية",
+      "syncFullButton": "مزامنة كاملة",
+      "loading": "جارٍ تحميل التفاصيل…",
+      "sourceStatusTitle": "حالة المصدر",
+      "missingTitle": "ما ينقص لتفعيله",
+      "missingEnvLabel": "متغيرات بيئة معلَّقة",
+      "lastErrorTitle": "آخر خطأ مسجَّل",
+      "extractionLabel": "الاستخراج المقاس",
+      "extractionEmpty": "لا توجد بعد منتجات من هذا المصدر في الكتالوج: لا يوجد ما يُقاس. شغّل مزامنة للحصول على بيانات حقيقية.",
+      "productsWithMetadata": "منتجات ببيانات وصفية",
+      "resolvedWithoutAi": "محلولة دون ذكاء اصطناعي",
+      "resolvedWithAi": "محلولة بذكاء اصطناعي",
+      "neededBrowser": "احتاجت متصفحًا",
+      "avgConfidence": "متوسط درجة الثقة",
+      "estimatedAiCost": "تكلفة الذكاء الاصطناعي (تقديرية)",
+      "primaryExtractor": "المستخرِج الأساسي",
+      "techSheetLabel": "الورقة التقنية",
+      "implementation": "التنفيذ",
+      "robotsPolicy": "سياسة robots.txt",
+      "robotsAlwaysRespected": "تُحترم دائمًا",
+      "crawlDelay": "crawl-delay المُعلَن: {seconds} ثانية",
+      "declaredSelectors": "المحدِّدات المُعلَنة",
+      "none": "لا شيء",
+      "urlPattern": "نمط الصفحة",
+      "accessMethod": "طريقة الوصول",
+      "verification": "التحقق",
+      "syncModes": "أنماط المزامنة",
+      "segments": "الشرائح",
+      "categories": "الفئات",
+      "markets": "الأسواق",
+      "productsInCatalog": "منتجات في الكتالوج",
+      "healthCheckedAt": "تاريخ فحص الحالة",
+      "store": "المتجر",
+      "program": "البرنامج",
+      "sitemapsLabel": "خرائط الموقع المُعلَنة",
+      "sitemapsHint": "إن لم تستجب أي منها، يبحث الموصِّل عن خرائط الموقع المُعلَنة في ملف robots.txt للمتجر.",
+      "recentJobsLabel": "المهام الأخيرة لهذا المصدر",
+      "noJobs": "لم يُنفَّذ لهذا المصدر أي مهمة حتى الآن.",
+      "logsLabel": "سجلات المصدر",
+      "noLogs": "لا توجد أحداث مسجَّلة لهذا المصدر في المخزن المؤقت الحالي."
+    }
+  },
+  "settings": {
+    "title": "الإعدادات",
+    "keys": "المفاتيح",
+    "storage": "التخزين",
+    "embeddings": "التمثيلات المرئية",
+    "matching": "المطابقة",
+    "compliance": "الامتثال",
+    "refresh": "تحديث",
+    "empty": {
+      "errorTitle": "تعذّرت قراءة التهيئة"
+    },
+    "banner": {
+      "body": "تُقرأ هذه القيم من بيئة خدمة الكتالوج وتُعرض في وضع القراءة فقط: تُغيَّر التهيئة في ملف <code>.env</code> الخاص بها وتُطبَّق عند إعادة التشغيل. بهذا تبقى قابلة للتتبع ولا تتباعد النُّسخ المتماثلة."
+    },
+    "sections": {
+      "keys": {
+        "title": "مفاتيح API",
+        "description": "مفتاح الخدمة لا يخرج أبدًا من الخادم: تتحدث لوحة الإدارة معه عبر البروكسي الخاص بالتطبيق.",
+        "authBadgeOn": "المصادقة نشِطة",
+        "authBadgeOff": "المصادقة معطَّلة",
+        "configured": "مُهيَّأ · {count} حرفًا",
+        "notConfigured": "غير مُهيَّأ",
+        "portLabel": "منفذ الخدمة",
+        "authWarning": "دون <code>CATALOG_SERVICE_API_KEY</code> تقبل الخدمة أي طلب. مقبول محليًا؛ أبدًا في بيئة متاحة من الخارج."
+      },
+      "storage": {
+        "description": "يُختار المخزن تلقائيًا حسب وجود سلسلة اتصال صالحة.",
+        "configured": "مُهيَّأة",
+        "missing": "غائبة أو ليست postgres://",
+        "dataDirLabel": "دليل البيانات",
+        "imagesDirLabel": "دليل الصور",
+        "fileWarning": "وضع الملف: يستمر الكتالوج بصيغة JSON ويتم البحث الاتجاهي في الذاكرة. اضبط سلسلة اتصال <code>postgres://</code> (نقطة نهاية <code>-pooler</code> من Neon) ونفّذ الترحيلات لتفعيل pgvector."
+      },
+      "embeddings": {
+        "reindex": "إعادة فهرسة",
+        "description": "تغيير المزوّد يغيّر البُعد: يجب إعادة الفهرسة أو تصبح المتجهات القديمة غير قابلة للمقارنة.",
+        "imageProviderLabel": "مزوّد الصورة",
+        "imageModelLabel": "نموذج الصورة",
+        "textProviderLabel": "مزوّد النص",
+        "activeNowLabel": "نشِط الآن",
+        "hashWarning": "مزوّد <code>hash</code>: متجهات حتمية من 64 بُعدًا للعرض التوضيحي والاختبارات. لا يقوم بتشابه بصري حقيقي — ثبّت المزوّد المحلي بـ<code>npm run embeddings:install</code> في catalog-scraper وضبط <code>CATALOG_IMAGE_EMBEDDING_PROVIDER=local</code>.",
+        "reindexSuccessTitle": "تمت جدولة إعادة الفهرسة",
+        "reindexSuccessBody": "المهمة {jobId}",
+        "reindexErrorTitle": "تعذّر بدء إعادة الفهرسة"
+      },
+      "matching": {
+        "title": "حدود المطابقة وإزالة التكرار",
+        "description": "لا يُنشر أي شيء دون الدرجة الأدنى: نفضّل عدم إعادة نتيجة على إعادة نتيجة غير موثوقة.",
+        "minImageScoreLabel": "الدرجة الأدنى للصورة",
+        "perceptualHashLabel": "أقصى مسافة لـhash الإدراكي",
+        "dedupThresholdLabel": "حد إزالة التكرار بالتمثيل المرئي",
+        "jobsWorkersLabel": "عمليات معالجة المهام"
+      },
+      "compliance": {
+        "title": "حدود الاستيراد والامتثال",
+        "description": "القيم الافتراضية متحفظة عمدًا: من الأفضل التأخر أكثر على إزعاج متجر.",
+        "robotsBadge": "احترام robots.txt",
+        "rateLimitLabel": "الفاصل الأدنى لكل نطاق",
+        "concurrencyLabel": "التزامن العام",
+        "timeoutLabel": "المهلة لكل طلب",
+        "retriesLabel": "إعادات المحاولة",
+        "circuitBreakerLabel": "حد قاطع الدائرة",
+        "circuitBreakerSuffix": "فشل متتابع",
+        "userAgentLabel": "وكيل المستخدم (User-Agent)",
+        "policyTitle": "السياسة المُطبَّقة",
+        "policyBody": "{policy}. بالإضافة إلى ذلك: يُحترم <code>Crawl-delay</code> عندما يُعلنه المتجر، ووكيل مستخدم قابل للتعرّف مع بيانات اتصال، وقاطع دائرة يوقف المحاولة عند الحظر المستمر. المصادر التي تتطلب اتفاق شراكة أو انتساب لا تُستورد قبل الحصول عليه."
+      },
+      "observability": {
+        "title": "الرصد وذاكرة التخزين المؤقت",
+        "logsLabel": "السجلات",
+        "logsValue": "مخزن مؤقت دائري في الذاكرة (750 حدثًا) + JSON منظَّم إلى stdout",
+        "healthCacheLabel": "ذاكرة تخزين مؤقت لحالة الموصِّلات",
+        "healthCacheValue": "10 دقائق لكل مصدر؛ الفحص المباشر يدوي",
+        "metricsLabel": "المقاييس",
+        "metricsValue": "عدّادات في الذاكرة مُعرَضة في <code>/stats</code> و<code>/overview</code>",
+        "footnote": "كل الحالة القابلة للرصد تابعة للعملية: عند إعادة تشغيل الخدمة تُعاد تهيئة العدّادات ومخزن السجلات المؤقت. للحصول على سجل تاريخي حقيقي، اجمع stdout واستخدم مخزن Postgres."
+      }
+    }
+  },
+  "overview": {
+    "title": "نظرة عامة",
+    "recentActivity": "النشاط الأخير",
+    "sectionLabel": {
+      "status": "الحالة العامة"
+    },
+    "status": {
+      "updated": "تم التحديث {time}",
+      "loading": "جارٍ التحميل…"
+    },
+    "errorState": {
+      "title": "لا يمكن قراءة خدمة الكتالوج",
+      "description": "{message}. محرّك الكتالوج يعمل مدمجًا في هذا التطبيق نفسه: تحقّق من أن <code>DATABASE_URL</code> تشير إلى قاعدة Postgres صالحة وأن الترحيلات مُطبَّقة (<code>npm run db:migrate</code>)."
+    },
+    "kpi": {
+      "products": "المنتجات",
+      "productsHint": "{active} نشِط · {withImages} بصورة",
+      "connectors": "الموصِّلات",
+      "connectorsHint": "{syncable} قابلة للمزامنة · {paused} متوقفة مؤقتًا",
+      "throughput": "الإنتاجية",
+      "throughputValue": "{perMinute}/دقيقة",
+      "throughputHint": "{products} منتج جديد في {minutes} دقيقة",
+      "errorRate": "معدل الخطأ",
+      "errorRateHint": "طلبات فاشلة من إجمالي المحاولات، في المهام الأخيرة"
+    },
+    "degraded": {
+      "title": "استمرار البيانات في وضع متدهور",
+      "body": "تستخدم الخدمة المخزن الملفي لعدم وجود <code>DATABASE_URL</code> صالحة لـPostgres. كل شيء يعمل، لكن دون pgvector يتم البحث الاتجاهي في الذاكرة ولا يتوسّع."
+    },
+    "embeddings": {
+      "title": "التمثيلات المرئية",
+      "indexedOf": "{indexed} من {total} منتج مفهرَس",
+      "dimensions": "{count} بُعدًا",
+      "coverageLabel": "تغطية التمثيلات المرئية",
+      "hashNote": "مزوّد <code>hash</code>: متجهات حتمية من 64 بُعدًا، صالحة للعرض التوضيحي والاختبارات لكن ليست لتشابه بصري حقيقي. ثبّت المزوّد المحلي (CLIP) وأعِد الفهرسة للإنتاج."
+    },
+    "queue": {
+      "title": "قائمة انتظار الاستيراد",
+      "viewAll": "عرض الكل",
+      "noJobsYet": "لم يُنفَّذ أي مهمة بعد.",
+      "progressLine": "{new} جديد · {updated} محدَّث · {duplicates} مكرَّر · {errors} خطأ",
+      "emptyTitle": "لا توجد مهام بعد",
+      "emptyDescription": "شغّل مزامنة من الموصِّلات لتعبئة الكتالوج.",
+      "goToConnectors": "الذهاب إلى الموصِّلات ←"
+    },
+    "registry": {
+      "title": "نضج سجل المصادر",
+      "lastSync": "آخر مزامنة"
+    },
+    "logs": {
+      "viewAll": "عرض السجلات",
+      "emptyTitle": "لا يوجد نشاط مسجَّل",
+      "emptyDescription": "يمتلئ مخزن السجلات المؤقت عندما تبدأ الخدمة بالعمل."
+    },
+    "misc": {
+      "duplicatesDetected": "التكرارات المكتشَفة",
+      "externalOrigin": "أصل خارجي",
+      "serviceUptime": "مدة تشغيل الخدمة"
+    }
+  },
+  "logs": {
+    "title": "سجل الأحداث",
+    "level": {
+      "error": "خطأ",
+      "warn": "تحذير",
+      "info": "معلومة",
+      "debug": "تصحيح"
+    },
+    "ariaLabels": {
+      "logType": "نوع السجل",
+      "minLevel": "الحد الأدنى للمستوى",
+      "source": "المصدر",
+      "refresh": "تحديث"
+    },
+    "views": {
+      "ingest": "الاستيراد",
+      "process": "المعالجة"
+    },
+    "status": {
+      "aiExtractor": "مستخرِج الذكاء الاصطناعي",
+      "disabled": "معطَّل",
+      "aiDetailFallback": "فقط كحل بديل · ذاكرة مؤقتة {cache}",
+      "cachePersistent": "دائمة",
+      "cacheInMemory": "في الذاكرة",
+      "browser": "المتصفح",
+      "connected": "متصل",
+      "available": "متاح",
+      "browserDetail": "{contexts} سياقات · {pages} صفحات مفتوحة",
+      "catalog": "الكتالوج",
+      "productionPersistence": "استمرار للإنتاج",
+      "fileStoreWarning": "مخزن ملفي: ليس استمرارًا للإنتاج",
+      "respected": "محترَم",
+      "rateLimitDetail": "{delay} مللي ثانية بين الطلبات · {concurrency} بالتوازي",
+      "circuitBreakersOpen": "قواطع الدائرة المفتوحة",
+      "subsystemWarnings": "تحذيرات النظام الفرعي"
+    },
+    "about": {
+      "title": "حول هذه السجلات",
+      "defaultRetention": "مخزن مؤقت دائري في ذاكرة الخدمة.",
+      "minLevelLabel": "الحد الأدنى للمستوى المُصدَر:",
+      "configuredVia": "(يُهيَّأ بواسطة",
+      "stdoutNote": "). للاحتفاظ الحقيقي، اجمع stdout الخدمة بمنصتك لتسجيل السجلات."
+    },
+    "filters": {
+      "all": "الكل",
+      "infoPlus": "معلومة+",
+      "warnPlus": "تحذيرات+",
+      "errors": "أخطاء",
+      "searchPlaceholder": "التصفية حسب الرسالة أو السياق…",
+      "sourceLabel": "المصدر",
+      "allSources": "جميع المصادر"
+    },
+    "actions": {
+      "pauseStream": "إيقاف البث مؤقتًا"
+    },
+    "table": {
+      "eventsCount": "{count} حدثًا · الأحدث أولًا",
+      "live": "مباشر"
+    },
+    "empty": {
+      "errorTitle": "تعذّرت قراءة السجلات",
+      "noEventsTitle": "لا توجد أحداث بهذه المرشِّحات",
+      "noEventsDescription": "يحتوي المخزن المؤقت فقط على ما حدث منذ آخر تشغيل للخدمة. شغّل مزامنة لتوليد نشاط."
+    },
+    "console": {
+      "filterPlaceholder": "التصفية حسب الرسالة أو الرابط…",
+      "levelAriaLabel": "الحد الأدنى للمستوى",
+      "levels": {
+        "all": "الكل",
+        "debug": "تصحيح+",
+        "info": "معلومة+",
+        "success": "ناجح+",
+        "warn": "تحذيرات+",
+        "error": "أخطاء"
+      },
+      "stageAriaLabel": "المرحلة",
+      "allStages": "جميع المراحل",
+      "sourceAriaLabel": "المصدر",
+      "allSources": "جميع المصادر",
+      "copyAriaLabel": "نسخ السجلات",
+      "downloadAriaLabel": "تنزيل السجلات",
+      "reloadAriaLabel": "إعادة التحميل",
+      "copyError": "لم يسمح المتصفح بالنسخ إلى الحافظة",
+      "lineCount": "{count, plural, one{سطر واحد} other{# أسطر}}",
+      "errorCount": "{count, plural, one{خطأ واحد} other{# أخطاء}}",
+      "warnCount": "{count, plural, one{تحذير واحد} other{# تحذيرات}}",
+      "aiCost": "ذكاء اصطناعي ≈ {cost}",
+      "autoScroll": "تمرير تلقائي",
+      "status": {
+        "streaming": "بث مباشر",
+        "polling": "استقصاء {seconds} ثانية",
+        "connecting": "جارٍ الاتصال…",
+        "paused": "متوقف مؤقتًا",
+        "memoryAndDb": "ذاكرة + قاعدة بيانات",
+        "memoryOnly": "ذاكرة فقط"
+      },
+      "readErrorTitle": "تعذّرت قراءة السجلات",
+      "emptyTitle": "لا يوجد نشاط بهذه المرشِّحات",
+      "emptyDescription": "شغّل مزامنة من الموصِّلات لرؤية خط المعالجة مرحلة بمرحلة.",
+      "detail": {
+        "closeAriaLabel": "إغلاق التفاصيل",
+        "moment": "اللحظة",
+        "duration": "المدة",
+        "job": "المهمة",
+        "product": "المنتج",
+        "retry": "إعادة المحاولة",
+        "url": "الرابط",
+        "metadata": "البيانات الوصفية"
+      },
+      "transportNote": {
+        "title": "نطاق هذه السجلات",
+        "persistentBody": "تُحفَظ الأحداث في قاعدة البيانات: تعرض وحدة التحكم أيضًا سجل المهام السابقة. يقدّم البث SSE فقط أحداث <strong>هذا التشغيل</strong>؛ الباقي يصل عبر الاستقصاء.",
+        "ephemeralBody": "لا توجد قاعدة بيانات مُهيَّأة، فالسجلات تعيش <strong>في الذاكرة فقط</strong> وتُفقد عند إعادة تشغيل العملية. اضبط <code>DATABASE_URL</code> (سلسلة <code>postgres://</code>) ونفّذ <code>npm run db:migrate</code> للحصول على سجل تاريخي."
+      }
+    }
+  },
+  "admin": {
+    "shell": {
+      "operationsLabel": "التشغيل",
+      "sectionsNav": "أقسام لوحة الإدارة",
+      "closeNav": "إغلاق التنقل",
+      "openNav": "فتح التنقل",
+      "backToProduct": "الرجوع إلى المنتج",
+      "nav": {
+        "overview": "نظرة عامة",
+        "connectors": "الموصِّلات",
+        "jobs": "المهام",
+        "catalog": "الكتالوج",
+        "logs": "المراقبة",
+        "settings": "الإعدادات"
+      },
+      "servicePill": {
+        "unavailable": "الخدمة غير متاحة",
+        "checking": "جارٍ الفحص…",
+        "postgres": "Postgres + pgvector",
+        "fileStore": "مخزن ملفي",
+        "productsSummary": "{count} منتج · {provider} {dimension}d"
+      }
+    },
+    "overview": {
+      "title": "نظرة عامة على التشغيل",
+      "description": "حالة الكتالوج والموصِّلات وقائمة انتظار الاستيراد والنشاط الأخير"
+    },
+    "connectors": {
+      "title": "موصِّلات الكتالوج",
+      "description": "سجل مصادر الأزياء مع نضج تنفيذها وحالتها التشغيلية الحقيقية"
+    },
+    "settings": {
+      "title": "إعدادات الخدمة",
+      "description": "التهيئة الفعلية للمفاتيح والتخزين والتمثيلات المرئية والمطابقة والامتثال"
+    },
+    "catalog": {
+      "title": "مستكشف الكتالوج",
+      "description": "منتجات موحَّدة، حالة الفهارس، وبحث بالنص أو الصورة"
+    },
+    "logs": {
+      "title": "المراقبة",
+      "description": "أحداث خدمة الكتالوج مع مرشِّحات بالمستوى والمصدر والنص"
+    },
+    "jobs": {
+      "title": "مهام الاستيراد",
+      "description": "التقدّم والأخطاء وإعادة المحاولة من نقطة التحقق لكل مهمة في الخدمة"
+    }
+  },
+  "publicCatalog": {
+    "meta": {
+      "title": "الكتالوج",
+      "description": "كتالوج داخلي للعناصر المكتشَفة عند تحليل الفيديوهات: الملابس والإكسسوارات والأشياء القابلة للشراء، مع مطابقاتها من المنتجات."
+    },
+    "page": {
+      "heading": "كتالوج العناصر المكتشَفة",
+      "description": "كل ما اكتشفه التحليل في فيديوهاتك وصورك. صفِّ العناصر وراجعها وابحث عن المنتجات المطابقة.",
+      "openScraper": "فتح السكرابر",
+      "ingestedCatalog": "الكتالوج المستورَد"
+    },
+    "empty": {
+      "filtered": "لا يوجد عنصر مطابق لهذه المرشِّحات. جرّب تعديلها أو مسحها.",
+      "noItems": "كتالوجك فارغ. أوقف فيديو مؤقتًا في {appName} لبدء اكتشاف العناصر.",
+      "cta": "الذهاب لتحليل فيديو"
+    },
+    "errors": {
+      "network": "خطأ في الشبكة."
+    },
+    "filters": {
+      "searchPlaceholder": "البحث بالاسم أو الوصف أو الأسلوب…",
+      "typeAriaLabel": "النوع",
+      "allTypes": "جميع الأنواع",
+      "statusAriaLabel": "الحالة",
+      "anyStatus": "أي حالة",
+      "originAriaLabel": "الأصل",
+      "anyOrigin": "أي أصل",
+      "categoryPlaceholder": "الفئة",
+      "colorPlaceholder": "اللون",
+      "itemCount": "{count, plural, one{# عنصر} other{# عناصر}}",
+      "localSaveTitle": "قاعدة البيانات غير متاحة: تُحفَظ العناصر وصورها خلال هذه الجلسة وتُزامَن عند عودة الاتصال.",
+      "localSaveBadge": "محفوظ في هذه الجلسة · مزامنة معلَّقة",
+      "videoBadge": "فيديو: {id}…",
+      "clearFilters": "مسح المرشِّحات"
+    },
+    "sourceTypes": {
+      "youtube": "يوتيوب",
+      "dailymotion": "Dailymotion",
+      "vimeo": "Vimeo",
+      "directMp4": "MP4 مباشر",
+      "hls": "HLS / بث",
+      "uploaded": "فيديو محلي",
+      "imageUpload": "صورة مرفوعة",
+      "screenCapture": "التقاط شاشة"
+    },
+    "itemTypes": {
+      "clothing": "ملابس",
+      "footwear": "أحذية",
+      "accessory": "إكسسوار",
+      "electronics": "إلكترونيات",
+      "home": "المنزل",
+      "beauty": "الجمال",
+      "other": "أخرى"
+    },
+    "itemStatus": {
+      "detected": "مكتشَف",
+      "reviewed": "تمت مراجعته",
+      "matched": "له منتجات",
+      "ignored": "متجاهَل"
+    },
+    "matchType": {
+      "exact": "مطابقة تامة",
+      "nearExact": "مطابقة تقريبية",
+      "similar": "مشابه"
+    },
+    "card": {
+      "viewDetailTitle": "عرض التفاصيل والتوصيات",
+      "detectedInVideo": "📸 مكتشَف في الفيديو",
+      "foundProductTitle": "منتج موجود: {title}",
+      "matchPct": "{pct}% تطابق",
+      "matchScoreTooltip": "درجة الثقة في أن نتيجة الويب تطابق المنتج نفسه.",
+      "searchingMatches": "جارٍ البحث عن مطابقات بصرية…",
+      "localOnlyNotice": "متاح في هذه الجلسة · مزامنة معلَّقة",
+      "brandPrefix": "العلامة التجارية: {brand}",
+      "viewDetail": "عرض التفاصيل",
+      "viewProduct": "عرض المنتج ↗",
+      "markReviewed": "وضع علامة تمت المراجعة",
+      "ignore": "تجاهل",
+      "reactivate": "إعادة التفعيل",
+      "originImage": "🖼️ صورة مرفوعة",
+      "originScreen": "🖥️ التقاط شاشة"
+    },
+    "drawer": {
+      "ariaLabel": "تفاصيل العنصر",
+      "title": "تفاصيل العنصر",
+      "loading": "جارٍ التحميل…",
+      "selectItem": "اختر عنصرًا.",
+      "sectionDetected": "📸 مكتشَف في الفيديو",
+      "noCaptureYet": "لا توجد بعد صورة مقصوصة لهذا الشيء — تُولَّد مع المطابقة البصرية.",
+      "seenCount": "شوهد ×{count}",
+      "specs": {
+        "moment": "لحظة الفيديو",
+        "subcategory": "الفئة الفرعية",
+        "color": "اللون",
+        "otherColors": "ألوان أخرى",
+        "style": "الأسلوب",
+        "pattern": "النقش",
+        "materialGuess": "المادة (تقديرية)",
+        "genderFit": "القصّة / الجنس",
+        "visibleBrand": "العلامة التجارية الظاهرة"
+      },
+      "viewOriginalFrame": "عرض الإطار الأصلي للمشهد",
+      "originalFrameAlt": "إطار مصدر {name}",
+      "sectionBestMatch": "🛒 منتج موجود على الإنترنت",
+      "searchingBestMatch": "جارٍ البحث عن مطابقات بصرية…",
+      "noReliableMatch": "لا توجد مطابقة موثوقة بعد. جرّب «البحث عن منتجات».",
+      "searchProducts": "🔎 البحث عن منتجات",
+      "searching": "جارٍ البحث…",
+      "markReviewed": "وضع علامة تمت المراجعة",
+      "ignore": "تجاهل",
+      "reactivate": "إعادة التفعيل",
+      "alternativesTitle": "بدائل ({count})",
+      "searchingProducts": "جارٍ البحث عن منتجات…",
+      "noMoreResults": "لا مزيد من النتائج.",
+      "auditTitle": "🔍 تدقيق تقني",
+      "audit": {
+        "detectedImage": "الصورة المكتشَفة",
+        "localCrop": "صورة مقصوصة محلية (الجلسة) — التخزين معلَّق",
+        "storedCrop": "صورة مقصوصة في التخزين",
+        "noCrop": "بلا صورة مقصوصة",
+        "originFrame": "إطار المصدر",
+        "saved": "محفوظ",
+        "notSaved": "غير محفوظ",
+        "matchProvider": "مزوّد المطابقة",
+        "matchScore": "درجة المطابقة",
+        "candidateCount": "عدد المرشَّحين",
+        "detectionCount": "الاكتشافات المتراكمة",
+        "createdAt": "تاريخ الإنشاء",
+        "updatedAt": "تاريخ التحديث",
+        "searchQuery": "استعلام البحث",
+        "marketplaceKeywords": "كلمات مفتاحية للمتجر"
+      },
+      "bestMatch": {
+        "matchScoreTooltip": "درجة الثقة في أن نتيجة الويب تطابق المنتج نفسه.",
+        "matchPct": "{pct}% تطابق",
+        "viewProduct": "عرض المنتج ↗"
+      },
+      "recommendation": {
+        "affinityPct": "{pct}% تقارب"
+      }
+    }
+  },
+  "demo": {
+    "page": {
+      "title": "عرض توضيحي كامل للفيديو",
+      "description": "تحليل غير متزامن لفيديو مرفوع: مهمة بنقطة تحقق، كشف المشاهد، تتبع، وإزالة تكرار عامة للمنتجات.",
+      "goToStudio": "الذهاب إلى الاستوديو التفاعلي ←"
+    },
+    "upload": {
+      "title": "ارفع فيديو (حد أقصى {seconds} ثانية)",
+      "description": "يستخرج المتصفح الإطارات؛ ويحتفظ الخادم بمهمة غير متزامنة بنقطة تحقق، ومشاهد، وتتبع، وإزالة تكرار عامة. تُدفَع تكلفة عمليات البحث المكلفة مرة واحدة فقط لكل منتج فريد.",
+      "notVideoError": "يجب أن يكون الملف فيديو (mp4، webm…).",
+      "durationError": "مدة الفيديو {seconds} ثانية؛ والحد الأقصى للعرض التوضيحي هو {maxSeconds} ثانية."
+    },
+    "matchingMode": {
+      "title": "وضع المطابقة",
+      "catalogOnly": {
+        "label": "الكتالوج فقط",
+        "hint": "دون عمليات بحث خارجية"
+      },
+      "catalogFirst": {
+        "label": "الكتالوج أولًا",
+        "hint": "خارجي فقط إن لم يُحلّ"
+      },
+      "externalOnly": {
+        "label": "البحث الخارجي فقط",
+        "hint": "خط معالجة Lens الكلاسيكي"
+      },
+      "hybrid": {
+        "label": "هجين",
+        "hint": "كلاهما، بترتيب مشترك"
+      }
+    },
+    "actions": {
+      "analyze": "تحليل الفيديو",
+      "analyzing": "جارٍ التحليل…",
+      "cancel": "إلغاء",
+      "boundingBoxes": "مربعات التحديد"
+    },
+    "errors": {
+      "createJobFailed": "تعذّر إنشاء المهمة.",
+      "frameBatchFailed": "خطأ في معالجة دفعة الإطارات.",
+      "finalizeFailed": "خطأ في إنهاء المهمة.",
+      "unknown": "خطأ غير معروف."
+    },
+    "job": {
+      "title": "مهمة التحليل",
+      "idLabel": "المعرّف: {jobId}",
+      "stats": {
+        "framesReceived": "الإطارات المستلَمة",
+        "framesAnalyzed": "الإطارات المحلَّلة",
+        "scenes": "المشاهد",
+        "tracks": "المسارات",
+        "uniqueProducts": "المنتجات الفريدة",
+        "externalSearches": "عمليات البحث الخارجية"
+      }
+    },
+    "savings": {
+      "title": "الطلبات المكلفة التي تم تجنّبها",
+      "framesDedup": "إطارات مُزالة التكرار (hash)",
+      "tracksMerged": "مسارات مُدمَجة",
+      "cacheHits": "نتائج من الذاكرة المؤقتة",
+      "catalogHits": "نتائج من الكتالوج"
+    },
+    "timings": {
+      "title": "الوقت لكل مرحلة",
+      "hashScenes": "Hash/المشاهد",
+      "detection": "الكشف",
+      "tracking": "التتبع",
+      "globalDedup": "إزالة التكرار العامة",
+      "matching": "المطابقة",
+      "total": "الإجمالي"
+    },
+    "status": {
+      "notStarted": "لم يبدأ بعد",
+      "creatingJob": "جارٍ إنشاء المهمة…",
+      "scanningFrames": "جارٍ استخراج الإطارات…",
+      "matchingProducts": "جارٍ المطابقة لكل منتج…"
+    },
+    "products": {
+      "title": "المنتجات الفريدة ({count})",
+      "tracksMerged": "{count} مسارات مُدمَجة",
+      "scoreLine": "الدرجة {score} · المصدر {source} ({provider})",
+      "matchingSkipped": "تم تجاوز المطابقة: {reason}",
+      "noProductsDetected": "لم يتم اكتشاف منتجات في الفئات المختارة.",
+      "segmentTooltip": "{start} – {end}"
+    },
+    "check": {
+      "title": "الفحص المسبق للعرض التوضيحي",
+      "description": "يتحقق من الخدمات الخارجية وقاعدة البيانات وأذونات المتصفح قبل البدء. لا يعرض أي مفاتيح.",
+      "back": "← رجوع",
+      "runButton": "تشغيل الفحص الكامل",
+      "running": "جارٍ الفحص…",
+      "runError": "تعذّر تشغيل الفحص (مهلة أو الخادم متوقف).",
+      "overall": {
+        "ok": "كل شيء جاهز للعرض التوضيحي.",
+        "warning": "يمكن تنفيذ العرض التوضيحي، لكن توجد تحذيرات: راجع الإجراءات الموصى بها.",
+        "error": "توجد أخطاء تؤثر على العرض التوضيحي: عالجها أو استخدم الخطة البديلة في دليل التشغيل."
+      },
+      "emptyHint": "اضغط الزر لتشغيل جميع الفحوصات.",
+      "status": {
+        "ok": "جيد",
+        "warning": "تحذير",
+        "error": "خطأ"
+      },
+      "browserChecks": {
+        "displayMedia": {
+          "label": "التقاط التبويب (getDisplayMedia)",
+          "okDetail": "يدعم المتصفح التقاط التبويب لأجل يوتيوب.",
+          "errorDetail": "هذا المتصفح لا يدعم getDisplayMedia: تدفق يوتيوب لن يعمل.",
+          "action": "استخدم Chrome/Edge لسطح المكتب."
+        },
+        "clipboard": {
+          "label": "الحافظة (لصق صورة)",
+          "okDetail": "اللصق بـ Ctrl+V متاح.",
+          "warningDetail": "واجهة الحافظة محدودة؛ استخدم السحب والإفلات."
+        }
+      }
+    }
+  }
+}
