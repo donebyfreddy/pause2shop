@@ -120,7 +120,36 @@
       "pause": "Pausar demo",
       "thresholdLabel": "Umbral de publicación",
       "thresholdValue": "≥ {value}%",
-      "thresholdNote": "Por debajo del umbral la coincidencia no se publica: pasa a revisión o se retiene."
+      "thresholdNote": "Por debajo del umbral la coincidencia no se publica: pasa a revisión o se retiene.",
+      "products": {
+        "coat": {
+          "label": "Abrigo con capucha",
+          "title": "Abrigo técnico con capucha",
+          "alt": "Abrigo negro con capucha, recorte sobre fondo oscuro"
+        },
+        "bag": {
+          "label": "Bolso de mano",
+          "title": "Bolso estructurado de piel",
+          "alt": "Bolso de mano estructurado en tono rosa empolvado"
+        },
+        "shoes": {
+          "label": "Zapatos formales",
+          "title": "Zapatos Oxford de piel",
+          "alt": "Par de zapatos Oxford de piel marrón"
+        }
+      },
+      "sceneAlt": "Composición de moda con abrigo, bolso y zapatos sobre fondo oscuro",
+      "sceneCaption": "Bodegón editorial · 3 objetos",
+      "matchesTitle": "Coincidencias en catálogo",
+      "viewMatch": "Ver coincidencia",
+      "belowThreshold": "Bajo el umbral: no se publica",
+      "demoProduct": "Producto demo",
+      "detecting": "Detectando…",
+      "searching": "Buscando en el catálogo…",
+      "selectDetection": "Seleccionar {label}, detección {confidence}%",
+      "selectCard": "Ver la coincidencia de {label}",
+      "restart": "Reiniciar demo",
+      "detectedCount": "{count, plural, one{# objeto detectado} other{# objetos detectados}}"
     },
     "demo": {
       "matchesTitle": "Coincidencias",

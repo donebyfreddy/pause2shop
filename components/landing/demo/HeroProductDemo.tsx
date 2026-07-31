@@ -1,70 +1,146 @@
 "use client";
 
-import { AnimatePresence, motion } from "motion/react";
-import { Pause, Play, ScanSearch } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
-import { DEMO_SCENES } from "@/lib/landing/demoScene";
-import { cn } from "@/lib/ui/cn";
+import { ScanSearch } from "lucide-react";
 import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
-import { SceneArt } from "./SceneArt";
-import { DetectionOverlay } from "./DetectionOverlay";
-import { MatchCard } from "./MatchCard";
+import {
+  HERO_DEMO_PRODUCTS,
+  HERO_DEMO_STEPS,
+  HERO_DEMO_STEP_MS,
+  type HeroDemoProductId,
+} from "@/lib/landing/heroDemo";
+import { DemoScene } from "./hero/DemoScene";
+import { DetectionOverlay } from "./hero/DetectionOverlay";
+import { ProductMatchPanel } from "./hero/ProductMatchPanel";
+import { DemoPlaybackControls } from "./hero/DemoPlaybackControls";
 
 /**
- * Demostración del hero: la promesa de la landing, en movimiento, dentro del
- * primer viewport.
+ * Demo del hero: la promesa de la landing en movimiento, con producto real.
  *
- * Restricciones que cumple por diseño:
+ * Sustituye a la ilustración SVG de formas genéricas. El argumento que tiene
+ * que quedar claro en 10 segundos es la cadena completa:
  *
- *  - **Cero red.** Escenas y coincidencias son datos locales
- *    (`lib/landing/demoScene.ts`). Si el servicio de catálogo está caído, el
- *    hero se ve igual. La auditoría dejó claro que el hero no puede depender de
- *    una API.
- *  - **Cero assets.** El frame es SVG generado (`SceneArt`), así que no hay
- *    imagen que descargar y no compite con el LCP del titular.
- *  - **Pausable de verdad.** El control detiene el temporizador, no solo la
- *    animación CSS, y es un `<button>` con `aria-pressed`.
- *  - **`prefers-reduced-motion`.** No arranca sola: se muestra la primera escena
- *    completa y estática, con todas las detecciones ya dibujadas. La
- *    información es la misma; lo que desaparece es el movimiento.
+ *   escena → detección → caja + etiqueta → búsqueda en catálogo →
+ *   coincidencia con score → publicada o retenida por el umbral
  *
- * Ritmo: 4 pasos de 1,3 s por escena (5,2 s). Los tres primeros enfocan un
- * objeto y su tarjeta —es el latido "objeto → catálogo"—; el cuarto deja la
- * escena entera antes de cambiar. Un ciclo completo de las tres escenas dura
- * ~15,6 s.
+ * Restricciones que sigue cumpliendo respecto de la versión anterior:
+ *
+ *  - **Cero red.** Detecciones y coincidencias son datos locales
+ *    (`lib/landing/heroDemo.ts`) y las imágenes son WebP servidos desde
+ *    `public/`. Si el catálogo está caído, el hero se ve igual.
+ *  - **Pausable de verdad.** El control detiene el temporizador.
+ *  - **`prefers-reduced-motion`.** No arranca sola: se muestra el estado final
+ *    completo —las tres detecciones y las tres coincidencias— de forma
+ *    estática. La información es la misma; lo que desaparece es el movimiento.
+ *  - **Interacción manda sobre el guion.** En cuanto alguien pasa el ratón o
+ *    hace clic, la reproducción automática se detiene: seguir avanzando por
+ *    debajo mientras el usuario explora es desconcertante.
  */
 
-const STEP_MS = 1300;
-const STEPS_PER_SCENE = 4;
+const ALL_IDS = HERO_DEMO_PRODUCTS.map((p) => p.id);
 
 export function HeroProductDemo() {
-  const t = useTranslations("landing.demo");
-  const tHero = useTranslations("landing.heroDemo");
+  const t = useTranslations("landing.heroDemo");
   const prefersReduced = usePrefersReducedMotion();
 
   const [step, setStep] = useState(0);
   const [playing, setPlaying] = useState(true);
+  /**
+   * Selección FIJADA con clic y realce TRANSITORIO por hover, separados.
+   *
+   * Con una sola variable, el ratón rompía el clic: al acercarse, el
+   * `mouseenter` ya fijaba el producto, y el clic que venía justo detrás lo
+   * alternaba de vuelta a "nada" — pinchar una caja parecía no hacer nada. Con
+   * las dos, el hover solo previsualiza y el clic gobierna la selección.
+   */
+  const [pinnedId, setPinnedId] = useState<HeroDemoProductId | null>(null);
+  const [hoveredId, setHoveredId] = useState<HeroDemoProductId | null>(null);
+  /**
+   * El usuario ya ha tocado la demo alguna vez.
+   *
+   * A partir de ese momento se enseña todo y no se vuelve al estado parcial del
+   * guion: si no, al retirar el ratón las cajas DESAPARECÍAN —el guion seguía
+   * pausado en un paso temprano— y parecía que la demo se había roto.
+   */
+  const [touched, setTouched] = useState(false);
+
+  const autoplay = playing && !prefersReduced;
 
   useEffect(() => {
-    if (prefersReduced || !playing) return;
-    const id = window.setInterval(() => setStep((s) => s + 1), STEP_MS);
+    if (!autoplay) return;
+    const id = window.setInterval(
+      () => setStep((s) => (s + 1) % HERO_DEMO_STEPS.length),
+      HERO_DEMO_STEP_MS
+    );
     return () => window.clearInterval(id);
-  }, [prefersReduced, playing]);
+  }, [autoplay]);
 
-  const sceneIndex = Math.floor(step / STEPS_PER_SCENE) % DEMO_SCENES.length;
-  const scene = DEMO_SCENES[sceneIndex];
-  const stepInScene = step % STEPS_PER_SCENE;
+  const current = HERO_DEMO_STEPS[step];
 
-  // En el paso final no hay objeto enfocado: la escena descansa completa.
-  const focused =
-    stepInScene < scene.objects.length ? scene.objects[stepInScene] : null;
-  const focusedMatchId = focused?.matchId ?? null;
+  /**
+   * Qué hay revelado en cada momento.
+   *
+   * Con movimiento reducido —o con el guion terminado, o con selección
+   * manual— se enseña todo: el estado parcial solo tiene sentido mientras la
+   * secuencia lo está construyendo delante de ti.
+   */
+  const { revealed, resolved, searchingId } = useMemo(() => {
+    if (prefersReduced || touched) {
+      return { revealed: ALL_IDS, resolved: ALL_IDS, searchingId: null };
+    }
+    const revealedIds: HeroDemoProductId[] = [];
+    const resolvedIds: HeroDemoProductId[] = [];
+    let searching: HeroDemoProductId | null = null;
+
+    for (let i = 0; i <= step; i++) {
+      const s = HERO_DEMO_STEPS[i];
+      if (!s.productId) continue;
+      if (!revealedIds.includes(s.productId)) revealedIds.push(s.productId);
+      if (s.phase === "match" && !resolvedIds.includes(s.productId)) {
+        resolvedIds.push(s.productId);
+      }
+    }
+    // El paso "detect" del producto en curso muestra su tarjeta buscando: es
+    // el eslabón que conecta la caja con el panel.
+    if (current.phase === "detect" && current.productId) {
+      searching = current.productId;
+    }
+    return { revealed: revealedIds, resolved: resolvedIds, searchingId: searching };
+  }, [step, current, prefersReduced, touched]);
+
+  // El hover manda sobre lo fijado, y lo fijado sobre el guion.
+  const activeId = hoveredId ?? pinnedId ?? current.productId;
+
+  /** Clic: fija (o suelta) el producto y congela el guion. */
+  const select = useCallback((id: HeroDemoProductId) => {
+    setPinnedId((prev) => (prev === id ? null : id));
+    setTouched(true);
+    setPlaying(false);
+  }, []);
+
+  /** Hover/foco: solo previsualiza. No toca la selección fijada. */
+  const hover = useCallback((id: HeroDemoProductId) => {
+    setHoveredId(id);
+    setTouched(true);
+    setPlaying(false);
+  }, []);
+
+  const restart = useCallback(() => {
+    setPinnedId(null);
+    setHoveredId(null);
+    setTouched(false);
+    setStep(0);
+    setPlaying(true);
+  }, []);
 
   return (
     <div className="relative">
       {/* halo: profundidad sin animar blur (coste de compositor) */}
-      <div aria-hidden className="absolute -inset-4 rounded-[2rem] bg-brand/15 blur-3xl sm:-inset-6" />
+      <div
+        aria-hidden
+        className="absolute -inset-4 rounded-[2rem] bg-brand/15 blur-3xl sm:-inset-6"
+      />
 
       <div className="panel relative overflow-hidden shadow-panel">
         {/* ---------------------------- barra superior --------------------------- */}
@@ -76,63 +152,40 @@ export function HeroProductDemo() {
           </div>
 
           <p className="truncate font-mono text-[10px] text-ink-faint sm:ml-2 sm:text-[11px]">
-            {tHero("windowLabel", { timecode: scene.timecode })}
+            {t("sceneCaption")}
           </p>
 
-          {/* Etiqueta honesta: es una escena de demostración, no una emisión.
-              La versión anterior ponía "en directo" — el producto no hace
-              directo, y el badge lo prometía dentro del propio mockup. */}
           <span className="ml-auto hidden shrink-0 items-center gap-1.5 rounded-full border border-line bg-white/[0.03] px-2 py-0.5 text-[10px] font-medium text-ink-muted sm:inline-flex">
-            {tHero("demoBadge")}
+            {t("demoBadge")}
           </span>
 
-          {/* `aria-label` explícito y no solo el texto de dentro: por debajo de
-              `sm` la etiqueta se oculta para que la barra quepa, y el icono es
-              `aria-hidden`, así que sin esto el botón se queda SIN nombre
-              accesible en móvil. Lo detectó el E2E de móvil. */}
-          <button
-            type="button"
-            onClick={() => setPlaying((p) => !p)}
-            aria-pressed={playing && !prefersReduced}
-            aria-label={playing && !prefersReduced ? tHero("pause") : tHero("play")}
-            className="ml-auto inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-line px-2 py-1 text-[10px] font-medium text-ink-muted transition-colors hover:border-line-strong hover:text-ink sm:ml-2"
-          >
-            {playing && !prefersReduced ? (
-              <>
-                <Pause className="size-3" aria-hidden />
-                <span className="hidden sm:inline">{tHero("pause")}</span>
-              </>
-            ) : (
-              <>
-                <Play className="size-3" aria-hidden />
-                <span className="hidden sm:inline">{tHero("play")}</span>
-              </>
-            )}
-          </button>
+          <DemoPlaybackControls
+            playing={autoplay}
+            onToggle={() => {
+              setPinnedId(null);
+              setHoveredId(null);
+              setPlaying((p) => !p);
+              // Reanudar vuelve al guion; pausar deja todo a la vista.
+              setTouched((prev) => (playing ? true : prev));
+            }}
+            onRestart={restart}
+            className="ml-auto sm:ml-2"
+          />
         </div>
 
-        <div className="grid lg:grid-cols-[1.5fr_1fr]">
-          {/* ------------------------------ el frame ----------------------------- */}
-          <div className="relative aspect-video overflow-hidden border-line bg-canvas lg:border-r">
-            <AnimatePresence mode="popLayout">
-              <motion.div
-                key={scene.id}
-                initial={{ opacity: 0, scale: 1.04 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.45, ease: [0.22, 0.61, 0.36, 1] }}
-                className="absolute inset-0"
-              >
-                <SceneArt
-                  sceneId={scene.id}
-                  palette={scene.palette}
-                  className="size-full object-cover"
-                />
-              </motion.div>
-            </AnimatePresence>
+        {/* En móvil la escena va arriba y el panel debajo; a partir de `lg`
+            comparten fila con la escena dominante (≈65/35). */}
+        <div className="grid lg:grid-cols-[1.65fr_1fr]">
+          {/* ------------------------------ la escena ---------------------------- */}
+          <div
+            className="relative aspect-video overflow-hidden border-line bg-canvas lg:border-r"
+            onMouseLeave={() => setHoveredId(null)}
+          >
+            <DemoScene activeId={activeId} dimInactive={!prefersReduced} />
 
-            {/* línea de escaneo: la metáfora de "analizar el frame" */}
-            {playing && (
+            {/* Línea de escaneo: la metáfora de "analizar el frame". Solo
+                mientras el guion corre — con la demo pausada sería ruido. */}
+            {autoplay && (
               <div aria-hidden className="absolute inset-0 overflow-hidden">
                 <div className="animate-scan absolute inset-x-0 h-20 bg-linear-to-b from-transparent via-accent/20 to-transparent">
                   <div className="absolute bottom-0 h-px w-full bg-accent/70 shadow-[0_0_16px_2px_rgba(34,211,238,0.6)]" />
@@ -141,83 +194,30 @@ export function HeroProductDemo() {
             )}
 
             <DetectionOverlay
-              objects={scene.objects}
-              activeId={focused?.id ?? null}
-              sceneKey={scene.id}
+              revealed={revealed}
+              activeId={activeId}
+              onSelect={select}
+              onHover={hover}
             />
 
-            <div className="absolute bottom-2 left-2 flex items-center gap-2 rounded-lg border border-line bg-canvas/85 px-2 py-1 backdrop-blur-sm sm:bottom-3 sm:left-3 sm:px-2.5 sm:py-1.5">
+            {/* Contador de detecciones. Antes repetía el rótulo de la barra
+                superior palabra por palabra; aquí lo útil es cuántas cajas se
+                llevan dibujadas, que además avanza con la secuencia. */}
+            <div className="pointer-events-none absolute bottom-2 left-2 flex items-center gap-2 rounded-lg border border-line bg-canvas/85 px-2 py-1 backdrop-blur-sm sm:bottom-3 sm:left-3 sm:px-2.5 sm:py-1.5">
               <ScanSearch className="size-3.5 shrink-0 text-accent" aria-hidden />
               <span className="font-mono text-[9px] text-ink-muted sm:text-[10px]">
-                {t("detectionSummary", { objects: scene.objects.length })}
+                {t("detectedCount", { count: revealed.length })}
               </span>
-            </div>
-
-            {/* progreso de escenas: orienta sin robar atención */}
-            <div className="absolute right-2 bottom-2 flex gap-1 sm:right-3 sm:bottom-3" aria-hidden>
-              {DEMO_SCENES.map((s, i) => (
-                <span
-                  key={s.id}
-                  className={cn(
-                    "h-0.5 rounded-full transition-all duration-500",
-                    i === sceneIndex ? "w-5 bg-accent" : "w-2 bg-white/25"
-                  )}
-                />
-              ))}
             </div>
           </div>
 
           {/* --------------------------- panel de resultados ---------------------- */}
-          <div className="flex flex-col gap-2 p-3">
-            <div className="flex items-baseline justify-between gap-2">
-              <p className="text-[10px] font-semibold tracking-[0.14em] text-ink-faint uppercase">
-                {t("matchesTitle")}
-              </p>
-              <span className="font-mono text-[10px] text-ink-faint">{t("source")}</span>
-            </div>
-
-            {/* aria-live: quien usa lector de pantalla se entera de que el panel
-                cambia con la escena, sin tener que ir a buscarlo. */}
-            <div className="flex flex-col gap-1.5" aria-live="polite" aria-atomic="false">
-              {scene.matches.map((match, i) => (
-                <motion.div
-                  key={`${scene.id}-${match.id}`}
-                  initial={{ opacity: 0, x: 18 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  // Sin retardo largo: el panel de coincidencias es LO que hay
-                  // que ver en el hero, y con 0,3 s + escalonado se quedaba en
-                  // blanco casi un segundo en cada cambio de escena.
-                  transition={{
-                    duration: 0.3,
-                    delay: 0.1 + i * 0.07,
-                    ease: [0.22, 0.61, 0.36, 1],
-                  }}
-                >
-                  <MatchCard
-                    match={match}
-                    timecode={scene.timecode}
-                    active={focusedMatchId === match.id}
-                    compact
-                  />
-                </motion.div>
-              ))}
-            </div>
-
-            {/* Resumen del umbral en una línea: cierra el discurso del hero con
-                la promesa que más importa a un responsable editorial.
-                Compacto a propósito — el alto de esta columna es lo que fija el
-                alto del panel, y el panel tiene que caber en el primer
-                viewport. El desarrollo completo, con deslizador, está en
-                `ConfidenceSection`. */}
-            <div className="mt-auto flex items-center gap-2 rounded-xl border border-line bg-white/[0.02] px-3 py-2">
-              <span className="truncate text-[10px] text-ink-subtle">
-                {tHero("thresholdLabel")}
-              </span>
-              <span className="ml-auto shrink-0 font-mono text-[10px] text-ink">
-                {tHero("thresholdValue", { value: 75 })}
-              </span>
-            </div>
-          </div>
+          <ProductMatchPanel
+            resolved={resolved}
+            activeId={activeId}
+            searchingId={searchingId}
+            onSelect={select}
+          />
         </div>
       </div>
     </div>

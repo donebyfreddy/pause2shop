@@ -12,6 +12,7 @@
     "db:verify": "node --import tsx scripts/verifyDb.ts",
     "typecheck": "tsc --noEmit",
     "env:check": "node --import tsx scripts/envCheck.ts",
+    "demo:assets": "node --import tsx scripts/prepareDemoAssets.ts",
     "scraper:probe": "node --import tsx scripts/scraperProbe.ts",
     "scraper:infer": "node --import tsx scripts/inferProductPatterns.ts",
     "scraper:smoke": "node --import tsx scripts/scraperSmoke.ts",

@@ -120,7 +120,36 @@
       "pause": "Mettre la démo en pause",
       "thresholdLabel": "Seuil de publication",
       "thresholdValue": "≥ {value} %",
-      "thresholdNote": "Sous le seuil, la correspondance n'est pas publiée : elle passe en révision ou elle est retenue."
+      "thresholdNote": "Sous le seuil, la correspondance n'est pas publiée : elle passe en révision ou elle est retenue.",
+      "products": {
+        "coat": {
+          "label": "Manteau à capuche",
+          "title": "Manteau technique à capuche",
+          "alt": "Manteau noir à capuche, détouré sur fond sombre"
+        },
+        "bag": {
+          "label": "Sac à main",
+          "title": "Sac structuré en cuir",
+          "alt": "Sac à main structuré rose poudré"
+        },
+        "shoes": {
+          "label": "Chaussures de ville",
+          "title": "Chaussures Oxford en cuir",
+          "alt": "Paire de chaussures Oxford en cuir marron"
+        }
+      },
+      "sceneAlt": "Composition mode avec manteau, sac et chaussures sur fond sombre",
+      "sceneCaption": "Nature morte éditoriale · 3 objets",
+      "matchesTitle": "Correspondances du catalogue",
+      "viewMatch": "Voir la correspondance",
+      "belowThreshold": "Sous le seuil : non publié",
+      "demoProduct": "Produit démo",
+      "detecting": "Détection…",
+      "searching": "Recherche dans le catalogue…",
+      "selectDetection": "Sélectionner {label}, détection {confidence} %",
+      "selectCard": "Voir la correspondance de {label}",
+      "restart": "Redémarrer la démo",
+      "detectedCount": "{count, plural, one{# objet détecté} other{# objets détectés}}"
     },
     "demo": {
       "matchesTitle": "Correspondances",

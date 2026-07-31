@@ -120,7 +120,36 @@
       "pause": "Demo pausieren",
       "thresholdLabel": "Veröffentlichungsschwelle",
       "thresholdValue": "≥ {value} %",
-      "thresholdNote": "Unterhalb der Schwelle wird der Treffer nicht veröffentlicht: Er geht in die Prüfung oder wird zurückgehalten."
+      "thresholdNote": "Unterhalb der Schwelle wird der Treffer nicht veröffentlicht: Er geht in die Prüfung oder wird zurückgehalten.",
+      "products": {
+        "coat": {
+          "label": "Mantel mit Kapuze",
+          "title": "Technischer Mantel mit Kapuze",
+          "alt": "Schwarzer Mantel mit Kapuze, freigestellt auf dunklem Hintergrund"
+        },
+        "bag": {
+          "label": "Handtasche",
+          "title": "Strukturierte Ledertasche",
+          "alt": "Strukturierte Handtasche in Altrosa"
+        },
+        "shoes": {
+          "label": "Business-Schuhe",
+          "title": "Oxford-Schuhe aus Leder",
+          "alt": "Paar braune Oxford-Lederschuhe"
+        }
+      },
+      "sceneAlt": "Mode-Komposition mit Mantel, Tasche und Schuhen vor dunklem Hintergrund",
+      "sceneCaption": "Editorial-Stillleben · 3 Objekte",
+      "matchesTitle": "Treffer im Katalog",
+      "viewMatch": "Treffer ansehen",
+      "belowThreshold": "Unter der Schwelle: nicht veröffentlicht",
+      "demoProduct": "Demo-Produkt",
+      "detecting": "Erkennung…",
+      "searching": "Suche im Katalog…",
+      "selectDetection": "{label} auswählen, Erkennung {confidence} %",
+      "selectCard": "Treffer für {label} ansehen",
+      "restart": "Demo neu starten",
+      "detectedCount": "{count, plural, one{# Objekt erkannt} other{# Objekte erkannt}}"
     },
     "demo": {
       "matchesTitle": "Treffer",

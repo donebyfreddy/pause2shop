@@ -120,7 +120,36 @@
       "pause": "Pause demo",
       "thresholdLabel": "Publishing threshold",
       "thresholdValue": "≥ {value}%",
-      "thresholdNote": "Below the threshold a match is not published: it goes to review or is withheld."
+      "thresholdNote": "Below the threshold a match is not published: it goes to review or is withheld.",
+      "products": {
+        "coat": {
+          "label": "Hooded coat",
+          "title": "Technical hooded coat",
+          "alt": "Black hooded coat, cut out on a dark background"
+        },
+        "bag": {
+          "label": "Handbag",
+          "title": "Structured leather bag",
+          "alt": "Structured handbag in dusty pink"
+        },
+        "shoes": {
+          "label": "Formal shoes",
+          "title": "Leather Oxford shoes",
+          "alt": "Pair of brown leather Oxford shoes"
+        }
+      },
+      "sceneAlt": "Fashion composition with a coat, a bag and shoes on a dark background",
+      "sceneCaption": "Editorial still life · 3 objects",
+      "matchesTitle": "Catalog matches",
+      "viewMatch": "View match",
+      "belowThreshold": "Below threshold: not published",
+      "demoProduct": "Demo product",
+      "detecting": "Detecting…",
+      "searching": "Searching the catalog…",
+      "selectDetection": "Select {label}, detection {confidence}%",
+      "selectCard": "View the match for {label}",
+      "restart": "Restart demo",
+      "detectedCount": "{count, plural, one{# object detected} other{# objects detected}}"
     },
     "demo": {
       "matchesTitle": "Matches",

@@ -120,7 +120,36 @@
       "pause": "Pausar la demo",
       "thresholdLabel": "Llindar de publicació",
       "thresholdValue": "≥ {value}%",
-      "thresholdNote": "Per sota del llindar la coincidència no es publica: passa a revisió o es retén."
+      "thresholdNote": "Per sota del llindar la coincidència no es publica: passa a revisió o es retén.",
+      "products": {
+        "coat": {
+          "label": "Abric amb caputxa",
+          "title": "Abric tècnic amb caputxa",
+          "alt": "Abric negre amb caputxa, retallat sobre fons fosc"
+        },
+        "bag": {
+          "label": "Bossa de mà",
+          "title": "Bossa estructurada de pell",
+          "alt": "Bossa de mà estructurada en to rosa empolsat"
+        },
+        "shoes": {
+          "label": "Sabates formals",
+          "title": "Sabates Oxford de pell",
+          "alt": "Parell de sabates Oxford de pell marró"
+        }
+      },
+      "sceneAlt": "Composició de moda amb abric, bossa i sabates sobre fons fosc",
+      "sceneCaption": "Bodegó editorial · 3 objectes",
+      "matchesTitle": "Coincidències al catàleg",
+      "viewMatch": "Veure coincidència",
+      "belowThreshold": "Sota el llindar: no es publica",
+      "demoProduct": "Producte demo",
+      "detecting": "Detectant…",
+      "searching": "Cercant al catàleg…",
+      "selectDetection": "Seleccionar {label}, detecció {confidence}%",
+      "selectCard": "Veure la coincidència de {label}",
+      "restart": "Reiniciar demo",
+      "detectedCount": "{count, plural, one{# objecte detectat} other{# objectes detectats}}"
     },
     "demo": {
       "matchesTitle": "Coincidències",

@@ -120,7 +120,36 @@
       "pause": "Pausar demo",
       "thresholdLabel": "Limiar de publicação",
       "thresholdValue": "≥ {value}%",
-      "thresholdNote": "Abaixo do limiar a correspondência não é publicada: passa a revisão ou é retida."
+      "thresholdNote": "Abaixo do limiar a correspondência não é publicada: passa a revisão ou é retida.",
+      "products": {
+        "coat": {
+          "label": "Casaco com capuz",
+          "title": "Casaco técnico com capuz",
+          "alt": "Casaco preto com capuz, recortado sobre fundo escuro"
+        },
+        "bag": {
+          "label": "Mala de mão",
+          "title": "Mala estruturada em pele",
+          "alt": "Mala de mão estruturada em rosa velho"
+        },
+        "shoes": {
+          "label": "Sapatos formais",
+          "title": "Sapatos Oxford em pele",
+          "alt": "Par de sapatos Oxford em pele castanha"
+        }
+      },
+      "sceneAlt": "Composição de moda com casaco, mala e sapatos sobre fundo escuro",
+      "sceneCaption": "Natureza-morta editorial · 3 objetos",
+      "matchesTitle": "Correspondências no catálogo",
+      "viewMatch": "Ver correspondência",
+      "belowThreshold": "Abaixo do limiar: não publicado",
+      "demoProduct": "Produto demo",
+      "detecting": "A detetar…",
+      "searching": "A pesquisar no catálogo…",
+      "selectDetection": "Selecionar {label}, deteção {confidence}%",
+      "selectCard": "Ver a correspondência de {label}",
+      "restart": "Reiniciar demo",
+      "detectedCount": "{count, plural, one{# objeto detetado} other{# objetos detetados}}"
     },
     "demo": {
       "matchesTitle": "Correspondências",

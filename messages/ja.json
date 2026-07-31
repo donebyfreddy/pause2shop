@@ -120,7 +120,36 @@
       "pause": "デモを一時停止",
       "thresholdLabel": "公開しきい値",
       "thresholdValue": "≥ {value}%",
-      "thresholdNote": "しきい値を下回る一致は公開されません。レビューに回るか、保留されます。"
+      "thresholdNote": "しきい値を下回る一致は公開されません。レビューに回るか、保留されます。",
+      "products": {
+        "coat": {
+          "label": "フード付きコート",
+          "title": "テクニカルフードコート",
+          "alt": "暗い背景に切り抜いた黒のフード付きコート"
+        },
+        "bag": {
+          "label": "ハンドバッグ",
+          "title": "レザー構造バッグ",
+          "alt": "くすんだピンクの構造的なハンドバッグ"
+        },
+        "shoes": {
+          "label": "フォーマルシューズ",
+          "title": "レザーオックスフォードシューズ",
+          "alt": "茶色のレザーオックスフォードシューズ"
+        }
+      },
+      "sceneAlt": "暗い背景にコート、バッグ、シューズを配したファッション構成",
+      "sceneCaption": "エディトリアル静物 · 3 オブジェクト",
+      "matchesTitle": "カタログの一致",
+      "viewMatch": "一致を見る",
+      "belowThreshold": "しきい値未満: 公開しません",
+      "demoProduct": "デモ商品",
+      "detecting": "検出中…",
+      "searching": "カタログを検索中…",
+      "selectDetection": "{label} を選択、検出 {confidence}%",
+      "selectCard": "{label} の一致を見る",
+      "restart": "デモを再開",
+      "detectedCount": "{count} 個のオブジェクトを検出"
     },
     "demo": {
       "matchesTitle": "一致した商品",

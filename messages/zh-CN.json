@@ -120,7 +120,36 @@
       "pause": "暂停演示",
       "thresholdLabel": "发布阈值",
       "thresholdValue": "≥ {value}%",
-      "thresholdNote": "低于阈值的匹配不会发布：转入复核，或保留不展示。"
+      "thresholdNote": "低于阈值的匹配不会发布：转入复核，或保留不展示。",
+      "products": {
+        "coat": {
+          "label": "连帽大衣",
+          "title": "功能性连帽大衣",
+          "alt": "深色背景上抠图的黑色连帽大衣"
+        },
+        "bag": {
+          "label": "手提包",
+          "title": "结构感皮革手袋",
+          "alt": "藕粉色结构感手提包"
+        },
+        "shoes": {
+          "label": "正装皮鞋",
+          "title": "皮革牛津鞋",
+          "alt": "一双棕色皮革牛津鞋"
+        }
+      },
+      "sceneAlt": "深色背景上由大衣、手袋和皮鞋组成的时尚构图",
+      "sceneCaption": "编辑静物 · 3 个对象",
+      "matchesTitle": "目录匹配",
+      "viewMatch": "查看匹配",
+      "belowThreshold": "低于阈值：不发布",
+      "demoProduct": "演示商品",
+      "detecting": "检测中…",
+      "searching": "正在搜索目录…",
+      "selectDetection": "选择{label}，检测 {confidence}%",
+      "selectCard": "查看{label}的匹配",
+      "restart": "重新开始演示",
+      "detectedCount": "检测到 {count} 个对象"
     },
     "demo": {
       "matchesTitle": "匹配结果",
