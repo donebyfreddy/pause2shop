@@ -104,13 +104,24 @@ export function DetectionOverlay({
             height: `${object.box.h}%`,
           } as const;
 
+          /**
+           * Ritmo de entrada y salida de las cajas.
+           *
+           * La salida es CASI INSTANTÁNEA a propósito: con una salida lenta, al
+           * cambiar de escena las cajas de la escena anterior se quedaban
+           * dibujadas encima del frame nuevo —etiquetas de "Abrigo largo" sobre
+           * un salón— durante casi un segundo. Se vio en una captura del hero.
+           *
+           * La entrada también se ha acortado: el hero cambia de escena cada
+           * 5,2 s, así que cada décima de retardo se paga en bucle.
+           */
           const shared = {
             initial: { opacity: 0, scale: 0.9 },
             animate: { opacity: 1, scale: 1 },
-            exit: { opacity: 0, scale: 0.95 },
+            exit: { opacity: 0, scale: 0.98, transition: { duration: 0.1 } },
             transition: {
-              duration: 0.4,
-              delay: 0.35 + index * 0.28,
+              duration: 0.3,
+              delay: 0.14 + index * 0.12,
               ease: [0.22, 0.61, 0.36, 1] as const,
             },
           };

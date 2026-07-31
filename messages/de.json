@@ -222,6 +222,7 @@
     "trust": {
       "metricsLabel": "Metriken der Testumgebung",
       "metricsNote": "Live aus der Testumgebung gelesene Zahlen, nicht aus einem Produktions-Deployment. Antwortet der Katalogdienst nicht, wird „—“ angezeigt, niemals ein Füllwert.",
+      "loading": "Wird geladen…",
       "capabilities": {
         "vod": "VOD und On Demand",
         "closedCatalog": "Geschlossener Katalog",

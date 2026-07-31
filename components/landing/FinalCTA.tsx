@@ -1,6 +1,6 @@
 "use client";
 
-import { motion, useReducedMotion } from "motion/react";
+import { motion } from "motion/react";
 import { ArrowRight, PlayCircle } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { ButtonLink } from "@/components/ui";
@@ -18,7 +18,6 @@ import { FadeIn } from "@/components/motion";
 
 export function FinalCTA() {
   const t = useTranslations("landing.finalCta");
-  const reduce = useReducedMotion();
 
   return (
     <section className="relative py-16 sm:py-24">

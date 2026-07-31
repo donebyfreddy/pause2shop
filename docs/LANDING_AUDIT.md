@@ -8,7 +8,9 @@ Método: recorrido con Playwright (Chromium) de `/`, `/studio`, `/catalog`, `/de
 página completa, más volcado de headings, enlaces, landmarks, metadatos, overflow
 horizontal y errores de consola.
 
-Artefactos: `docs/audit/before/` (capturas) y el volcado estructurado que las acompaña.
+Artefactos: `docs/audit/before/` (estado auditado) y `docs/audit/after/` (estado tras
+el rediseño, capturado contra un build de producción). El apartado 7 recoge la
+verificación posterior, medida con el mismo método.
 
 ---
 
@@ -229,3 +231,148 @@ Para que el rediseño no destruya valor existente:
 | P2 | Variar la composición: diagrama, sticky, comparación, métricas | Romper la repetición de tarjetas |
 | P2 | Footer profesional con legal, contacto y selector de idioma | Credibilidad |
 | P2 | Reducir el alto total de la home | 6.211 px es demasiado para el contenido que hay |
+
+---
+
+## 7. Verificación posterior al rediseño
+
+Medido con el mismo script de auditoría, contra un build de producción
+(`next build && next start`), en las mismas cuatro resoluciones.
+
+### 7.1 Defectos medibles: antes → después
+
+| Métrica | Antes | Después |
+| --- | --- | --- |
+| Desbordamiento horizontal en `/` @390 px | 16 px | **0 px** |
+| Ídem en `/studio`, `/catalog`, `/demo` | 16 px | **0 px** |
+| `/robots.txt` | 404 | **200** |
+| `/sitemap.xml` | 404 | **200** (7 rutas públicas) |
+| `/manifest.webmanifest` | 404 | **200** |
+| `/opengraph-image` | 404 | **200** (1200×630) |
+| `og:*` en la home | 0 etiquetas | **8** |
+| `twitter:*` en la home | 0 etiquetas | **8** |
+| `canonical` en rutas públicas | ninguna | **todas** |
+| `<h1>` en `/demo` | 2 | **1** |
+| Título propio en `/demo` | no (heredaba el de la home) | **sí** |
+| `noindex` en `/admin` | sí (ya estaba) | sí, y además `Disallow` en robots |
+| Enlaces a `/admin` en la home | 6 | **0** |
+| Contraste `ink-subtle` sobre lienzo | 4,06:1 (falla AA) | **7,21:1** |
+| Contraste `ink-faint` sobre lienzo | 2,41:1 (falla AA) | **5,83:1** |
+| Peor contraste de texto del sistema | 2,15:1 | **4,79:1** (cumple AA) |
+| Alto de la home @1440 | 6.211 px | 9.392 px (con 5 secciones nuevas) |
+
+### 7.2 La demo dentro del primer viewport
+
+Medida la posición del panel completo de la demo del hero:
+
+| Resolución | Antes | Después |
+| --- | --- | --- |
+| 1440×900 | se cortaba (empezaba a 620 px) | panel completo, 483→898 px ✅ |
+| 1920×1080 | se cortaba | panel completo ✅ |
+| 1366×768 | se cortaba | panel completo, 332→747 px ✅ |
+| 768×1024 | se cortaba | frame completo en el fold ✅ |
+| 390×844 | se cortaba | frame completo, 641→841 px ✅ |
+
+En 768 px y 390 px el layout apila frame y resultados, así que el panel entero no
+cabe por definición; lo que sí entra completo es el frame con sus detecciones,
+que es la parte que tiene que entenderse en cinco segundos.
+
+### 7.3 Defectos encontrados y corregidos DURANTE el rediseño
+
+Tres los introdujo este trabajo y se detectaron con las pruebas, no a ojo:
+
+1. **Titular sin espacios entre palabras.** El separador iba dentro del `span`
+   animado, y un espacio al final del contenido de un `inline-block` lo elimina el
+   algoritmo de línea. Se ve en `docs/audit/` la diferencia. Corregido moviendo el
+   separador a nodo de texto hermano.
+2. **Error de hidratación por `prefers-reduced-motion`.** Las primitivas de
+   movimiento decidían QUÉ renderizar según una media query que el servidor no
+   puede conocer, así que el primer render del cliente difería y React descartaba
+   el HTML del servidor. Corregido con `MotionConfig reducedMotion="user"` más una
+   regla CSS, sin ramificar el árbol. Lo detectó el E2E con
+   `emulateMedia({ reducedMotion: "reduce" })`.
+3. **Botón de pausa sin nombre accesible en móvil.** Su etiqueta se oculta por
+   debajo de `sm` y el icono es `aria-hidden`, así que el botón se quedaba sin
+   nombre. Corregido con `aria-label` explícito. Lo detectó el E2E de móvil.
+
+### 7.4 Pruebas
+
+- `npm run typecheck`: sin errores.
+- `npm test`: 459 pruebas, 459 pasan.
+- `npm run build`: correcto.
+- `npx playwright test`: 56 pasan, 0 fallan (6 omitidas a propósito por proyecto).
+- Cero errores de consola en las 20 combinaciones de ruta × resolución.
+
+La suite E2E incluye guardas de regresión para los defectos de esta lista: que no
+haya desbordamiento horizontal, que no aparezca `/admin`, que el panel de la demo
+entre en el viewport a tres resoluciones, que el texto del hero se pinte opaco
+desde el primer frame (la causa del LCP alto) y que el shell no espere al servicio
+de catálogo.
+
+### 7.5 Rendimiento
+
+Medido sobre el build de producción con Playwright + CDP, a 1440×900, con CPU
+ralentizada 4× y red lenta (150 ms de latencia, 1,6 Mbps) para parecerse a un
+portátil corporativo y no a la máquina de desarrollo.
+
+| Métrica | Antes de optimizar | Después | |
+| --- | --- | --- | --- |
+| TTFB de `/` | 3.040 ms | **8 ms** | −99,7% |
+| FCP | 2.396 ms | **980 ms** | −59% |
+| LCP | 4.980 ms | **980 ms** | −80% |
+| CLS | 0 | **0,001** | dentro de "bueno" |
+| Tareas largas | 1 (66 ms) | 2 (118 ms) | sin bloqueo apreciable |
+| Bytes en el cable | 424 KB | 424 KB | sin cambios |
+
+Se corrigieron dos causas, ambas encontradas midiendo, no leyendo el código:
+
+**1. El LCP lo retrasaba mi propia animación.** El elemento LCP era el párrafo
+del hero, a 4.540 ms, cuando el FCP ya había ocurrido a 2.396 ms. Todo el texto
+del hero entraba desde `opacity: 0`, y un elemento invisible NO cuenta como
+pintado: la animación estaba pagando el LCP entera. Ahora el texto sobre la línea
+de flotación se anima solo con `transform`, así que se pinta en el primer frame.
+Visualmente se conserva la entrada escalonada palabra a palabra.
+
+**2. La página esperaba 3 segundos al servicio de catálogo.** `/` tenía un TTFB
+de 3,04 s mientras el resto de rutas respondía en ~10 ms, porque el componente de
+página hacía `await` de dos consultas del catálogo antes de emitir una sola
+etiqueta — para cuatro números de una franja. Ahora esas dos islas
+(franja de confianza y cinta de fuentes) viven tras su propio `Suspense`, con la
+carga memoizada por petición mediante `cache()` de React: el shell sale de
+inmediato y las cifras llegan por streaming, con un hueco de la misma altura para
+que no haya salto de layout.
+
+Hallazgo relacionado que NO se ha corregido porque pertenece a otra parte del
+sistema: `catalogService` habla con el motor de ingesta **en proceso**
+(`internal://catalog`), no por HTTP, así que el parámetro `revalidate` que
+aceptaba **no cacheaba nada** — no hay `fetch` que Next pueda interceptar, y cada
+visita reejecutaba las consultas. Se ha eliminado ese parámetro del sitio de
+llamada para no dar una falsa sensación de caché. Una memoización real entre
+peticiones tendría que vivir en `lib/catalogService`.
+
+De paso se ajustó el ritmo del bucle de la demo del hero: el panel de
+coincidencias se quedaba en blanco casi un segundo en cada cambio de escena y las
+cajas de la escena anterior se quedaban dibujadas sobre el frame nuevo. Muestreado
+a lo largo de dos ciclos completos (80 muestras), el panel ya no aparece vacío en
+ningún momento.
+
+Lo que no se ha tocado, con su medida, para que la decisión quede registrada:
+
+- **259 KB de JavaScript comprimido** es el capítulo de bytes más grande. Es
+  React + Next + la librería de movimiento; reducirlo exige decisiones de
+  arquitectura que van más allá de la landing.
+- **~92 KB de catálogo de mensajes serializado** en el HTML de cada página (unos
+  18 KB comprimidos). El proveedor de i18n vive en el layout raíz, así que embebe
+  los veinte espacios de nombres —incluidos los del admin— en rutas públicas que
+  no usan ninguno. Recortarlo por superficie exige que el layout conozca la ruta;
+  con 18 KB comprimidos no compensa la complejidad hoy, pero está medido.
+- **51,8 KB de fuentes** (Geist Sans + Geist Mono). La mono se usa para etiquetas
+  pequeñas en toda la interfaz; quitarla es una decisión de diseño, no técnica.
+
+### 7.6 Lo que sigue pendiente
+
+- **Desbordamiento de 18 px en `/admin` @390 px.** Es de la tabla del panel, no de
+  la landing, y quedó fuera de alcance. Sigue ahí y sigue documentado en 2.1.
+- **Un error de lint preexistente** en `components/i18n/LanguageSelector.tsx`
+  (`react-hooks/set-state-in-effect`). No se ha tocado: el selector de idioma
+  tiene cobertura E2E y el cambio no es trivial. Estaba antes de este trabajo.

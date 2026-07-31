@@ -222,6 +222,7 @@
     "trust": {
       "metricsLabel": "테스트 환경 지표",
       "metricsNote": "운영 배포가 아닌 테스트 환경에서 실시간으로 읽은 수치입니다. 카탈로그 서비스가 응답하지 않으면 '—'가 표시되며, 임의의 값을 채우는 일은 없습니다.",
+      "loading": "불러오는 중…",
       "capabilities": {
         "vod": "VOD·주문형",
         "closedCatalog": "닫힌 카탈로그",

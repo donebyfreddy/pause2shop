@@ -1,7 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { Reveal } from "@/components/ui";
+import { FadeIn } from "@/components/motion";
 
 /**
  * Cinta de fuentes del registro de conectores. Los nombres llegan del servicio
@@ -30,7 +30,7 @@ export function SourceMarquee({
   return (
     <section className="relative border-y border-line bg-canvas-raised py-12">
       <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
-        <Reveal className="flex flex-wrap items-baseline justify-between gap-3">
+        <FadeIn className="flex flex-wrap items-baseline justify-between gap-3">
           <p className="text-[10px] font-semibold tracking-[0.16em] text-ink-faint uppercase">
             {t("registryLabel")}
           </p>
@@ -39,7 +39,7 @@ export function SourceMarquee({
             <span className="text-success">{verified}</span> {t("verifiedLabel")} ·{" "}
             <span className="text-warning">{partnerRequired}</span> {t("partnerLabel")}
           </p>
-        </Reveal>
+        </FadeIn>
       </div>
 
       <div

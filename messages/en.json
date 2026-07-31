@@ -222,6 +222,7 @@
     "trust": {
       "metricsLabel": "Test environment metrics",
       "metricsNote": "Figures read live from the test environment, not from a production deployment. If the catalog service does not respond, “—” is shown, never a filler value.",
+      "loading": "Loading…",
       "capabilities": {
         "vod": "VOD and on demand",
         "closedCatalog": "Closed catalog",

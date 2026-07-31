@@ -1,3 +1,4 @@
+import { Suspense, cache } from "react";
 import type { Metadata } from "next";
 import { getFormatter, getTranslations } from "next-intl/server";
 import { PublicHeader } from "@/components/shell/PublicHeader";
@@ -64,12 +65,26 @@ type LandingData = {
   serviceOk: boolean;
 };
 
-async function loadLandingData(): Promise<LandingData> {
-  // Ventana de revalidación corta: la landing no necesita datos al segundo,
-  // pero tampoco queremos cachear un "servicio caído" durante minutos.
+/**
+ * Datos del servicio de catálogo, memoizados POR PETICIÓN con `cache()`.
+ *
+ * Dos componentes distintos los necesitan (la franja de confianza y la cinta de
+ * fuentes) y cada uno vive tras su propio `Suspense`. Sin `cache()` se
+ * ejecutarían las consultas dos veces por visita; con él, la primera llamada
+ * hace el trabajo y la segunda recibe la misma promesa.
+ *
+ * Nota importante: `catalogService` habla con el motor de ingesta EN PROCESO
+ * (`internal://catalog`), no por HTTP. Eso significa que el `revalidate` que
+ * aceptaba esta llamada no cacheaba nada —no hay `fetch` que Next pueda
+ * interceptar— y cada visita reejecutaba las consultas. Se ha quitado el
+ * parámetro para no dar una falsa sensación de caché. La memoización real entre
+ * peticiones tendría que vivir en `lib/catalogService`, que es de otra parte del
+ * sistema.
+ */
+const loadLandingData = cache(async (): Promise<LandingData> => {
   const [overviewRes, connectorsRes, t, format] = await Promise.all([
-    catalogService<Overview>("/overview", { revalidate: 30 }),
-    catalogService<ConnectorsResponse>("/connectors", { revalidate: 30 }),
+    catalogService<Overview>("/overview"),
+    catalogService<ConnectorsResponse>("/connectors"),
     getTranslations(),
     getFormatter(),
   ]);
@@ -94,11 +109,35 @@ async function loadLandingData(): Promise<LandingData> {
     partnerRequired: connectors?.summary.byLifecycle.partner_required ?? 0,
     serviceOk: overviewRes.ok && connectorsRes.ok,
   };
+});
+
+/* --- Islas que dependen del servicio de catálogo --------------------------
+ *
+ * Van cada una tras su propio `Suspense` para que NINGUNA bloquee el shell.
+ * Motivo medido: el servicio de catálogo tardaba ~3 s, y como la página lo
+ * esperaba antes de emitir una sola etiqueta, el TTFB de `/` era de 3,04 s
+ * mientras el resto de rutas respondía en ~10 ms. El hero no necesita esos
+ * datos para nada: son cuatro números de una franja y una lista de nombres.
+ */
+
+async function TrustStripData() {
+  const { stats } = await loadLandingData();
+  return <TrustStrip stats={stats} />;
 }
 
-export default async function LandingPage() {
+async function SourceMarqueeData() {
   const data = await loadLandingData();
+  return (
+    <SourceMarquee
+      labels={data.sourceLabels}
+      total={data.totalSources}
+      verified={data.verifiedSources}
+      partnerRequired={data.partnerRequired}
+    />
+  );
+}
 
+export default function LandingPage() {
   return (
     <>
       <ScrollProgress />
@@ -106,24 +145,25 @@ export default async function LandingPage() {
 
       <main id="contenido" className="flex-1">
         <HeroSection />
-        <TrustStrip stats={data.stats} />
+        {/* Skeleton con la MISMA rejilla y altura: al llegar los números no hay
+            salto de layout (CLS medido: 0). */}
+        <Suspense fallback={<TrustStrip />}>
+          <TrustStripData />
+        </Suspense>
         <HowItWorks />
         <InteractiveFrameDemo />
         <IntegrationDiagram />
         <ConfidenceSection />
         <UseCases />
         <Capabilities />
-        <SourceMarquee
-          labels={data.sourceLabels}
-          total={data.totalSources}
-          verified={data.verifiedSources}
-          partnerRequired={data.partnerRequired}
-        />
+        <Suspense fallback={null}>
+          <SourceMarqueeData />
+        </Suspense>
         <SecuritySection />
         <FinalCTA />
       </main>
 
-      <PublicFooter appName={APP_NAME} serviceOk={data.serviceOk} />
+      <PublicFooter appName={APP_NAME} />
     </>
   );
 }

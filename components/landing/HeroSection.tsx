@@ -53,8 +53,8 @@ export function HeroSection() {
             dos y dejaba "compra." sola en una tercera línea. */}
         <div className="mx-auto max-w-4xl text-center">
           <motion.p
-            initial={{ opacity: 0, y: -8 }}
-            animate={{ opacity: 1, y: 0 }}
+            initial={{ y: -8 }}
+            animate={{ y: 0 }}
             transition={{ duration: 0.5 }}
             className="inline-flex items-center gap-2 rounded-full border border-line bg-white/[0.04] px-3 py-1.5 text-[11px] font-medium text-ink-muted backdrop-blur-sm"
           >
@@ -79,9 +79,9 @@ export function HeroSection() {
           </h1>
 
           <motion.p
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.5 }}
+            initial={{ y: 10 }}
+            animate={{ y: 0 }}
+            transition={{ duration: 0.5, delay: 0.18 }}
             className="mx-auto mt-4 max-w-2xl text-[15px] leading-relaxed text-ink-muted sm:text-base [@media(max-height:820px)]:mt-3"
           >
             {t("description")}
@@ -93,9 +93,9 @@ export function HeroSection() {
               costaban ~50 px de alto, y ese alto es justo lo que decide si el
               panel de la demo cabe entero en el primer viewport. */}
           <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.62 }}
+            initial={{ y: 10 }}
+            animate={{ y: 0 }}
+            transition={{ duration: 0.5, delay: 0.26 }}
             className="mt-6 flex flex-col items-center gap-3 sm:flex-row sm:justify-center sm:gap-4 [@media(max-height:820px)]:mt-4"
           >
             <ButtonLink href="/studio" variant="primary" size="md" className="w-full sm:w-auto">

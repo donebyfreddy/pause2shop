@@ -41,9 +41,25 @@ const CAPABILITY_KEYS = [
 export function TrustStrip({
   stats,
 }: {
-  stats: Array<{ value: string; label: string }>;
+  /**
+   * Cifras del entorno de prueba. `undefined` = todavía llegando: la sección se
+   * pinta igual, con el mismo hueco, y solo los números están en carga.
+   *
+   * Existe este estado porque la landing YA NO espera al servicio de catálogo
+   * para renderizar (ver `app/page.tsx`): el resto de la página sale de
+   * inmediato y esta franja se rellena por streaming cuando el dato llega.
+   */
+  stats?: Array<{ value: string; label: string }>;
 }) {
   const t = useTranslations("landing.trust");
+  const labels = [
+    t("stats.sources"),
+    t("stats.products"),
+    t("stats.embeddingCoverage"),
+    t("stats.categories"),
+  ];
+  // Mismo número de celdas y misma altura con dato o sin él: sin salto de layout.
+  const cells = stats ?? labels.map((label) => ({ label, value: null }));
 
   return (
     <section className="relative border-y border-line bg-canvas-raised py-12 sm:py-14">
@@ -68,13 +84,18 @@ export function TrustStrip({
           </p>
 
           <dl className="mx-auto mt-4 grid max-w-3xl grid-cols-2 gap-px overflow-hidden rounded-2xl border border-line bg-line lg:grid-cols-4">
-            {stats.map((stat) => (
-              <div key={stat.label} className="bg-canvas px-4 py-4 text-center">
+            {cells.map((cell) => (
+              <div key={cell.label} className="bg-canvas px-4 py-4 text-center">
                 <dt className="text-[10px] leading-snug font-medium text-ink-faint">
-                  {stat.label}
+                  {cell.label}
                 </dt>
                 <dd className="mt-1.5 text-xl font-semibold tracking-tight text-ink tabular-nums sm:text-2xl">
-                  {stat.value}
+                  {cell.value ?? (
+                    <span
+                      className="skeleton-sheen mx-auto block h-6 w-12 rounded"
+                      aria-label={t("loading")}
+                    />
+                  )}
                 </dd>
               </div>
             ))}

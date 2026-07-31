@@ -222,6 +222,7 @@
     "trust": {
       "metricsLabel": "Métricas do ambiente de teste",
       "metricsNote": "Números lidos em direto do ambiente de teste, não de uma implementação em produção. Se o serviço de catálogo não responder mostra-se «—», nunca um valor de enchimento.",
+      "loading": "A carregar…",
       "capabilities": {
         "vod": "VOD e a pedido",
         "closedCatalog": "Catálogo fechado",

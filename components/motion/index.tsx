@@ -81,6 +81,22 @@ export function FadeIn({
  * Segmenta con `Intl.Segmenter` cuando el idioma no separa por espacios
  * (zh/ja/ko): partir por " " dejaría el titular entero como una sola unidad y
  * la animación no existiría.
+ *
+ * ── Por qué aquí NO se anima la opacidad ──
+ *
+ * Este componente pinta el titular del hero, que está sobre la línea de flotación
+ * y es candidato a LCP. Un elemento que empieza en `opacity: 0` NO cuenta como
+ * pintado hasta que se hace visible, así que animar la opacidad retrasa el LCP
+ * exactamente lo que dure la animación más su retardo.
+ *
+ * Se midió: con la entrada en opacidad, el LCP de la home era de 4.980 ms
+ * (CPU 4x, red lenta) y el elemento LCP era el párrafo del hero, a 4.540 ms,
+ * cuando el FCP ya había ocurrido a 2.396 ms. Es decir, más de dos segundos de
+ * LCP eran puro retardo de animación.
+ *
+ * Animando SOLO `transform`, el texto se pinta desde el primer frame en su
+ * posición desplazada y el LCP deja de depender del movimiento. Visualmente se
+ * pierde poco: sigue siendo una entrada escalonada palabra a palabra.
  */
 export function RevealText({
   text,
@@ -114,9 +130,9 @@ export function RevealText({
           <Fragment key={`${unit}-${i}`}>
             <motion.span
               data-reveal
-              initial={{ opacity: 0, y: 22 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: delay + i * 0.055, ease: EASE }}
+              initial={{ y: "0.5em" }}
+              animate={{ y: 0 }}
+              transition={{ duration: 0.55, delay: delay + i * 0.05, ease: EASE }}
               className="inline-block"
             >
               {unit}

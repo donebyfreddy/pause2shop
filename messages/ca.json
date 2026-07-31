@@ -222,6 +222,7 @@
     "trust": {
       "metricsLabel": "Mètriques de l'entorn de proves",
       "metricsNote": "Xifres llegides en directe de l'entorn de proves, no d'un desplegament en producció. Si el servei de catàleg no respon es mostra «—», mai un valor de farciment.",
+      "loading": "Carregant…",
       "capabilities": {
         "vod": "VOD i sota demanda",
         "closedCatalog": "Catàleg tancat",

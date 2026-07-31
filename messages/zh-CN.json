@@ -222,6 +222,7 @@
     "trust": {
       "metricsLabel": "测试环境指标",
       "metricsNote": "数据实时读取自测试环境，而非生产部署。如果目录服务无响应，显示「—」，绝不显示填充值。",
+      "loading": "加载中…",
       "capabilities": {
         "vod": "VOD 点播",
         "closedCatalog": "封闭目录",

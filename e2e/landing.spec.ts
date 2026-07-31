@@ -320,6 +320,60 @@ test.describe("Landing — movimiento reducido", () => {
   });
 });
 
+test.describe("Landing — rendimiento del primer render", () => {
+  /**
+   * Guarda de regresión del LCP.
+   *
+   * No se afirma un umbral de milisegundos —sería inestable entre máquinas—; se
+   * comprueba la CAUSA que se midió y se corrigió: el texto del hero entraba
+   * desde `opacity: 0`, y un elemento invisible no cuenta como pintado, así que
+   * la animación arrastraba el LCP. Con la entrada solo en `transform`, el LCP
+   * de la home bajó de 4.980 ms a 1.024 ms (CPU 4x, red lenta).
+   *
+   * Si alguien vuelve a meter un fade en el titular o el párrafo del hero, esto
+   * falla.
+   */
+  test("el texto del hero se pinta opaco desde el primer frame", async ({ page }) => {
+    await page.goto("/", { waitUntil: "commit" });
+
+    const opacities = await page.evaluate(() => {
+      const chain = (el: Element | null) => {
+        const values: number[] = [];
+        let node = el as HTMLElement | null;
+        while (node) {
+          values.push(Number(getComputedStyle(node).opacity));
+          node = node.parentElement;
+        }
+        return values;
+      };
+      return {
+        h1: chain(document.querySelector("h1")),
+        // El párrafo del hero era el elemento LCP real.
+        lead: chain(document.querySelector("h1 ~ p")),
+      };
+    });
+
+    expect(Math.min(...opacities.h1)).toBe(1);
+    expect(Math.min(...opacities.lead)).toBe(1);
+  });
+
+  test("el shell no espera al servicio de catálogo", async ({ page }) => {
+    // La franja de confianza vive tras un `Suspense`: llegue o no el dato, el
+    // hero y las secciones tienen que estar. Antes, la página entera esperaba
+    // ~3 s al servicio antes de emitir una sola etiqueta (TTFB 3,04 s → 0,02 s).
+    await page.goto("/", { waitUntil: "domcontentloaded" });
+
+    await expect(page.locator("h1")).toContainText("Convierte cada escena");
+    await expect(page.locator("#como-funciona")).toBeAttached();
+    await expect(page.locator("#demo")).toBeAttached();
+    // La franja está presente con sus cuatro etiquetas, con número o con hueco.
+    // Acotado a `main`: el catálogo de mensajes va serializado en un <script>
+    // del body y `getByText` sin acotar encuentra tres coincidencias.
+    await expect(page.locator("main").getByText("Fuentes en el registro")).toBeAttached();
+    await expect(page.locator("main dl").first()).toBeAttached();
+  });
+});
+
 test.describe("Landing — indexación", () => {
   test("robots, sitemap y manifest existen y el admin queda fuera", async ({ page, request }) => {
     // Las tres devolvían 404 en la versión auditada.

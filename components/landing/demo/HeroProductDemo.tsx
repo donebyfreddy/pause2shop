@@ -1,11 +1,12 @@
 "use client";
 
-import { AnimatePresence, motion, useReducedMotion } from "motion/react";
+import { AnimatePresence, motion } from "motion/react";
 import { Pause, Play, ScanSearch } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { DEMO_SCENES } from "@/lib/landing/demoScene";
 import { cn } from "@/lib/ui/cn";
+import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
 import { SceneArt } from "./SceneArt";
 import { DetectionOverlay } from "./DetectionOverlay";
 import { MatchCard } from "./MatchCard";
@@ -40,27 +41,10 @@ const STEPS_PER_SCENE = 4;
 export function HeroProductDemo() {
   const t = useTranslations("landing.demo");
   const tHero = useTranslations("landing.heroDemo");
-  const reduce = useReducedMotion();
+  const prefersReduced = usePrefersReducedMotion();
 
   const [step, setStep] = useState(0);
   const [playing, setPlaying] = useState(true);
-
-  /**
-   * Preferencia de movimiento, pero solo DESPUÉS de hidratar.
-   *
-   * `useReducedMotion()` a secas no sirve para decidir qué se renderiza: el
-   * servidor no conoce la preferencia del usuario, así que el primer render del
-   * cliente saldría distinto y React descartaría el HTML del servidor. Se
-   * reprodujo en los E2E con `emulateMedia({ reducedMotion: "reduce" })`.
-   *
-   * Con esta bandera, el primer render del cliente es idéntico al del servidor
-   * (`false`) y la preferencia se aplica en el render siguiente. Aquí es
-   * necesario —y no basta con `MotionConfig`— porque lo que hay que parar no es
-   * una animación de la librería, es un `setInterval` que cambia de escena.
-   */
-  const [hydrated, setHydrated] = useState(false);
-  useEffect(() => setHydrated(true), []);
-  const prefersReduced = hydrated && reduce === true;
 
   useEffect(() => {
     if (prefersReduced || !playing) return;
@@ -136,7 +120,7 @@ export function HeroProductDemo() {
                 initial={{ opacity: 0, scale: 1.04 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0 }}
-                transition={{ duration: 0.7, ease: [0.22, 0.61, 0.36, 1] }}
+                transition={{ duration: 0.45, ease: [0.22, 0.61, 0.36, 1] }}
                 className="absolute inset-0"
               >
                 <SceneArt
@@ -200,9 +184,12 @@ export function HeroProductDemo() {
                   key={`${scene.id}-${match.id}`}
                   initial={{ opacity: 0, x: 18 }}
                   animate={{ opacity: 1, x: 0 }}
+                  // Sin retardo largo: el panel de coincidencias es LO que hay
+                  // que ver en el hero, y con 0,3 s + escalonado se quedaba en
+                  // blanco casi un segundo en cada cambio de escena.
                   transition={{
-                    duration: 0.45,
-                    delay: 0.3 + i * 0.14,
+                    duration: 0.3,
+                    delay: 0.1 + i * 0.07,
                     ease: [0.22, 0.61, 0.36, 1],
                   }}
                 >
