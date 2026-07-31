@@ -126,7 +126,7 @@ function availabilityForMode(
             available: false,
             reason: "Ni el catálogo ni la búsqueda externa están disponibles.",
           };
-    case "hybrid":
+    case "catalog_and_external":
       // Comparar exige DOS fuentes: con una sola no hay nada que comparar.
       if (catalog.available && external.available) {
         return { available: true, reason: null };

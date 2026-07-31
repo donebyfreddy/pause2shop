@@ -24,7 +24,7 @@ test("un modo desconocido cae a catalog_first en vez de romper", () => {
 });
 
 test("los cuatro modos válidos se respetan", () => {
-  for (const mode of ["catalog_only", "catalog_first", "external_only", "hybrid"] as const) {
+  for (const mode of ["catalog_only", "catalog_first", "external_only", "catalog_and_external"] as const) {
     assert.equal(getMatchingConfig(env({ PRODUCT_MATCHING_MODE: mode })).mode, mode);
     assert.equal(isMatchingMode(mode), true);
   }
@@ -50,8 +50,8 @@ test("el formato legado con guion medio se normaliza al canónico", () => {
 
 test("umbrales por fuente: cada una tiene el suyo y son configurables", () => {
   const d = getMatchingConfig(env({}));
-  assert.equal(d.catalogMatchMinScore, 0.82);
-  assert.equal(d.externalMatchMinScore, 0.75);
+  assert.equal(d.catalogMatchMinScore, 0.8);
+  assert.equal(d.externalMatchMinScore, 0.72);
   assert.equal(d.hybridMatchMinScore, 0.8);
 
   const custom = getMatchingConfig(
@@ -86,9 +86,11 @@ test("defaults numéricos y booleanos del catálogo", () => {
   const cfg = getMatchingConfig(env({}));
   assert.equal(cfg.catalogServiceUrl, "http://localhost:4100");
   assert.equal(cfg.catalogServiceApiKey, null);
-  assert.equal(cfg.catalogMatchMinScore, 0.82);
-  assert.equal(cfg.catalogMatchTopK, 10);
+  assert.equal(cfg.catalogMatchMinScore, 0.8);
+  assert.equal(cfg.catalogMatchTopK, 8);
+  assert.equal(cfg.catalogMatchMaxVisible, 4);
   assert.equal(cfg.catalogRequestTimeoutMs, 5000);
+  assert.equal(cfg.externalSearchEnabled, true);
   assert.equal(cfg.catalogExternalFallback, true);
   assert.equal(cfg.catalogSaveExternalResults, true);
   assert.equal(cfg.catalogCacheEnabled, true);
@@ -130,8 +132,8 @@ test("valores fuera de rango se ignoran (vuelven al default)", () => {
   const cfg = getMatchingConfig(
     env({ CATALOG_MATCH_MIN_SCORE: "1.5", CATALOG_MATCH_TOP_K: "-3" })
   );
-  assert.equal(cfg.catalogMatchMinScore, 0.82);
-  assert.equal(cfg.catalogMatchTopK, 10);
+  assert.equal(cfg.catalogMatchMinScore, 0.8);
+  assert.equal(cfg.catalogMatchTopK, 8);
 });
 
 test("el modelo del enrichment reutiliza VISION_MODEL si no hay override (nunca hardcodeado)", () => {

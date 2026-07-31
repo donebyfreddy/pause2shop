@@ -108,7 +108,14 @@ export default function StudioExperience({
   const [sessionItems, setSessionItems] = useState<DetectedItem[]>([]);
   const [selectedOverlayItem, setSelectedOverlayItem] = useState<DetectedItem | null>(null);
   // Sincroniza el hotspot de la imagen analizada con su card en el panel lateral.
-  const [selectedImageItemKey, setSelectedImageItemKey] = useState<string | null>(null);
+  /**
+   * Objeto resaltado, COMPARTIDO por imagen y vídeo.
+   *
+   * Antes solo existía en modo imagen, así que en vídeo un clic en un recuadro
+   * abría un cajón aparte y la tarjeta correspondiente no se enteraba. Con una
+   * única clave, recuadro y tarjeta se resaltan juntos en los dos modos.
+   */
+  const [selectedItemKey, setSelectedItemKey] = useState<string | null>(null);
   const [costs, setCosts] = useState<CostData | null>(null);
   const currentVideoKeyRef = useRef<string | null>(null);
   // Tracker de productos entre pasadas de detección: trackIds persistentes.
@@ -161,7 +168,7 @@ export default function StudioExperience({
   const handleRequestAnalysis = useCallback(
     async (dataUrl: string, meta: FrameMeta) => {
       setLastFrame({ url: dataUrl, meta });
-      setSelectedImageItemKey(null);
+      setSelectedItemKey(null);
 
       // Cambio de fuente de vídeo: se reinicia la sesión de detección.
       if (currentVideoKeyRef.current !== meta.videoKey) {
@@ -200,6 +207,9 @@ export default function StudioExperience({
         // La fuente de coincidencias elegida decide qué resolvedor corre en el
         // backend para CADA objeto, también en el frame pausado.
         matchingMode: cfg.matchingMode,
+        // Ancla el resultado al instante del vídeo: así una coincidencia queda
+        // atribuida al frame en que se detectó y no se confunde con otro.
+        timestampSeconds: meta.timestampSeconds,
       });
 
       setHistory(
@@ -268,6 +278,9 @@ export default function StudioExperience({
         return {
           ...item,
           matchingStatus: entry.status,
+          // Contrato nuevo: dos bloques con procedencia explícita.
+          detection_result: entry.detection ?? item.detection_result,
+          external_loading: entry.externalLoading,
           visual_match: entry.match ?? item.visual_match,
           similar_candidates: entry.similarCandidates.length
             ? entry.similarCandidates
@@ -304,16 +317,43 @@ export default function StudioExperience({
     currentVideoKeyRef.current = null;
     trackerRef.current = createTrackerState();
     setTrackedObjects(0);
-    setSelectedImageItemKey(null);
+    setSelectedItemKey(null);
   };
 
   const overlayItems = analysis?.items ?? [];
   const personCount = new Set(
     overlayItems.map((it) => it.person_index).filter((p): p is number => typeof p === "number")
   ).size;
-  const matchedCount = mergedSessionItems.filter(
-    (it) => it.visual_match && it.visual_match.match_type !== "similar"
+  /**
+   * Objetos con coincidencia fiable en ALGUNA fuente. Cuenta los dos bloques
+   * por separado y no un `visual_match` genérico, que no distinguía si el
+   * producto venía del catálogo o de Internet.
+   */
+  const matchedCount = mergedSessionItems.filter((it) => {
+    const d = it.detection_result;
+    if (d) return d.catalog.status === "matched" || d.external.status === "matched";
+    return it.visual_match && it.visual_match.match_type !== "similar";
+  }).length;
+  /** Solo los resueltos por el CATÁLOGO propio: es lo que se puede afirmar. */
+  const catalogMatchedCount = mergedSessionItems.filter(
+    (it) => it.detection_result?.catalog.status === "matched"
   ).length;
+
+  /**
+   * Selección de una tarjeta: resalta su recuadro y registra la preferencia
+   * (personalización del ranking). Es el reemplazo del antiguo `onLinkClick`,
+   * que solo se disparaba al abrir un enlace de compra.
+   */
+  const handleSelectItem = useCallback((item: DetectedItem) => {
+    setSelectedItemKey(itemKey(item));
+    setPrefs(recordClick(item));
+  }, []);
+
+  /** Clic en un recuadro: resalta su tarjeta (que hace scroll) y abre el detalle. */
+  const handleOverlayItemClick = useCallback((item: DetectedItem) => {
+    setSelectedItemKey(itemKey(item));
+    setSelectedOverlayItem(item);
+  }, []);
 
   return (
     <div className="w-full">
@@ -381,7 +421,8 @@ export default function StudioExperience({
                     onRequestAnalysis={handleRequestAnalysis}
                     analyzing={loading}
                     overlayItems={overlayItems}
-                    onOverlayItemClick={setSelectedOverlayItem}
+                    onOverlayItemClick={handleOverlayItemClick}
+                    selectedKey={selectedItemKey}
                     analysisStats={{
                       persons: personCount,
                       trackedObjects,
@@ -396,11 +437,11 @@ export default function StudioExperience({
                   analyzing={loading}
                   onReset={() => {
                     analysisHook.reset();
-                    setSelectedImageItemKey(null);
+                    setSelectedItemKey(null);
                   }}
                   items={personalizedItems}
-                  selectedKey={selectedImageItemKey}
-                  onItemClick={(item) => setSelectedImageItemKey(itemKey(item))}
+                  selectedKey={selectedItemKey}
+                  onItemClick={(item) => setSelectedItemKey(itemKey(item))}
                 />
               )}
             </motion.div>
@@ -458,11 +499,12 @@ export default function StudioExperience({
             persistence={persistence}
             savedCount={savedItems.length}
             videoId={analyzedVideoId}
-            onLinkClick={handleLinkClick}
+            catalogMatchedCount={catalogMatchedCount}
             onReanalyze={handleReanalyze}
             canReanalyze={Boolean(lastFrame)}
-            selectedKey={mode === "image" ? selectedImageItemKey : null}
-            onSelectItem={mode === "image" ? (item) => setSelectedImageItemKey(itemKey(item)) : undefined}
+            selectedKey={selectedItemKey}
+            onSelectItem={handleSelectItem}
+            onSearchExternal={matching.requestExternal}
           />
         </div>
       </div>

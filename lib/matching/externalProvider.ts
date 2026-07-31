@@ -27,6 +27,15 @@ export type ExternalPipelineOutcome = {
   fallbackUsed: boolean;
   cached: boolean;
   timings: Record<string, number>;
+  /**
+   * Candidatos rankeados aunque NO haya match fiable.
+   *
+   * Sin esto, un pipeline que encuentra 8 productos parecidos pero ninguno
+   * verificado devolvía `matches: []`, y el bloque de Internet salía vacío
+   * cuando en realidad tenía resultados que enseñar (como "producto similar",
+   * no como coincidencia).
+   */
+  rankedCandidates?: RankedCandidate[];
 };
 
 export type ExternalSearchFn = (
@@ -108,7 +117,10 @@ export function externalOutcomeToResult(
   item: DetectedItem,
   threshold: number = getMatchingConfig().externalMatchMinScore
 ): ProductMatchingResult {
-  const ranked = outcome.match?.ranked_candidates ?? [];
+  const ranked =
+    outcome.match?.ranked_candidates?.length
+      ? outcome.match.ranked_candidates
+      : outcome.rankedCandidates ?? [];
   const matches = ranked
     .map((c) => toNormalizedExternal(c, item, threshold))
     .sort((a, b) => b.scores.finalScore - a.scores.finalScore);
@@ -122,6 +134,10 @@ export function externalOutcomeToResult(
     const best = matches[0]?.scores.finalScore ?? 0;
     matchLabel =
       engineSaysMatch && best >= threshold ? "EXTERNAL_MATCH" : "SIMILAR";
+  } else if (matches.length > 0) {
+    // Hay candidatos pero el motor no verificó ninguno: son similares, no
+    // coincidencias. Se devuelven etiquetados como tal, no se descartan.
+    matchLabel = "SIMILAR";
   }
 
   return {

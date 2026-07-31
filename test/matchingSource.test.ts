@@ -104,14 +104,14 @@ const fakeCrop = async () => "data:image/jpeg;base64,BBBB";
 
 test("external_only es el ÚNICO modo que no consulta el catálogo", () => {
   assert.equal(usesCatalog("external_only"), false);
-  for (const mode of ["catalog_only", "catalog_first", "hybrid"] as MatchingMode[]) {
+  for (const mode of ["catalog_only", "catalog_first", "catalog_and_external"] as MatchingMode[]) {
     assert.equal(usesCatalog(mode), true, mode);
   }
 });
 
 test("catalog_only es el ÚNICO modo que no puede llamar al proveedor externo", () => {
   assert.equal(allowsExternal("catalog_only"), false);
-  for (const mode of ["external_only", "catalog_first", "hybrid"] as MatchingMode[]) {
+  for (const mode of ["external_only", "catalog_first", "catalog_and_external"] as MatchingMode[]) {
     assert.equal(allowsExternal(mode), true, mode);
   }
 });
@@ -277,7 +277,7 @@ test("sin credenciales externas, los modos que dependen de la API se deshabilita
 
   assert.equal(caps.external.available, false);
   assert.equal(caps.modes.external_only.available, false);
-  assert.equal(caps.modes.hybrid.available, false, "comparar exige dos fuentes");
+  assert.equal(caps.modes.catalog_and_external.available, false, "comparar exige dos fuentes");
   // Estos siguen funcionando con solo el catálogo.
   assert.equal(caps.modes.catalog_only.available, true);
   assert.equal(caps.modes.catalog_first.available, true);
@@ -318,9 +318,9 @@ test("una URL pública inalcanzable invalida la búsqueda externa (el motor no p
 
 test("la fuente de coincidencias viaja en la config serializada del análisis", () => {
   const config = deriveAnalysisConfig(["clothing"], "standard", {
-    matchingMode: "hybrid",
+    matchingMode: "catalog_and_external",
   });
-  assert.equal(serializeConfig(config).matchingMode, "hybrid");
+  assert.equal(serializeConfig(config).matchingMode, "catalog_and_external");
 });
 
 test("el backend acepta el formato legado y rechaza un modo inventado", () => {

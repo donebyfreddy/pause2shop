@@ -804,7 +804,7 @@
           "description": "Sucht zuerst im Katalog und nutzt die API nur, wenn es keinen ausreichend zuverlässigen Treffer gibt.",
           "benefits": "Ausgewogen zwischen Genauigkeit und Kosten"
         },
-        "hybrid": {
+        "catalogAndExternal": {
           "label": "Quellen vergleichen",
           "description": "Fragt Katalog und API ab, kombiniert die Kandidaten und zeigt den besten Treffer.",
           "benefits": "Maximale Abdeckung · Vergleich nebeneinander"
@@ -903,6 +903,59 @@
         "nearPerson": "In der Nähe der Person",
         "otherObjects": "Weitere Objekte in der Szene ({count})",
         "lowPriority": "niedrige Priorität"
+      },
+      "savedDetections": "{count, plural, one{# Erkennung gespeichert} other{# Erkennungen gespeichert}}",
+      "savedDetectionsHint": "Das sind erkannte Objekte, keine validierten Katalogprodukte.",
+      "withCatalogProduct": "{count, plural, one{# mit Katalogprodukt} other{# mit Katalogprodukt}}"
+    },
+    "matching": {
+      "detection": {
+        "confidencePct": "{pct}% Erkennung",
+        "attributes": "Erkannte Attribute:"
+      },
+      "badge": {
+        "catalog": "Pause2Shop-Katalog",
+        "external": "Ergebnis aus dem Internet"
+      },
+      "matchType": {
+        "exact": "Exakte Übereinstimmung",
+        "probable": "Wahrscheinliche Übereinstimmung",
+        "similar": "Ähnliches Produkt"
+      },
+      "catalog": {
+        "title": "In deinem Katalog gefunden",
+        "searching": "Suche in deinem Katalog…",
+        "unresolvedTitle": "Keine verlässliche Übereinstimmung im Katalog",
+        "unresolved": "Im Katalog wurde keine ausreichend verlässliche Übereinstimmung gefunden.",
+        "empty": "Der Katalog enthält keine indexierten Produkte für diese Kategorie.",
+        "error": "Der Katalog konnte nicht abgefragt werden.",
+        "viewProduct": "Katalogprodukt ansehen",
+        "showAlternatives": "Alternativen ansehen ({count})",
+        "hideAlternatives": "Alternativen ausblenden",
+        "alternativesTitle": "Katalog-Alternativen",
+        "threshold": "Schwelle {pct} %",
+        "demoProduct": "Datensatz-Eintrag: ohne Preis, nicht kaufbar",
+        "noPrice": "Kein Preis"
+      },
+      "external": {
+        "title": "Ergebnisse im Internet",
+        "search": "Auch im Internet suchen",
+        "searching": "Suche im Internet…",
+        "notRequested": "Das Internet wurde nicht abgefragt: der Katalog ist die primäre Quelle.",
+        "disabled": "Die externe Suche ist nicht konfiguriert.",
+        "unresolved": "Die Internetsuche ergab keine verlässliche Übereinstimmung.",
+        "error": "Die Internetsuche ist fehlgeschlagen. Das Katalogergebnis bleibt erhalten.",
+        "provider": "Anbieter: {provider}",
+        "open": "Externes Ergebnis öffnen",
+        "warning": "Ergebnis außerhalb des Katalogs gefunden. Prüfe Verfügbarkeit und Herkunft, bevor du es veröffentlichst.",
+        "addCandidate": "Als Katalogkandidat hinzufügen",
+        "candidateAdded": "Zur Prüfung gesendet",
+        "otherResults": "Weitere Internet-Ergebnisse"
+      },
+      "progress": {
+        "catalog": "Suche im Katalog…",
+        "external": "Internet wird abgefragt…",
+        "detecting": "Objekte werden erkannt…"
       }
     }
   },
@@ -1344,7 +1397,14 @@
         "testing": "Wird getestet…",
         "testOkDetail": "Die externe Suche antwortet korrekt.",
         "testFailed": "Die Verbindung konnte nicht geprüft werden.",
-        "lastTestLabel": "Letzter Test"
+        "lastTestLabel": "Letzter Test",
+        "maxVisibleLabel": "Max. sichtbare Kandidaten",
+        "automaticFallbackLabel": "Automatischer externer Fallback",
+        "externalEnabledLabel": "Externe Suche aktiviert",
+        "cacheLabel": "Matching-Cache",
+        "enabled": "Aktiviert",
+        "disabled": "Deaktiviert",
+        "cacheTtl": "{hours} Std."
       },
       "compliance": {
         "title": "Ingestion-Limits und Compliance",
@@ -1369,6 +1429,25 @@
         "metricsLabel": "Metriken",
         "metricsValue": "Speicherzähler, verfügbar unter <code>/stats</code> und <code>/overview</code>",
         "footnote": "Der gesamte beobachtbare Zustand gehört zum Prozess: Ein Neustart des Dienstes setzt Zähler und Log-Puffer zurück. Für echte Historie sammle stdout und nutze das Postgres-Backend."
+      },
+      "matchingMetrics": {
+        "title": "Produktauflösung",
+        "description": "Wie viel der eigene Katalog löst und welche externen Kosten das vermeidet. In-Memory-Zähler dieses Prozesses.",
+        "detections": "Erkannte Objekte",
+        "byCatalog": "Vom Katalog gelöst",
+        "byExternal": "Vom Internet gelöst",
+        "unresolved": "Ungelöst",
+        "resolutionRate": "Katalog-Lösungsrate",
+        "externalCalls": "Externe Aufrufe",
+        "externalFallbacks": "Externe Fallbacks",
+        "externalManual": "Manuell angeforderte Suchen",
+        "cacheHits": "Cache-Treffer",
+        "externalCost": "Externe Kosten",
+        "externalCostAvoided": "Vermiedene externe Kosten",
+        "averageDuration": "Durchschnittliche Zeit",
+        "topUnresolved": "Ungelöste Kategorien",
+        "none": "Noch keine Daten: analysiere etwas im Studio.",
+        "empty": "—"
       }
     }
   },
@@ -1654,9 +1733,14 @@
     },
     "itemStatus": {
       "detected": "Erkannt",
+      "catalog_matched": "Im Katalog",
+      "external_candidate": "Externer Kandidat",
+      "review_required": "Prüfung nötig",
+      "approved": "Genehmigt",
+      "published": "Veröffentlicht",
+      "ignored": "Ignoriert",
       "reviewed": "Überprüft",
-      "matched": "Mit Produkten",
-      "ignored": "Ignoriert"
+      "matched": "Mit Produkten"
     },
     "matchType": {
       "exact": "Exakte Übereinstimmung",

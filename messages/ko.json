@@ -804,7 +804,7 @@
           "description": "먼저 카탈로그에서 검색하고, 충분히 신뢰할 수 있는 일치 항목이 없을 때만 API를 사용합니다.",
           "benefits": "정확도와 비용의 균형"
         },
-        "hybrid": {
+        "catalogAndExternal": {
           "label": "소스 비교",
           "description": "카탈로그와 API를 모두 조회해 후보를 결합하고 가장 적합한 일치 항목을 표시합니다.",
           "benefits": "최대 커버리지 · 나란히 비교"
@@ -903,6 +903,59 @@
         "nearPerson": "인물 근처",
         "otherObjects": "장면 속 다른 객체 ({count})",
         "lowPriority": "낮은 우선순위"
+      },
+      "savedDetections": "감지 {count}건 저장됨",
+      "savedDetectionsHint": "감지된 객체이며, 검증된 카탈로그 제품이 아닙니다.",
+      "withCatalogProduct": "카탈로그 제품 있음: {count}건"
+    },
+    "matching": {
+      "detection": {
+        "confidencePct": "감지 {pct}%",
+        "attributes": "감지된 속성:"
+      },
+      "badge": {
+        "catalog": "Pause2Shop 카탈로그",
+        "external": "인터넷 결과"
+      },
+      "matchType": {
+        "exact": "정확히 일치",
+        "probable": "일치 가능성 높음",
+        "similar": "유사 제품"
+      },
+      "catalog": {
+        "title": "내 카탈로그에서 찾음",
+        "searching": "카탈로그 검색 중…",
+        "unresolvedTitle": "카탈로그에 신뢰할 만한 일치 없음",
+        "unresolved": "카탈로그에서 충분히 신뢰할 만한 일치를 찾지 못했습니다.",
+        "empty": "이 카테고리에 색인된 제품이 카탈로그에 없습니다.",
+        "error": "카탈로그를 조회할 수 없습니다.",
+        "viewProduct": "카탈로그 제품 보기",
+        "showAlternatives": "대안 보기 ({count})",
+        "hideAlternatives": "대안 숨기기",
+        "alternativesTitle": "카탈로그 대안",
+        "threshold": "임계값 {pct}%",
+        "demoProduct": "데이터셋 항목: 가격 및 구매 없음",
+        "noPrice": "가격 없음"
+      },
+      "external": {
+        "title": "인터넷 결과",
+        "search": "인터넷에서도 검색",
+        "searching": "인터넷 검색 중…",
+        "notRequested": "인터넷을 조회하지 않았습니다. 카탈로그가 기본 소스입니다.",
+        "disabled": "외부 검색이 구성되지 않았습니다.",
+        "unresolved": "인터넷 검색에서 신뢰할 만한 일치를 찾지 못했습니다.",
+        "error": "인터넷 검색이 실패했습니다. 카탈로그 결과는 유지됩니다.",
+        "provider": "제공자: {provider}",
+        "open": "외부 결과 열기",
+        "warning": "카탈로그 외부에서 찾은 결과입니다. 게시하기 전에 재고와 출처를 확인하세요.",
+        "addCandidate": "카탈로그 후보로 추가",
+        "candidateAdded": "검토로 전송됨",
+        "otherResults": "기타 인터넷 결과"
+      },
+      "progress": {
+        "catalog": "카탈로그 검색 중…",
+        "external": "인터넷 조회 중…",
+        "detecting": "객체 감지 중…"
       }
     }
   },
@@ -1344,7 +1397,14 @@
         "testing": "테스트 중…",
         "testOkDetail": "외부 검색이 정상적으로 응답합니다.",
         "testFailed": "연결을 확인할 수 없습니다.",
-        "lastTestLabel": "최근 테스트"
+        "lastTestLabel": "최근 테스트",
+        "maxVisibleLabel": "표시 후보 최대 수",
+        "automaticFallbackLabel": "외부 자동 폴백",
+        "externalEnabledLabel": "외부 검색 활성화",
+        "cacheLabel": "매칭 캐시",
+        "enabled": "활성",
+        "disabled": "비활성",
+        "cacheTtl": "{hours}시간"
       },
       "compliance": {
         "title": "수집 한도 및 준수 사항",
@@ -1369,6 +1429,25 @@
         "metricsLabel": "지표",
         "metricsValue": "<code>/stats</code> 및 <code>/overview</code>에 노출되는 메모리 내 카운터",
         "footnote": "관측 가능한 모든 상태는 프로세스에 속합니다: 서비스를 재시작하면 카운터와 로그 버퍼가 초기화됩니다. 실제 이력을 원한다면 stdout을 수집하고 Postgres 백엔드를 사용하세요."
+      },
+      "matchingMetrics": {
+        "title": "제품 해결",
+        "description": "자체 카탈로그가 얼마나 해결하고 외부 비용을 얼마나 절감하는지. 이 프로세스의 메모리 내 카운터입니다.",
+        "detections": "감지된 객체",
+        "byCatalog": "카탈로그로 해결",
+        "byExternal": "인터넷으로 해결",
+        "unresolved": "미해결",
+        "resolutionRate": "카탈로그 해결률",
+        "externalCalls": "외부 호출",
+        "externalFallbacks": "외부 폴백",
+        "externalManual": "수동 요청 검색",
+        "cacheHits": "캐시 히트",
+        "externalCost": "외부 비용",
+        "externalCostAvoided": "절감된 외부 비용",
+        "averageDuration": "평균 시간",
+        "topUnresolved": "미해결 카테고리",
+        "none": "아직 데이터가 없습니다. 스튜디오에서 분석해 보세요.",
+        "empty": "—"
       }
     }
   },
@@ -1654,9 +1733,14 @@
     },
     "itemStatus": {
       "detected": "감지됨",
+      "catalog_matched": "카탈로그에 있음",
+      "external_candidate": "외부 후보",
+      "review_required": "검토 필요",
+      "approved": "승인됨",
+      "published": "게시됨",
+      "ignored": "무시됨",
       "reviewed": "검토됨",
-      "matched": "상품 있음",
-      "ignored": "무시됨"
+      "matched": "상품 있음"
     },
     "matchType": {
       "exact": "정확 일치",

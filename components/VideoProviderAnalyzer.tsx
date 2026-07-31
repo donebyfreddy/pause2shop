@@ -67,6 +67,11 @@ type Props = {
   analyzing: boolean;
   overlayItems?: DetectedItem[];
   onOverlayItemClick?: (item: DetectedItem) => void;
+  /**
+   * Objeto resaltado, sincronizado con la tarjeta del panel de resultados.
+   * En vídeo faltaba: el recuadro se podía clicar pero nunca se resaltaba.
+   */
+  selectedKey?: string | null;
   /** Contadores en vivo para la línea de estado no bloqueante. */
   analysisStats?: VideoAnalysisStats;
 };
@@ -107,6 +112,7 @@ export default function VideoProviderAnalyzer({
   analyzing,
   overlayItems = [],
   onOverlayItemClick,
+  selectedKey = null,
   analysisStats,
 }: Props) {
   const t = useTranslations("studio.videoAnalyzer");
@@ -549,6 +555,7 @@ export default function VideoProviderAnalyzer({
               analyzing={analyzing}
               overlayItems={overlayItems}
               onOverlayItemClick={onOverlayItemClick}
+              selectedKey={selectedKey}
             />
           ) : canEmbed && !canCaptureFrame ? (
             <IframeEmbed
@@ -557,6 +564,7 @@ export default function VideoProviderAnalyzer({
               analyzing={analyzing}
               overlayItems={overlayItems}
               onOverlayItemClick={onOverlayItemClick}
+              selectedKey={selectedKey}
             />
           ) : (
             <DirectVideoPlayer
@@ -567,6 +575,7 @@ export default function VideoProviderAnalyzer({
               onSeeked={handleDirectSeeked}
               overlayItems={overlayItems}
               onOverlayItemClick={onOverlayItemClick}
+              selectedKey={selectedKey}
             />
           )}
 
@@ -1061,12 +1070,14 @@ function YouTubeEmbed({
   analyzing,
   overlayItems,
   onOverlayItemClick,
+  selectedKey,
 }: {
   containerRef: React.RefObject<HTMLDivElement | null>;
   status: string;
   analyzing: boolean;
   overlayItems: DetectedItem[];
   onOverlayItemClick?: (item: DetectedItem) => void;
+  selectedKey?: string | null;
 }) {
   const t = useTranslations("studio.videoAnalyzer");
   return (
@@ -1074,7 +1085,7 @@ function YouTubeEmbed({
       <div className="aspect-video w-full">
         <div ref={containerRef} className="h-full w-full [&>iframe]:h-full [&>iframe]:w-full" />
       </div>
-      <VideoOverlay items={overlayItems} onItemClick={onOverlayItemClick} />
+      <VideoOverlay items={overlayItems} onItemClick={onOverlayItemClick} selectedKey={selectedKey} />
       {status === "loading" && (
         <div className="absolute inset-0 flex items-center justify-center bg-black/60 text-sm text-ink-muted">
           {t("loadingPlayer")}
@@ -1091,12 +1102,14 @@ function IframeEmbed({
   analyzing,
   overlayItems,
   onOverlayItemClick,
+  selectedKey,
 }: {
   embedUrl: string;
   providerLabel: string;
   analyzing: boolean;
   overlayItems: DetectedItem[];
   onOverlayItemClick?: (item: DetectedItem) => void;
+  selectedKey?: string | null;
 }) {
   return (
     <div className="relative overflow-hidden rounded-2xl border border-line bg-black shadow-2xl shadow-black/50">
@@ -1109,7 +1122,7 @@ function IframeEmbed({
           className="h-full w-full"
         />
       </div>
-      <VideoOverlay items={overlayItems} onItemClick={onOverlayItemClick} />
+      <VideoOverlay items={overlayItems} onItemClick={onOverlayItemClick} selectedKey={selectedKey} />
       {analyzing && <AnalyzingOverlay />}
     </div>
   );
@@ -1123,6 +1136,7 @@ function DirectVideoPlayer({
   onSeeked,
   overlayItems,
   onOverlayItemClick,
+  selectedKey,
 }: {
   src: string;
   analyzing: boolean;
@@ -1131,6 +1145,7 @@ function DirectVideoPlayer({
   onSeeked?: () => void;
   overlayItems: DetectedItem[];
   onOverlayItemClick?: (item: DetectedItem) => void;
+  selectedKey?: string | null;
 }) {
   // Relación de aspecto REAL del vídeo (letterboxing correcto en el overlay).
   const [videoAspect, setVideoAspect] = useState<number | null>(null);
@@ -1153,6 +1168,7 @@ function DirectVideoPlayer({
       <VideoOverlay
         items={overlayItems}
         onItemClick={onOverlayItemClick}
+        selectedKey={selectedKey}
         videoAspect={videoAspect}
       />
       {analyzing && <AnalyzingOverlay />}

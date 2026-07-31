@@ -16,6 +16,15 @@ import {
 } from "@/components/ui";
 import type { MatchingCapabilities } from "@/lib/matching/capabilities";
 
+/** Ajustes efectivos del matching, tal y como los expone /api/matching/metrics. */
+type MatchingRuntimeConfig = {
+  catalogMaxVisible: number;
+  externalSearchEnabled: boolean;
+  automaticFallback: boolean;
+  cacheEnabled: boolean;
+  cacheTtlSeconds: number;
+};
+
 /**
  * Estado operativo de la FUENTE DE COINCIDENCIAS: modo por defecto, umbral de
  * cada fuente, proveedor externo y si responde.
@@ -42,12 +51,13 @@ const MODE_LABEL: Record<string, string> = {
   catalog_only: "Catálogo propio",
   external_only: "Búsqueda externa",
   catalog_first: "Catálogo primero",
-  hybrid: "Comparar fuentes",
+  catalog_and_external: "Comparar fuentes",
 };
 
 export function MatchingSourceCard() {
   const t = useTranslations("settings.sections.productMatching");
   const [caps, setCaps] = useState<MatchingCapabilities | null>(null);
+  const [runtime, setRuntime] = useState<MatchingRuntimeConfig | null>(null);
   const [test, setTest] = useState<TestState>({ phase: "idle" });
 
   useEffect(() => {
@@ -56,6 +66,14 @@ export function MatchingSourceCard() {
       .then((r) => (r.ok ? r.json() : null))
       .then((body) => {
         if (alive && body?.ok) setCaps(body as MatchingCapabilities);
+      })
+      .catch(() => undefined);
+    // Los ajustes efectivos (fallback, caché, máximo visible) no están en
+    // capabilities: viven en la config del servidor y los expone /metrics.
+    fetch("/api/matching/metrics", { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((body) => {
+        if (alive && body?.ok) setRuntime(body.config as MatchingRuntimeConfig);
       })
       .catch(() => undefined);
     return () => {
@@ -129,6 +147,26 @@ export function MatchingSourceCard() {
             <DataRow label={t("indexedLabel")} mono>
               {caps.catalog.indexedProducts ?? "—"}
             </DataRow>
+            {runtime && (
+              <>
+                <DataRow label={t("maxVisibleLabel")} mono>
+                  {runtime.catalogMaxVisible}
+                </DataRow>
+                <DataRow label={t("externalEnabledLabel")} mono>
+                  {runtime.externalSearchEnabled ? t("enabled") : t("disabled")}
+                </DataRow>
+                <DataRow label={t("automaticFallbackLabel")} mono>
+                  {runtime.automaticFallback ? t("enabled") : t("disabled")}
+                </DataRow>
+                <DataRow label={t("cacheLabel")} mono>
+                  {runtime.cacheEnabled
+                    ? t("cacheTtl", {
+                        hours: Math.round(runtime.cacheTtlSeconds / 3600),
+                      })
+                    : t("disabled")}
+                </DataRow>
+              </>
+            )}
             <DataRow label={t("statusLabel")}>
               <span className="flex flex-wrap items-center gap-1.5">
                 <Badge tone={caps.catalog.available ? "success" : "warning"} dot>

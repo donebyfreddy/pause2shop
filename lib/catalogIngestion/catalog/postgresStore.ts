@@ -9,6 +9,7 @@ import type {
 import { hydrateProduct } from "./types";
 import type { CatalogStore, ExtractionStats, StoreStats } from "./store";
 import { normalizeText } from "../normalization/normalize";
+import { invalidateProductSnapshot } from "./productSnapshot";
 
 /**
  * Store sobre Postgres (esquema en migrations/). El producto completo se
@@ -52,6 +53,8 @@ export class PostgresCatalogStore implements CatalogStore {
   }
 
   async saveProduct(p: CatalogProduct): Promise<void> {
+    // Ver fileStore.saveProduct: la búsqueda usa una instantánea compartida.
+    invalidateProductSnapshot();
     const embeddingSql = this.hasVector
       ? "$14::vector, $15::vector"
       : "$14::jsonb, $15::jsonb";

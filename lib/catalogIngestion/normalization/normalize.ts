@@ -95,6 +95,28 @@ const CATEGORY_MAP: Record<string, string> = {
   // "perfume" en el mapa lo resuelve antes de llegar a "body".
   perfume: "fragrance", fragrance: "fragrance", colonia: "fragrance",
   perfumes: "fragrance", deodorant: "fragrance", desodorante: "fragrance",
+  // Descriptores GRUESOS que devuelve el modelo de visión al describir un
+  // objeto del frame ("prenda superior", "calzado"…). No son categorías finas
+  // de catálogo, así que se mapean directamente a la FAMILIA.
+  //
+  // Sin esto no casaban con nada: `categoriesMatch` es filtro duro, así que una
+  // camiseta detectada como "prenda superior" descartaba el catálogo entero y
+  // la UI decía "no hay productos indexados para esta categoría" teniendo mil.
+  // Se mapean a familia y no a una categoría fina a propósito: "prenda
+  // superior" no dice si es camiseta, camisa o jersey, y elegir una sería
+  // inventarse precisión que la detección no tiene. Quien discrimina de verdad
+  // es el embedding visual.
+  prenda: "clothing", prendas: "clothing", ropa: "clothing",
+  "prenda superior": "clothing", "prenda inferior": "clothing",
+  "parte superior": "clothing", "parte inferior": "clothing",
+  clothing: "clothing", apparel: "clothing", garment: "clothing",
+  calzado: "footwear", footwear: "footwear",
+  accesorio: "bags_accessories", accesorios: "bags_accessories",
+  complemento: "bags_accessories", complementos: "bags_accessories",
+  accessory: "bags_accessories", accessories: "bags_accessories",
+  bags_accessories: "bags_accessories",
+  joyeria: "watches_jewelry", jewellery: "watches_jewelry",
+  watches_jewelry: "watches_jewelry",
   lipstick: "makeup", makeup: "makeup", maquillaje: "makeup",
   "nail polish": "makeup", "lip gloss": "makeup", mascara: "makeup",
   foundation: "makeup", kajal: "makeup", eyeshadow: "makeup",

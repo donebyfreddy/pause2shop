@@ -67,13 +67,15 @@ test("createAnalysisJob crea el job en queued con checkpoint virgen", async () =
   const calls: MatchCall[] = [];
   const deps = makeDeps(new ScriptedDetector({}), fakeMatcher(calls));
   const created = await createAnalysisJob(
+    // "hybrid" es el nombre ANTERIOR del modo de dos fuentes: entra como alias
+    // y queda normalizado a su nombre canónico.
     { ...VALID_INPUT, matchingMode: "hybrid" },
     deps
   );
   assert.equal(created.ok, true);
   if (!created.ok) return;
   assert.equal(created.job.status, "queued");
-  assert.equal(created.job.matchingMode, "hybrid");
+  assert.equal(created.job.matchingMode, "catalog_and_external");
   assert.equal(created.job.checkpoint.processedUpToSeconds, -1);
   const stored = await deps.store.getJob(created.job.id);
   assert.ok(stored);

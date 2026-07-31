@@ -804,7 +804,7 @@
           "description": "先在商品库中搜索，只有在没有足够可靠的匹配时才调用 API。",
           "benefits": "在准确度与成本之间取得平衡"
         },
-        "hybrid": {
+        "catalogAndExternal": {
           "label": "对比来源",
           "description": "同时查询商品库和 API，合并候选结果并展示最佳匹配。",
           "benefits": "覆盖最广 · 并排对比"
@@ -903,6 +903,59 @@
         "nearPerson": "人物附近",
         "otherObjects": "场景中的其他对象（{count}）",
         "lowPriority": "低优先级"
+      },
+      "savedDetections": "已保存 {count} 项检测",
+      "savedDetectionsHint": "这些是检测到的对象，不是已验证的目录商品。",
+      "withCatalogProduct": "{count} 项有目录商品"
+    },
+    "matching": {
+      "detection": {
+        "confidencePct": "检测 {pct}%",
+        "attributes": "检测到的属性："
+      },
+      "badge": {
+        "catalog": "Pause2Shop 目录",
+        "external": "来自互联网的结果"
+      },
+      "matchType": {
+        "exact": "完全匹配",
+        "probable": "可能匹配",
+        "similar": "相似商品"
+      },
+      "catalog": {
+        "title": "在你的目录中找到",
+        "searching": "正在搜索你的目录…",
+        "unresolvedTitle": "目录中没有可靠的匹配",
+        "unresolved": "在目录中未找到足够可靠的匹配。",
+        "empty": "目录中没有该类别的已索引商品。",
+        "error": "无法查询目录。",
+        "viewProduct": "查看目录商品",
+        "showAlternatives": "查看备选 ({count})",
+        "hideAlternatives": "隐藏备选",
+        "alternativesTitle": "目录备选",
+        "threshold": "阈值 {pct}%",
+        "demoProduct": "数据集条目：无价格、不可购买",
+        "noPrice": "无价格"
+      },
+      "external": {
+        "title": "互联网结果",
+        "search": "也在互联网上搜索",
+        "searching": "正在搜索互联网…",
+        "notRequested": "尚未查询互联网：目录是主要来源。",
+        "disabled": "外部搜索未配置。",
+        "unresolved": "互联网搜索未返回可靠的匹配。",
+        "error": "互联网搜索失败。目录结果保持不变。",
+        "provider": "提供方：{provider}",
+        "open": "打开外部结果",
+        "warning": "该结果来自目录之外。发布前请核对库存与来源。",
+        "addCandidate": "添加为目录候选",
+        "candidateAdded": "已发送审核",
+        "otherResults": "其他互联网结果"
+      },
+      "progress": {
+        "catalog": "正在搜索目录…",
+        "external": "正在查询互联网…",
+        "detecting": "正在检测对象…"
       }
     }
   },
@@ -1344,7 +1397,14 @@
         "testing": "正在测试…",
         "testOkDetail": "外部搜索响应正常。",
         "testFailed": "无法检查连接。",
-        "lastTestLabel": "最近一次测试"
+        "lastTestLabel": "最近一次测试",
+        "maxVisibleLabel": "可见候选上限",
+        "automaticFallbackLabel": "自动外部回退",
+        "externalEnabledLabel": "启用外部搜索",
+        "cacheLabel": "匹配缓存",
+        "enabled": "已启用",
+        "disabled": "已禁用",
+        "cacheTtl": "{hours} 小时"
       },
       "compliance": {
         "title": "采集限制与合规",
@@ -1369,6 +1429,25 @@
         "metricsLabel": "指标",
         "metricsValue": "内存计数器，通过 <code>/stats</code> 和 <code>/overview</code> 暴露",
         "footnote": "所有可观测状态都属于进程级别：服务重启后计数器和日志缓冲区都会重置。要获取真实的历史数据，请收集 stdout 并使用 Postgres 后端。"
+      },
+      "matchingMetrics": {
+        "title": "商品解析",
+        "description": "自有目录解决了多少，以及由此避免的外部支出。本进程的内存计数器。",
+        "detections": "检测到的对象",
+        "byCatalog": "由目录解决",
+        "byExternal": "由互联网解决",
+        "unresolved": "未解决",
+        "resolutionRate": "目录解决率",
+        "externalCalls": "外部调用",
+        "externalFallbacks": "外部回退",
+        "externalManual": "手动请求的搜索",
+        "cacheHits": "缓存命中",
+        "externalCost": "外部成本",
+        "externalCostAvoided": "已避免的外部成本",
+        "averageDuration": "平均耗时",
+        "topUnresolved": "未解决的类别",
+        "none": "暂无数据：请在工作室中进行一次分析。",
+        "empty": "—"
       }
     }
   },
@@ -1654,9 +1733,14 @@
     },
     "itemStatus": {
       "detected": "已检测",
+      "catalog_matched": "在目录中",
+      "external_candidate": "外部候选",
+      "review_required": "需要审核",
+      "approved": "已批准",
+      "published": "已发布",
+      "ignored": "已忽略",
       "reviewed": "已查看",
-      "matched": "已匹配商品",
-      "ignored": "已忽略"
+      "matched": "已匹配商品"
     },
     "matchType": {
       "exact": "精确匹配",

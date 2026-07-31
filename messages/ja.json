@@ -804,7 +804,7 @@
           "description": "まずカタログを検索し、十分に信頼できる一致がない場合のみ API を使用します。",
           "benefits": "精度とコストのバランス"
         },
-        "hybrid": {
+        "catalogAndExternal": {
           "label": "ソースを比較",
           "description": "カタログと API の両方を照会し、候補を統合して最適な一致を表示します。",
           "benefits": "最大のカバレッジ · 並べて比較"
@@ -903,6 +903,59 @@
         "nearPerson": "人物の近くにあるもの",
         "otherObjects": "シーン内のその他の物体({count})",
         "lowPriority": "優先度低"
+      },
+      "savedDetections": "{count} 件の検出を保存",
+      "savedDetectionsHint": "これは検出されたオブジェクトで、検証済みのカタログ商品ではありません。",
+      "withCatalogProduct": "カタログ商品あり: {count} 件"
+    },
+    "matching": {
+      "detection": {
+        "confidencePct": "検出 {pct}%",
+        "attributes": "検出された属性:"
+      },
+      "badge": {
+        "catalog": "Pause2Shop カタログ",
+        "external": "インターネットの結果"
+      },
+      "matchType": {
+        "exact": "完全一致",
+        "probable": "一致の可能性が高い",
+        "similar": "類似商品"
+      },
+      "catalog": {
+        "title": "カタログ内で見つかりました",
+        "searching": "カタログを検索中…",
+        "unresolvedTitle": "カタログに信頼できる一致がありません",
+        "unresolved": "カタログ内に十分に信頼できる一致は見つかりませんでした。",
+        "empty": "このカテゴリーの商品はカタログに登録されていません。",
+        "error": "カタログを照会できませんでした。",
+        "viewProduct": "カタログ商品を見る",
+        "showAlternatives": "他の候補を見る ({count})",
+        "hideAlternatives": "他の候補を隠す",
+        "alternativesTitle": "カタログの他の候補",
+        "threshold": "しきい値 {pct}%",
+        "demoProduct": "データセットの項目: 価格・購入なし",
+        "noPrice": "価格なし"
+      },
+      "external": {
+        "title": "インターネットの結果",
+        "search": "インターネットも検索する",
+        "searching": "インターネットを検索中…",
+        "notRequested": "インターネットは照会していません。カタログが主要なソースです。",
+        "disabled": "外部検索は設定されていません。",
+        "unresolved": "インターネット検索で信頼できる一致は見つかりませんでした。",
+        "error": "インターネット検索が失敗しました。カタログの結果は保持されます。",
+        "provider": "プロバイダー: {provider}",
+        "open": "外部の結果を開く",
+        "warning": "カタログ外で見つかった結果です。公開する前に在庫と出所を確認してください。",
+        "addCandidate": "カタログ候補として追加",
+        "candidateAdded": "レビューに送信しました",
+        "otherResults": "その他のインターネットの結果"
+      },
+      "progress": {
+        "catalog": "カタログを検索中…",
+        "external": "インターネットを照会中…",
+        "detecting": "オブジェクトを検出中…"
       }
     }
   },
@@ -1344,7 +1397,14 @@
         "testing": "テスト中…",
         "testOkDetail": "外部検索は正常に応答しています。",
         "testFailed": "接続を確認できませんでした。",
-        "lastTestLabel": "最終テスト"
+        "lastTestLabel": "最終テスト",
+        "maxVisibleLabel": "表示候補の最大数",
+        "automaticFallbackLabel": "外部への自動フォールバック",
+        "externalEnabledLabel": "外部検索を有効化",
+        "cacheLabel": "マッチングのキャッシュ",
+        "enabled": "有効",
+        "disabled": "無効",
+        "cacheTtl": "{hours} 時間"
       },
       "compliance": {
         "title": "取り込みとコンプライアンスの制限",
@@ -1369,6 +1429,25 @@
         "metricsLabel": "メトリクス",
         "metricsValue": "<code>/stats</code>と<code>/overview</code>に公開されるメモリ内カウンター",
         "footnote": "観測可能なすべての状態はプロセスに属します。サービスを再起動するとカウンターとログバッファはリセットされます。実際の履歴が必要な場合は、stdoutを収集してPostgresバックエンドを使用してください。"
+      },
+      "matchingMetrics": {
+        "title": "商品の解決",
+        "description": "自社カタログでどれだけ解決でき、外部コストをどれだけ回避できたか。このプロセスのメモリ内カウンターです。",
+        "detections": "検出されたオブジェクト",
+        "byCatalog": "カタログで解決",
+        "byExternal": "インターネットで解決",
+        "unresolved": "未解決",
+        "resolutionRate": "カタログ解決率",
+        "externalCalls": "外部呼び出し",
+        "externalFallbacks": "外部フォールバック",
+        "externalManual": "手動リクエストの検索",
+        "cacheHits": "キャッシュヒット",
+        "externalCost": "外部コスト",
+        "externalCostAvoided": "回避した外部コスト",
+        "averageDuration": "平均時間",
+        "topUnresolved": "未解決のカテゴリー",
+        "none": "まだデータがありません。スタジオで分析してください。",
+        "empty": "—"
       }
     }
   },
@@ -1654,9 +1733,14 @@
     },
     "itemStatus": {
       "detected": "検出済み",
+      "catalog_matched": "カタログ内",
+      "external_candidate": "外部候補",
+      "review_required": "確認が必要",
+      "approved": "承認済み",
+      "published": "公開済み",
+      "ignored": "無視",
       "reviewed": "確認済み",
-      "matched": "商品あり",
-      "ignored": "無視"
+      "matched": "商品あり"
     },
     "matchType": {
       "exact": "完全一致",

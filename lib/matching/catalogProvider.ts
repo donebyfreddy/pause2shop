@@ -100,9 +100,12 @@ export function toNormalizedMatch(
     availability: m.availability ?? "unknown",
     matchStage: m.matchStage,
     provider: "catalog",
-    // El contrato /products/search/image no devuelve categoría ni modelo del
-    // producto: no se infieren de la detección (sería afirmar lo que no consta).
-    category: null,
+    // Categoría de la FICHA (el servicio la devuelve). Si no viene se deja en
+    // null: nunca se rellena con los atributos detectados en el frame, que
+    // describen el objeto del vídeo y no el producto indexado.
+    category: m.category ?? null,
+    catalogColor: m.color ?? null,
+    isDemoProduct: m.isDemoProduct ?? m.origin === "dataset_demo",
     model: null,
     matchType,
     scores: {
@@ -135,15 +138,30 @@ export class CatalogMatchingProvider implements ProductMatchingProvider {
     this.cache = opts.cache ?? getCatalogMatchCache<CatalogSearchResponse>();
   }
 
-  /** Key por hash del crop + filtros que cambian la respuesta. */
+  /**
+   * Key por hash del crop + TODO lo que cambia la respuesta: filtros enviados,
+   * modelo de embeddings y versión del índice.
+   *
+   * El modelo y la versión están aquí porque son la parte que muerde: al pasar
+   * de embeddings hash a CLIP, o tras un reindex, las respuestas cacheadas con
+   * el índice anterior son simplemente incorrectas y no hay forma de detectarlo
+   * desde el valor. Con ambos en la clave, las entradas viejas quedan
+   * huérfanas en vez de servirse.
+   */
   private cacheKey(base64: string, item: DetectedItem, brand: string | null): string {
     const hash = createHash("sha256").update(base64).digest("hex");
     return [
-      "catalog:v1",
+      "catalog:v2",
       hash,
+      process.env.CATALOG_IMAGE_EMBEDDING_PROVIDER?.trim() || "default",
+      process.env.CATALOG_INDEX_VERSION?.trim() || "1",
       (item.category ?? "").toLowerCase(),
       (item.color ?? "").toLowerCase(),
       (brand ?? "").toLowerCase(),
+      (item.type || item.subcategory || "").toLowerCase(),
+      (item.gender_fit ?? "").toLowerCase(),
+      (item.material_guess ?? "").toLowerCase(),
+      (item.pattern ?? "").toLowerCase(),
       this.config.catalogMatchTopK,
       this.config.catalogMatchMinScore,
     ].join(":");
@@ -176,6 +194,14 @@ export class CatalogMatchingProvider implements ProductMatchingProvider {
         category: input.item.category || undefined,
         color: input.item.color || undefined,
         brand: brand ?? undefined,
+        // Señales adicionales de la detección. `type` y `pattern`/`material`
+        // solo re-rankean; `gender` puede excluir, pero únicamente cuando la
+        // ficha declara un género incompatible (ver genderConflicts).
+        type: input.item.type || input.item.subcategory || undefined,
+        gender: input.item.gender_fit || undefined,
+        material: input.item.material_guess || undefined,
+        pattern: input.item.pattern || undefined,
+        requireImage: true,
         topK: this.config.catalogMatchTopK,
         // Suelo laxo: los SIMILAR también interesan; el umbral fiable
         // (catalogMatchMinScore) se aplica abajo al etiquetar.

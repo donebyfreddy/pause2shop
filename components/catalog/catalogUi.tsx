@@ -33,9 +33,15 @@ export function useStatusLabels(): Record<ItemStatus, string> {
   const t = useTranslations("publicCatalog.itemStatus");
   return {
     detected: t("detected"),
+    catalog_matched: t("catalog_matched"),
+    external_candidate: t("external_candidate"),
+    review_required: t("review_required"),
+    approved: t("approved"),
+    published: t("published"),
+    ignored: t("ignored"),
+    // Legado: filas anteriores al ciclo de vida explícito.
     reviewed: t("reviewed"),
     matched: t("matched"),
-    ignored: t("ignored"),
   };
 }
 
@@ -53,11 +59,22 @@ export function useSourceTypeLabels(): Partial<Record<FrameSourceType, string>> 
   };
 }
 
+/**
+ * Tonos por estado. El catálogo propio usa el acento de marca/éxito; lo externo
+ * y lo pendiente usan info/warning — nunca rojo de error, porque "pendiente de
+ * revisar" no es un fallo.
+ */
 const STATUS_TONES: Record<ItemStatus, string> = {
   detected: "border-brand-bright/30 bg-brand/15 text-brand-bright",
+  catalog_matched: "border-success/30 bg-success/15 text-success",
+  external_candidate: "border-info/30 bg-info/15 text-info",
+  review_required: "border-warning/30 bg-warning/15 text-warning",
+  approved: "border-success/30 bg-success/15 text-success",
+  published: "border-accent/30 bg-accent/15 text-accent",
+  ignored: "border-ink-subtle/30 bg-ink-subtle/15 text-ink-muted",
+  // Legado.
   reviewed: "border-info/30 bg-info/15 text-info",
   matched: "border-success/30 bg-success/15 text-success",
-  ignored: "border-ink-subtle/30 bg-ink-subtle/15 text-ink-muted",
 };
 
 export function StatusBadge({ status }: { status: ItemStatus }) {

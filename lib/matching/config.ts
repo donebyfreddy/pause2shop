@@ -74,13 +74,30 @@ export type MatchingConfig = {
   catalogMatchMinScore: number;
   /** Umbral propio del proveedor EXTERNO (no comparte el del catálogo). */
   externalMatchMinScore: number;
-  /** Umbral del ranking combinado en modo comparar (hybrid). */
+  /** Umbral del ranking combinado en modo comparar (catalog_and_external). */
   hybridMatchMinScore: number;
   /** Umbrales por categoría, opcionales: `CATALOG_MATCH_THRESHOLD_<CATEGORIA>`. */
   catalogThresholdByCategory: Record<string, number>;
   catalogMatchTopK: number;
+  /**
+   * Cuántos candidatos del catálogo se pintan como alternativas. Es un límite
+   * de PRESENTACIÓN: no recorta la búsqueda ni el ranking (eso es topK).
+   */
+  catalogMatchMaxVisible: number;
   catalogRequestTimeoutMs: number;
-  /** catalog-first: si el catálogo no resuelve, ¿se cae al pipeline externo? */
+  /**
+   * ¿Está disponible la búsqueda externa? `false` la desactiva por completo:
+   * ni fallback automático ni botón manual. Es el interruptor de operador.
+   */
+  externalSearchEnabled: boolean;
+  /**
+   * catalog-first: si el catálogo no resuelve, ¿se cae al pipeline externo
+   * AUTOMÁTICAMENTE? Con `false` el catálogo sin match deja el bloque externo
+   * en `not_requested` y solo el usuario puede lanzarlo (coste bajo control).
+   *
+   * `EXTERNAL_SEARCH_AUTOMATIC_FALLBACK` es el nombre nuevo;
+   * `CATALOG_EXTERNAL_FALLBACK` se sigue leyendo por compatibilidad.
+   */
   catalogExternalFallback: boolean;
   /** ¿Ingerir resultados externos fiables en el catálogo (POST /products/external)? */
   catalogSaveExternalResults: boolean;
@@ -104,14 +121,19 @@ export function getMatchingConfig(
     catalogServiceApiKey: env.CATALOG_SERVICE_API_KEY?.trim() || null,
     catalogMatchMinScore: score01(
       env.CATALOG_MATCH_THRESHOLD ?? env.CATALOG_MATCH_MIN_SCORE,
-      0.82
+      0.8
     ),
-    externalMatchMinScore: score01(env.EXTERNAL_MATCH_THRESHOLD, 0.75),
+    externalMatchMinScore: score01(env.EXTERNAL_MATCH_THRESHOLD, 0.72),
     hybridMatchMinScore: score01(env.HYBRID_MATCH_THRESHOLD, 0.8),
     catalogThresholdByCategory: thresholdsByCategory(env),
-    catalogMatchTopK: Math.floor(num(env.CATALOG_MATCH_TOP_K, 10)),
+    catalogMatchTopK: Math.floor(num(env.CATALOG_MATCH_TOP_K, 8)),
+    catalogMatchMaxVisible: Math.floor(num(env.CATALOG_MATCH_MAX_VISIBLE, 4)),
     catalogRequestTimeoutMs: num(env.CATALOG_REQUEST_TIMEOUT_MS, 5000),
-    catalogExternalFallback: bool(env.CATALOG_EXTERNAL_FALLBACK, true),
+    externalSearchEnabled: bool(env.EXTERNAL_SEARCH_ENABLED, true),
+    catalogExternalFallback: bool(
+      env.EXTERNAL_SEARCH_AUTOMATIC_FALLBACK ?? env.CATALOG_EXTERNAL_FALLBACK,
+      true
+    ),
     catalogSaveExternalResults: bool(env.CATALOG_SAVE_EXTERNAL_RESULTS, true),
     catalogCacheEnabled: bool(env.CATALOG_CACHE_ENABLED, true),
     catalogCacheTtlSeconds: num(env.CATALOG_CACHE_TTL_SECONDS, 86_400),

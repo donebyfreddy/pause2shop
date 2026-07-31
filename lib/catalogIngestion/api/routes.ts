@@ -100,6 +100,12 @@ function toMatchPayload(m: ProductMatch) {
     matchStage: m.matchStage,
     origin: p.origin,
     isDemoProduct: isDemo(p),
+    // Taxonomía de la ficha: la UI la muestra en la tarjeta del catálogo, y sin
+    // ella el candidato no podría decir de qué categoría/color es realmente
+    // (antes se caía en describirlo con los atributos DETECTADOS, que es otra cosa).
+    category: p.category,
+    subcategory: p.subcategory,
+    color: p.color,
     /** Procedencia del dataset, para poder citarla en la UI. */
     dataset: p.dataset,
   };
@@ -588,6 +594,11 @@ export function buildRouter(store: CatalogStore): Router {
       category: body.category ?? null,
       brand: body.brand ?? null,
       color: body.color ?? null,
+      type: body.type ?? null,
+      gender: body.gender ?? null,
+      material: body.material ?? null,
+      pattern: body.pattern ?? null,
+      requireImage: body.requireImage !== false,
       topK: body.topK,
       minScore: body.minScore,
     });

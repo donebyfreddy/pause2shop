@@ -804,7 +804,7 @@
           "description": "Procura primeiro no catálogo e utiliza a API apenas quando não existe uma correspondência suficientemente fiável.",
           "benefits": "Equilíbrio entre precisão e custo"
         },
-        "hybrid": {
+        "catalogAndExternal": {
           "label": "Comparar fontes",
           "description": "Consulta catálogo e API, combina os candidatos e mostra a melhor correspondência.",
           "benefits": "Cobertura máxima · comparação lado a lado"
@@ -903,6 +903,59 @@
         "nearPerson": "Perto da pessoa",
         "otherObjects": "Outros objetos da cena ({count})",
         "lowPriority": "prioridade baixa"
+      },
+      "savedDetections": "{count, plural, one{# deteção guardada} other{# deteções guardadas}}",
+      "savedDetectionsHint": "São objetos detetados, não produtos do catálogo validados.",
+      "withCatalogProduct": "{count, plural, one{# com produto do catálogo} other{# com produto do catálogo}}"
+    },
+    "matching": {
+      "detection": {
+        "confidencePct": "{pct}% de deteção",
+        "attributes": "Atributos detetados:"
+      },
+      "badge": {
+        "catalog": "Catálogo Pause2Shop",
+        "external": "Resultado da Internet"
+      },
+      "matchType": {
+        "exact": "Correspondência exata",
+        "probable": "Correspondência provável",
+        "similar": "Produto semelhante"
+      },
+      "catalog": {
+        "title": "Encontrado no teu catálogo",
+        "searching": "A pesquisar no teu catálogo…",
+        "unresolvedTitle": "Sem correspondência fiável no catálogo",
+        "unresolved": "Não foi encontrada uma correspondência suficientemente fiável no catálogo.",
+        "empty": "O catálogo não contém produtos indexados para esta categoria.",
+        "error": "Não foi possível consultar o catálogo.",
+        "viewProduct": "Ver produto do catálogo",
+        "showAlternatives": "Ver alternativas ({count})",
+        "hideAlternatives": "Ocultar alternativas",
+        "alternativesTitle": "Alternativas do catálogo",
+        "threshold": "Limiar {pct}%",
+        "demoProduct": "Ficha de dataset: sem preço nem compra",
+        "noPrice": "Sem preço"
+      },
+      "external": {
+        "title": "Resultados na Internet",
+        "search": "Pesquisar também na Internet",
+        "searching": "A pesquisar na Internet…",
+        "notRequested": "A Internet não foi consultada: o catálogo é a fonte principal.",
+        "disabled": "A pesquisa externa não está configurada.",
+        "unresolved": "A pesquisa na Internet não devolveu uma correspondência fiável.",
+        "error": "A pesquisa na Internet falhou. O resultado do catálogo mantém-se.",
+        "provider": "Fornecedor: {provider}",
+        "open": "Abrir resultado externo",
+        "warning": "Resultado encontrado fora do catálogo. Verifica a disponibilidade e a procedência antes de o publicar.",
+        "addCandidate": "Adicionar como candidato ao catálogo",
+        "candidateAdded": "Enviado para revisão",
+        "otherResults": "Outros resultados da Internet"
+      },
+      "progress": {
+        "catalog": "A pesquisar no catálogo…",
+        "external": "A consultar a Internet…",
+        "detecting": "A detetar objetos…"
       }
     }
   },
@@ -1344,7 +1397,14 @@
         "testing": "A testar…",
         "testOkDetail": "A pesquisa externa responde corretamente.",
         "testFailed": "Não foi possível verificar a ligação.",
-        "lastTestLabel": "Último teste"
+        "lastTestLabel": "Último teste",
+        "maxVisibleLabel": "Máximo de candidatos visíveis",
+        "automaticFallbackLabel": "Fallback externo automático",
+        "externalEnabledLabel": "Pesquisa externa ativada",
+        "cacheLabel": "Cache do matching",
+        "enabled": "Ativada",
+        "disabled": "Desativada",
+        "cacheTtl": "{hours} h"
       },
       "compliance": {
         "title": "Limites de ingestão e conformidade",
@@ -1369,6 +1429,25 @@
         "metricsLabel": "Métricas",
         "metricsValue": "Contadores em memória expostos em <code>/stats</code> e <code>/overview</code>",
         "footnote": "Todo o estado observável é do processo: ao reiniciar o serviço reiniciam-se os contadores e o buffer de logs. Para histórico real, recolhe o stdout e usa o backend Postgres."
+      },
+      "matchingMetrics": {
+        "title": "Resolução de produtos",
+        "description": "Quanto o teu catálogo resolve e quanta despesa externa isso evita. Contadores em memória deste processo.",
+        "detections": "Objetos detetados",
+        "byCatalog": "Resolvidos pelo catálogo",
+        "byExternal": "Resolvidos pela Internet",
+        "unresolved": "Sem resolução",
+        "resolutionRate": "Taxa de resolução do catálogo",
+        "externalCalls": "Chamadas externas",
+        "externalFallbacks": "Fallbacks externos",
+        "externalManual": "Pesquisas pedidas manualmente",
+        "cacheHits": "Acertos de cache",
+        "externalCost": "Custo externo",
+        "externalCostAvoided": "Custo externo evitado",
+        "averageDuration": "Tempo médio",
+        "topUnresolved": "Categorias sem resolução",
+        "none": "Ainda sem dados: analisa algo no estúdio.",
+        "empty": "—"
       }
     }
   },
@@ -1654,9 +1733,14 @@
     },
     "itemStatus": {
       "detected": "Detetado",
+      "catalog_matched": "No catálogo",
+      "external_candidate": "Candidato externo",
+      "review_required": "Requer revisão",
+      "approved": "Aprovado",
+      "published": "Publicado",
+      "ignored": "Ignorado",
       "reviewed": "Revisto",
-      "matched": "Com produtos",
-      "ignored": "Ignorado"
+      "matched": "Com produtos"
     },
     "matchType": {
       "exact": "Correspondência exata",

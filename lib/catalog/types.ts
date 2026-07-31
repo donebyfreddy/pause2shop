@@ -15,8 +15,63 @@ export type FrameSourceType =
 /** Tipo de media (vídeo, imagen estática, captura de pantalla). */
 export type MediaType = "video" | "image" | "screen_capture";
 
-/** Estado de un elemento del catálogo. */
-export type ItemStatus = "detected" | "reviewed" | "matched" | "ignored";
+/**
+ * Ciclo de vida de un elemento detectado.
+ *
+ * La distinción importa: una DETECCIÓN guardada no es un producto del catálogo,
+ * y un resultado de Internet guardado como candidato no es un producto
+ * validado. Con un único `matched` para todo, la UI contaba detecciones
+ * visuales como productos del catálogo confirmados.
+ *
+ *   detected            → detección guardada, sin producto asociado
+ *   catalog_matched     → producto del catálogo propio por encima del umbral
+ *   external_candidate  → resultado externo guardado como candidato, SIN validar
+ *   review_required     → necesita revisión humana
+ *   approved            → revisado y aceptado por una persona
+ *   published           → publicado como producto del catálogo
+ *   ignored             → descartado
+ *
+ * `matched` y `reviewed` son LEGADO (filas anteriores a la distinción). No se
+ * escriben nuevos; ver db/migrations/20260731000009_item_lifecycle_states.sql.
+ */
+export type ItemStatus =
+  | "detected"
+  | "catalog_matched"
+  | "external_candidate"
+  | "review_required"
+  | "approved"
+  | "published"
+  | "ignored"
+  | "reviewed"
+  | "matched";
+
+/** Estados vigentes, en orden de avance del ciclo de vida. */
+export const ITEM_LIFECYCLE: readonly ItemStatus[] = [
+  "detected",
+  "catalog_matched",
+  "external_candidate",
+  "review_required",
+  "approved",
+  "published",
+] as const;
+
+/** Estados que NO representan un producto validado del catálogo. */
+const UNVALIDATED_STATUSES = new Set<ItemStatus>([
+  "detected",
+  "external_candidate",
+  "review_required",
+]);
+
+/**
+ * ¿Este elemento representa un producto REAL del catálogo, confirmado?
+ *
+ * Es la pregunta que la UI tiene que hacerse antes de decir "guardado en el
+ * catálogo": una detección sin producto asociado, o un candidato externo sin
+ * revisar, no cuentan.
+ */
+export function isValidatedCatalogProduct(status: ItemStatus): boolean {
+  return !UNVALIDATED_STATUSES.has(status) && status !== "ignored";
+}
 
 /** Estado del análisis de un frame. */
 export type AnalysisStatus = "pending" | "completed" | "failed";

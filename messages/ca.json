@@ -804,7 +804,7 @@
           "description": "Cerca primer al catàleg i utilitza l'API només quan no hi ha cap coincidència prou fiable.",
           "benefits": "Equilibri entre precisió i cost"
         },
-        "hybrid": {
+        "catalogAndExternal": {
           "label": "Compara les fonts",
           "description": "Consulta catàleg i API, combina els candidats i mostra la millor coincidència.",
           "benefits": "Cobertura màxima · comparació costat a costat"
@@ -903,6 +903,59 @@
         "nearPerson": "A prop de la persona",
         "otherObjects": "Altres objectes de l'escena ({count})",
         "lowPriority": "prioritat baixa"
+      },
+      "savedDetections": "{count, plural, one{# detecció guardada} other{# deteccions guardades}}",
+      "savedDetectionsHint": "Són objectes detectats, no productes del catàleg validats.",
+      "withCatalogProduct": "{count, plural, one{# amb producte del catàleg} other{# amb producte del catàleg}}"
+    },
+    "matching": {
+      "detection": {
+        "confidencePct": "{pct}% detecció",
+        "attributes": "Atributs detectats:"
+      },
+      "badge": {
+        "catalog": "Catàleg Pause2Shop",
+        "external": "Resultat d'Internet"
+      },
+      "matchType": {
+        "exact": "Coincidència exacta",
+        "probable": "Coincidència probable",
+        "similar": "Producte similar"
+      },
+      "catalog": {
+        "title": "Trobat al teu catàleg",
+        "searching": "Cercant al teu catàleg…",
+        "unresolvedTitle": "Sense coincidència fiable al catàleg",
+        "unresolved": "No s'ha trobat cap coincidència prou fiable al catàleg.",
+        "empty": "El catàleg no conté productes indexats per a aquesta categoria.",
+        "error": "No s'ha pogut consultar el catàleg.",
+        "viewProduct": "Veure producte del catàleg",
+        "showAlternatives": "Veure alternatives ({count})",
+        "hideAlternatives": "Amagar alternatives",
+        "alternativesTitle": "Alternatives del catàleg",
+        "threshold": "Llindar {pct}%",
+        "demoProduct": "Fitxa de dataset: sense preu ni compra",
+        "noPrice": "Sense preu"
+      },
+      "external": {
+        "title": "Resultats a Internet",
+        "search": "Cercar també a Internet",
+        "searching": "Cercant a Internet…",
+        "notRequested": "No s'ha consultat Internet: el catàleg és la font principal.",
+        "disabled": "La cerca externa no està configurada.",
+        "unresolved": "La cerca a Internet no ha retornat cap coincidència fiable.",
+        "error": "La cerca a Internet ha fallat. El resultat del catàleg es manté.",
+        "provider": "Proveïdor: {provider}",
+        "open": "Obrir resultat extern",
+        "warning": "Resultat trobat fora del catàleg. Comprova disponibilitat i procedència abans de publicar-lo.",
+        "addCandidate": "Afegir com a candidat al catàleg",
+        "candidateAdded": "Enviat a revisió",
+        "otherResults": "Altres resultats d'Internet"
+      },
+      "progress": {
+        "catalog": "Cercant al catàleg…",
+        "external": "Consultant Internet…",
+        "detecting": "Detectant objectes…"
       }
     }
   },
@@ -1344,7 +1397,14 @@
         "testing": "Provant…",
         "testOkDetail": "La cerca externa respon correctament.",
         "testFailed": "No s'ha pogut comprovar la connexió.",
-        "lastTestLabel": "Última prova"
+        "lastTestLabel": "Última prova",
+        "maxVisibleLabel": "Màxim de candidats visibles",
+        "automaticFallbackLabel": "Fallback extern automàtic",
+        "externalEnabledLabel": "Cerca externa activada",
+        "cacheLabel": "Memòria cau del matching",
+        "enabled": "Activada",
+        "disabled": "Desactivada",
+        "cacheTtl": "{hours} h"
       },
       "compliance": {
         "title": "Límits d'ingesta i compliment",
@@ -1369,6 +1429,25 @@
         "metricsLabel": "Mètriques",
         "metricsValue": "Comptadors en memòria exposats a <code>/stats</code> i <code>/overview</code>",
         "footnote": "Tot l'estat observable és del procés: en reiniciar el servei es reinicien comptadors i buffer de logs. Per a historial real, recull l'stdout i fes servir el backend Postgres."
+      },
+      "matchingMetrics": {
+        "title": "Resolució de productes",
+        "description": "Quant resol el catàleg propi i quanta despesa externa s'evita. Comptadors en memòria d'aquest procés.",
+        "detections": "Objectes detectats",
+        "byCatalog": "Resolts pel catàleg",
+        "byExternal": "Resolts per Internet",
+        "unresolved": "Sense resoldre",
+        "resolutionRate": "Taxa de resolució del catàleg",
+        "externalCalls": "Crides externes",
+        "externalFallbacks": "Fallbacks a l'extern",
+        "externalManual": "Cerques demanades a mà",
+        "cacheHits": "Encerts de memòria cau",
+        "externalCost": "Cost extern",
+        "externalCostAvoided": "Cost extern evitat",
+        "averageDuration": "Temps mitjà",
+        "topUnresolved": "Categories sense resoldre",
+        "none": "Encara sense dades: analitza alguna cosa a l'estudi.",
+        "empty": "—"
       }
     }
   },
@@ -1654,9 +1733,14 @@
     },
     "itemStatus": {
       "detected": "Detectat",
+      "catalog_matched": "Al catàleg",
+      "external_candidate": "Candidat extern",
+      "review_required": "Requereix revisió",
+      "approved": "Aprovat",
+      "published": "Publicat",
+      "ignored": "Ignorat",
       "reviewed": "Revisat",
-      "matched": "Amb productes",
-      "ignored": "Ignorat"
+      "matched": "Amb productes"
     },
     "matchType": {
       "exact": "Coincidència exacta",

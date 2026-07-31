@@ -804,7 +804,7 @@
           "description": "Searches the catalog first and uses the API only when there is no reliable enough match.",
           "benefits": "Balance between accuracy and cost"
         },
-        "hybrid": {
+        "catalogAndExternal": {
           "label": "Compare sources",
           "description": "Queries both the catalog and the API, combines the candidates and shows the best match.",
           "benefits": "Maximum coverage · side-by-side comparison"
@@ -903,6 +903,59 @@
         "nearPerson": "Near the person",
         "otherObjects": "Other objects in the scene ({count})",
         "lowPriority": "low priority"
+      },
+      "savedDetections": "{count, plural, one{# detection saved} other{# detections saved}}",
+      "savedDetectionsHint": "These are detected objects, not validated catalog products.",
+      "withCatalogProduct": "{count, plural, one{# with a catalog product} other{# with a catalog product}}"
+    },
+    "matching": {
+      "detection": {
+        "confidencePct": "{pct}% detection",
+        "attributes": "Detected attributes:"
+      },
+      "badge": {
+        "catalog": "Pause2Shop catalog",
+        "external": "Result from the internet"
+      },
+      "matchType": {
+        "exact": "Exact match",
+        "probable": "Probable match",
+        "similar": "Similar product"
+      },
+      "catalog": {
+        "title": "Found in your catalog",
+        "searching": "Searching your catalog…",
+        "unresolvedTitle": "No reliable match in the catalog",
+        "unresolved": "No sufficiently reliable match was found in the catalog.",
+        "empty": "The catalog has no indexed products for this category.",
+        "error": "The catalog could not be queried.",
+        "viewProduct": "View catalog product",
+        "showAlternatives": "View alternatives ({count})",
+        "hideAlternatives": "Hide alternatives",
+        "alternativesTitle": "Catalog alternatives",
+        "threshold": "Threshold {pct}%",
+        "demoProduct": "Dataset record: no price, not purchasable",
+        "noPrice": "No price"
+      },
+      "external": {
+        "title": "Results on the internet",
+        "search": "Search the internet too",
+        "searching": "Searching the internet…",
+        "notRequested": "The internet has not been queried: the catalog is the primary source.",
+        "disabled": "External search is not configured.",
+        "unresolved": "The internet search returned no reliable match.",
+        "error": "The internet search failed. The catalog result is kept.",
+        "provider": "Provider: {provider}",
+        "open": "Open external result",
+        "warning": "Result found outside the catalog. Check availability and provenance before publishing it.",
+        "addCandidate": "Add as catalog candidate",
+        "candidateAdded": "Sent for review",
+        "otherResults": "Other internet results"
+      },
+      "progress": {
+        "catalog": "Searching the catalog…",
+        "external": "Querying the internet…",
+        "detecting": "Detecting objects…"
       }
     }
   },
@@ -1344,7 +1397,14 @@
         "testing": "Testing…",
         "testOkDetail": "External search is responding correctly.",
         "testFailed": "Couldn't check the connection.",
-        "lastTestLabel": "Last test"
+        "lastTestLabel": "Last test",
+        "maxVisibleLabel": "Max visible candidates",
+        "automaticFallbackLabel": "Automatic external fallback",
+        "externalEnabledLabel": "External search enabled",
+        "cacheLabel": "Matching cache",
+        "enabled": "Enabled",
+        "disabled": "Disabled",
+        "cacheTtl": "{hours} h"
       },
       "compliance": {
         "title": "Ingestion limits and compliance",
@@ -1369,6 +1429,25 @@
         "metricsLabel": "Metrics",
         "metricsValue": "In-memory counters exposed at <code>/stats</code> and <code>/overview</code>",
         "footnote": "All observable state belongs to the process: restarting the service resets counters and the log buffer. For real history, collect stdout and use the Postgres backend."
+      },
+      "matchingMetrics": {
+        "title": "Product resolution",
+        "description": "How much your own catalog resolves and how much external spend that avoids. In-memory counters for this process.",
+        "detections": "Objects detected",
+        "byCatalog": "Resolved by the catalog",
+        "byExternal": "Resolved by the internet",
+        "unresolved": "Unresolved",
+        "resolutionRate": "Catalog resolution rate",
+        "externalCalls": "External calls",
+        "externalFallbacks": "External fallbacks",
+        "externalManual": "Manually requested searches",
+        "cacheHits": "Cache hits",
+        "externalCost": "External cost",
+        "externalCostAvoided": "External cost avoided",
+        "averageDuration": "Average time",
+        "topUnresolved": "Unresolved categories",
+        "none": "No data yet: analyze something in the studio.",
+        "empty": "—"
       }
     }
   },
@@ -1654,9 +1733,14 @@
     },
     "itemStatus": {
       "detected": "Detected",
+      "catalog_matched": "In catalog",
+      "external_candidate": "External candidate",
+      "review_required": "Needs review",
+      "approved": "Approved",
+      "published": "Published",
+      "ignored": "Ignored",
       "reviewed": "Reviewed",
-      "matched": "Has products",
-      "ignored": "Ignored"
+      "matched": "Has products"
     },
     "matchType": {
       "exact": "Exact match",

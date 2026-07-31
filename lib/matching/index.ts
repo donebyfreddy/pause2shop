@@ -28,6 +28,15 @@ export {
   dedupeAcrossSources,
   productIdentityKey,
 } from "./hybridProvider";
+export {
+  buildCatalogBlock,
+  buildExternalBlock,
+  resolveDetectionMatch,
+  shouldCallExternal,
+  toProductCandidate,
+  type ResolveDetectionInput,
+  type ResolveDetectionOutput,
+} from "./resolveDetection";
 
 /** Dependencias inyectables del orquestador (tests y wiring del route). */
 export type MatchingProviderDeps = {
@@ -42,10 +51,13 @@ export type MatchingProviderDeps = {
 /**
  * Orquestador: devuelve el provider de la estrategia pedida.
  *
- *  - external-only  → el pipeline actual intacto (default si no hay env).
- *  - catalog-only   → solo catálogo; si está caído, NO_MATCH con warning.
- *  - catalog-first  → catálogo y, si no resuelve, fallback externo + ingesta.
- *  - hybrid         → ambos con ranking común sin mezclar procedencia.
+ *  - external_only         → el pipeline externo intacto, sin catálogo.
+ *  - catalog_only          → solo catálogo; si está caído, NO_MATCH con warning.
+ *  - catalog_first         → catálogo y, si no resuelve, fallback externo + ingesta.
+ *  - catalog_and_external  → ambos con ranking común sin mezclar procedencia.
+ *
+ * Para `/studio` NO se usa esta función sino `resolveDetectionMatch`, que
+ * conserva los dos resultados por separado en vez de colapsarlos en uno.
  */
 export function getMatchingProvider(
   mode: MatchingMode,
@@ -78,7 +90,7 @@ export function getMatchingProvider(
       return stampMode(external, "external_only");
     case "catalog_first":
       return new CatalogFirstMatchingProvider({ catalog, external, client, config });
-    case "hybrid":
+    case "catalog_and_external":
       return new HybridMatchingProvider({ catalog, external, client, config });
   }
 }

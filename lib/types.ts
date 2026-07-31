@@ -1,6 +1,9 @@
 // Solo tipos: el ciclo con visualSearch/types se borra en compilación.
 import type { FallbackResult, VisualMatch } from "./visualSearch/types";
-import type { ProductMatchingMode } from "./matching/types";
+import type {
+  DetectionMatchResult,
+  ProductMatchingMode,
+} from "./matching/types";
 
 export type { ProductMatchingMode };
 
@@ -125,6 +128,19 @@ export type DetectedItem = {
     | "no_match"
     | "budget_exhausted"
     | "provider_error";
+
+  /**
+   * Resultado de matching con CATÁLOGO e INTERNET en bloques separados.
+   * Es lo que pinta la UI de resultados (`DetectionResultCard`). Solo cliente:
+   * lo fusiona `applyMatching` desde la cola de matching.
+   *
+   * `visual_match` / `similar_candidates` son la forma anterior (un único
+   * resultado sin procedencia explícita) y siguen aquí para los componentes
+   * que aún no leen esto.
+   */
+  detection_result?: DetectionMatchResult | null;
+  /** true mientras una búsqueda externa pedida a mano está en vuelo. */
+  external_loading?: boolean;
 
   // Visual Matching Engine (reverse image shopping). Se rellenan en el
   // servidor cuando hay motores configurados; ver lib/visualSearch/engine.ts.

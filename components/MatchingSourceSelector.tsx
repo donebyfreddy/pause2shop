@@ -27,7 +27,7 @@ const MODE_ICON: Record<ProductMatchingMode, LucideIcon> = {
   catalog_only: Database,
   external_only: Globe,
   catalog_first: Route,
-  hybrid: GitCompare,
+  catalog_and_external: GitCompare,
 };
 
 /**
@@ -51,10 +51,10 @@ const MODE_KEY = {
     description: "modes.catalogFirst.description",
     benefits: "modes.catalogFirst.benefits",
   },
-  hybrid: {
-    label: "modes.hybrid.label",
-    description: "modes.hybrid.description",
-    benefits: "modes.hybrid.benefits",
+  catalog_and_external: {
+    label: "modes.catalogAndExternal.label",
+    description: "modes.catalogAndExternal.description",
+    benefits: "modes.catalogAndExternal.benefits",
   },
 } as const;
 

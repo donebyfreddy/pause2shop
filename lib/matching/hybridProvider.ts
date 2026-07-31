@@ -284,7 +284,7 @@ export class HybridMatchingProvider implements ProductMatchingProvider {
       cached: catalogResult.cached && (identityByHash || externalResult.cached),
       timings: { ...catalogResult.timings, ...externalResult.timings },
       warnings: warnings.length ? warnings : undefined,
-      matchingMode: "hybrid",
+      matchingMode: "catalog_and_external",
       catalogAttempted: true,
       externalAttempted: !identityByHash,
       // En comparar, el externo NO es un fallback: se consulta por diseño.

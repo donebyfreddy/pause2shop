@@ -4,6 +4,7 @@ import { hammingDistance } from "../images/dhash";
 import { cosineSimilarity, getEmbeddingProvider } from "../embeddings/index";
 import { normalizeText, normalizeColor, normalizeBrand, categoriesMatch } from "../normalization/normalize";
 import { getConfig } from "../config/index";
+import { getProductsForMatching } from "./productSnapshot";
 
 /**
  * Matching de búsqueda (imagen/texto/híbrido) según el contrato de
@@ -23,6 +24,21 @@ export interface MatchQuery {
   category?: string | null;
   brand?: string | null;
   color?: string | null;
+  /** Tipo de artículo detectado ("tote bag", "trench"…): señal, no filtro duro. */
+  type?: string | null;
+  /**
+   * Género. Filtro duro SOLO cuando la ficha declara uno incompatible: un
+   * producto sin género no se descarta (la mayoría del catálogo no lo trae).
+   */
+  gender?: string | null;
+  material?: string | null;
+  pattern?: string | null;
+  /**
+   * Exigir que la ficha tenga imagen presentable. Por defecto true: un match
+   * sin imagen no se puede pintar como tarjeta, así que como resultado de
+   * búsqueda VISUAL no sirve.
+   */
+  requireImage?: boolean;
   topK?: number;
   minScore?: number;
 }
@@ -52,10 +68,24 @@ export function textOverlapScore(query: string, product: CatalogProduct): number
   return hits / qTokens.size;
 }
 
-/** Score de atributos: cuántos de los filtros suaves (categoría/marca/color) casan. */
+/**
+ * Score de atributos: cuántos de los filtros suaves casan.
+ *
+ * Categoría/marca/color son las señales fuertes. Tipo, material y patrón son
+ * señales DÉBILES (la visión los acierta a medias) y por eso solo se cuentan
+ * cuando la ficha declara ese campo: castigar a un producto por no tener
+ * `material` rellenado penalizaría la calidad de los datos, no la del match.
+ */
 export function attributeScore(
   product: CatalogProduct,
-  filters: { category?: string | null; brand?: string | null; color?: string | null }
+  filters: {
+    category?: string | null;
+    brand?: string | null;
+    color?: string | null;
+    type?: string | null;
+    material?: string | null;
+    pattern?: string | null;
+  }
 ): number {
   const checks: boolean[] = [];
   // Compatibilidad de granularidad: pause2shop manda familias ("clothing"),
@@ -69,8 +99,60 @@ export function attributeScore(
         product.secondaryColors.some((c) => normalizeColor(c) === qColor)
     );
   }
+  // El tipo de artículo se busca en subcategoría/estilo/título: es donde las
+  // tiendas lo ponen ("Bolso tote", "trench largo"), no en un campo propio.
+  if (filters.type) {
+    const haystack = normalizeText(
+      `${product.subcategory ?? ""} ${product.style ?? ""} ${product.title}`
+    );
+    const needles = normalizeText(filters.type).split(" ").filter(Boolean);
+    checks.push(needles.length > 0 && needles.some((n) => haystack.includes(n)));
+  }
+  if (filters.material && product.material) {
+    checks.push(normalizeText(product.material) === normalizeText(filters.material));
+  }
+  if (filters.pattern && product.pattern) {
+    checks.push(normalizeText(product.pattern) === normalizeText(filters.pattern));
+  }
   if (checks.length === 0) return 0.5; // neutro: sin filtros no premia ni castiga
   return checks.filter(Boolean).length / checks.length;
+}
+
+/** Géneros compatibles con cualquier consulta: la prenda vale para ambos. */
+const UNISEX = new Set(["unisex", "unisexo", "all", "todos", "mixto", "kids", "nino", "nina"]);
+
+/**
+ * ¿El género de la ficha es incompatible con el detectado? Solo puede excluir
+ * cuando AMBOS constan y ninguno es unisex — nunca por ausencia de dato.
+ */
+export function genderConflicts(
+  productGender: string | null,
+  queryGender: string | null | undefined
+): boolean {
+  if (!queryGender || !productGender) return false;
+  const p = normalizeText(productGender);
+  const q = normalizeText(queryGender);
+  if (!p || !q) return false;
+  if (UNISEX.has(p) || UNISEX.has(q)) return false;
+  return p !== q;
+}
+
+/**
+ * Calidad de la imagen indexada, 0-1. No mide el match: desempata entre dos
+ * fichas igual de parecidas a favor de la que se verá mejor en la tarjeta.
+ * Sin dimensiones conocidas devuelve un valor neutro (no se penaliza).
+ */
+export function imageQualityScore(product: CatalogProduct): number {
+  const img = product.images.find((i) => i.width && i.height) ?? null;
+  if (!img?.width || !img.height) return 0.5;
+  const minSide = Math.min(img.width, img.height);
+  // 200px ≈ mínimo presentable; 800px ya es holgado para la tarjeta.
+  return Math.max(0, Math.min(1, (minSide - 200) / 600));
+}
+
+/** ¿Tiene la ficha una imagen que la UI pueda pintar? */
+function hasPresentableImage(p: CatalogProduct): boolean {
+  return Boolean(p.primaryImage ?? p.images.find((i) => i.url)?.url);
 }
 
 interface ScoredCandidate {
@@ -134,13 +216,19 @@ export async function matchProducts(store: CatalogStore, q: MatchQuery): Promise
     textQueryEmbedding = await provider.embedText(q.queryText!);
   }
 
+  // Una búsqueda VISUAL sin imagen presentable no da resultado utilizable.
+  const requireImage = q.requireImage ?? hasImage;
+
   const results: ProductMatch[] = [];
-  for (const p of await store.allProducts()) {
+  for (const p of await getProductsForMatching(store)) {
     if (!p.isActive) continue;
+    if (requireImage && !hasPresentableImage(p)) continue;
     // Filtros duros: si el caller especifica categoría/marca los usamos también
     // como filtro además de como señal de score — evita ruido cross-categoría.
     if (q.category && !categoriesMatch(p.category, q.category)) continue;
     if (q.brand && normalizeBrand(p.brand) !== normalizeBrand(q.brand)) continue;
+    // El género solo excluye cuando consta en ambos lados y no casa.
+    if (genderConflicts(p.gender, q.gender)) continue;
 
     let visual = 0;
     let stage: MatchStage = "embedding";
@@ -161,12 +249,25 @@ export async function matchProducts(store: CatalogStore, q: MatchQuery): Promise
       text = Math.max(overlap, semantic);
     }
 
-    const attr = attributeScore(p, { category: q.category, brand: q.brand, color: q.color });
+    const attr = attributeScore(p, {
+      category: q.category,
+      brand: q.brand,
+      color: q.color,
+      type: q.type,
+      material: q.material,
+      pattern: q.pattern,
+    });
     const finalScore = combineScores(visual, text, attr, hasImage, hasText);
     if (finalScore < minScore) continue;
     results.push({ product: p, visualScore: visual, textScore: text, attributeScore: attr, matchStage: stage, finalScore });
   }
 
-  results.sort((a, b) => b.finalScore - a.finalScore);
+  // Orden: score final y, a igualdad real (±0.005, dentro del ruido del
+  // coseno), la ficha cuya imagen se verá mejor en la tarjeta.
+  results.sort((a, b) => {
+    const diff = b.finalScore - a.finalScore;
+    if (Math.abs(diff) > 0.005) return diff;
+    return imageQualityScore(b.product) - imageQualityScore(a.product);
+  });
   return results.slice(0, topK);
 }

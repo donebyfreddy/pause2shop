@@ -142,7 +142,7 @@ test("envía imageBase64 sin prefijo, category/color, x-api-key; marca SOLO si e
   assert.equal(req1.body.category, "ropa");
   assert.equal(req1.body.color, "azul");
   assert.equal(req1.body.brand, "Zara");
-  assert.equal(req1.body.topK, 10);
+  assert.equal(req1.body.topK, 8);
 
   // Marca solo "probable": no se afirma sin evidencia → no viaja al catálogo.
   await provider.search({ item: item({ brand_guess: "Zara", brand_status: "probable" }), cropDataUrl: CROP });

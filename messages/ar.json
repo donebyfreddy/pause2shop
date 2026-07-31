@@ -804,7 +804,7 @@
           "description": "يبحث في الكتالوج أولاً ولا يستخدم واجهة API إلا عند عدم وجود مطابقة موثوقة بما يكفي.",
           "benefits": "توازن بين الدقة والتكلفة"
         },
-        "hybrid": {
+        "catalogAndExternal": {
           "label": "مقارنة المصادر",
           "description": "يستعلم من الكتالوج وواجهة API معًا، ويدمج المرشحين ويعرض أفضل مطابقة.",
           "benefits": "أقصى تغطية · مقارنة جنبًا إلى جنب"
@@ -903,6 +903,59 @@
         "nearPerson": "قريب من الشخص",
         "otherObjects": "منتجات أخرى في المشهد ({count})",
         "lowPriority": "أولوية منخفضة"
+      },
+      "savedDetections": "{count, plural, zero{# كشف محفوظ} one{# كشف محفوظ} two{# كشفان محفوظان} few{# كشوف محفوظة} many{# كشفًا محفوظًا} other{# كشف محفوظ}}",
+      "savedDetectionsHint": "هذه كائنات مكتشفة، وليست منتجات كتالوج مُتحقق منها.",
+      "withCatalogProduct": "{count, plural, zero{# مع منتج من الكتالوج} one{# مع منتج من الكتالوج} two{# مع منتج من الكتالوج} few{# مع منتج من الكتالوج} many{# مع منتج من الكتالوج} other{# مع منتج من الكتالوج}}"
+    },
+    "matching": {
+      "detection": {
+        "confidencePct": "كشف {pct}%",
+        "attributes": "السمات المكتشفة:"
+      },
+      "badge": {
+        "catalog": "كتالوج Pause2Shop",
+        "external": "نتيجة من الإنترنت"
+      },
+      "matchType": {
+        "exact": "تطابق تام",
+        "probable": "تطابق محتمل",
+        "similar": "منتج مشابه"
+      },
+      "catalog": {
+        "title": "وُجد في كتالوجك",
+        "searching": "جارٍ البحث في كتالوجك…",
+        "unresolvedTitle": "لا يوجد تطابق موثوق في الكتالوج",
+        "unresolved": "لم يُعثر على تطابق موثوق بدرجة كافية في الكتالوج.",
+        "empty": "لا يحتوي الكتالوج على منتجات مفهرسة لهذه الفئة.",
+        "error": "لم يتم الاستعلام عن الكتالوج.",
+        "viewProduct": "عرض منتج الكتالوج",
+        "showAlternatives": "عرض البدائل ({count})",
+        "hideAlternatives": "إخفاء البدائل",
+        "alternativesTitle": "بدائل الكتالوج",
+        "threshold": "الحد {pct}%",
+        "demoProduct": "سجل مجموعة بيانات: بلا سعر ولا شراء",
+        "noPrice": "بلا سعر"
+      },
+      "external": {
+        "title": "نتائج على الإنترنت",
+        "search": "ابحث في الإنترنت أيضًا",
+        "searching": "جارٍ البحث في الإنترنت…",
+        "notRequested": "لم يتم الاستعلام عن الإنترنت: الكتالوج هو المصدر الأساسي.",
+        "disabled": "البحث الخارجي غير مُهيّأ.",
+        "unresolved": "لم يُرجع البحث في الإنترنت أي تطابق موثوق.",
+        "error": "فشل البحث في الإنترنت. تُحفظ نتيجة الكتالوج.",
+        "provider": "المزوّد: {provider}",
+        "open": "فتح النتيجة الخارجية",
+        "warning": "نتيجة وُجدت خارج الكتالوج. تحقق من التوفر والمصدر قبل نشرها.",
+        "addCandidate": "إضافة كمرشح للكتالوج",
+        "candidateAdded": "أُرسل للمراجعة",
+        "otherResults": "نتائج أخرى من الإنترنت"
+      },
+      "progress": {
+        "catalog": "جارٍ البحث في الكتالوج…",
+        "external": "جارٍ الاستعلام عن الإنترنت…",
+        "detecting": "جارٍ كشف الكائنات…"
       }
     }
   },
@@ -1344,7 +1397,14 @@
         "testing": "جارٍ الاختبار…",
         "testOkDetail": "يستجيب البحث الخارجي بشكل صحيح.",
         "testFailed": "تعذّر التحقق من الاتصال.",
-        "lastTestLabel": "آخر اختبار"
+        "lastTestLabel": "آخر اختبار",
+        "maxVisibleLabel": "أقصى عدد للمرشحين المعروضين",
+        "automaticFallbackLabel": "الرجوع التلقائي للخارج",
+        "externalEnabledLabel": "البحث الخارجي مُفعّل",
+        "cacheLabel": "ذاكرة التخزين المؤقت للمطابقة",
+        "enabled": "مُفعّلة",
+        "disabled": "مُعطّلة",
+        "cacheTtl": "{hours} س"
       },
       "compliance": {
         "title": "حدود الاستيراد والامتثال",
@@ -1369,6 +1429,25 @@
         "metricsLabel": "المقاييس",
         "metricsValue": "عدّادات في الذاكرة مُعرَضة في <code>/stats</code> و<code>/overview</code>",
         "footnote": "كل الحالة القابلة للرصد تابعة للعملية: عند إعادة تشغيل الخدمة تُعاد تهيئة العدّادات ومخزن السجلات المؤقت. للحصول على سجل تاريخي حقيقي، اجمع stdout واستخدم مخزن Postgres."
+      },
+      "matchingMetrics": {
+        "title": "حلّ المنتجات",
+        "description": "مقدار ما يحلّه الكتالوج الخاص ومقدار النفقات الخارجية التي يوفّرها. عدّادات في ذاكرة هذه العملية.",
+        "detections": "الكائنات المكتشفة",
+        "byCatalog": "محلولة بالكتالوج",
+        "byExternal": "محلولة عبر الإنترنت",
+        "unresolved": "غير محلولة",
+        "resolutionRate": "معدّل حلّ الكتالوج",
+        "externalCalls": "الاستدعاءات الخارجية",
+        "externalFallbacks": "الرجوع إلى الخارج",
+        "externalManual": "عمليات بحث مطلوبة يدويًا",
+        "cacheHits": "إصابات الذاكرة المؤقتة",
+        "externalCost": "التكلفة الخارجية",
+        "externalCostAvoided": "تكلفة خارجية مُوفّرة",
+        "averageDuration": "الزمن المتوسط",
+        "topUnresolved": "فئات غير محلولة",
+        "none": "لا بيانات بعد: حلّل شيئًا في الاستوديو.",
+        "empty": "—"
       }
     }
   },
@@ -1654,9 +1733,14 @@
     },
     "itemStatus": {
       "detected": "مكتشَف",
+      "catalog_matched": "في الكتالوج",
+      "external_candidate": "مرشح خارجي",
+      "review_required": "يتطلب مراجعة",
+      "approved": "معتمد",
+      "published": "منشور",
+      "ignored": "متجاهَل",
       "reviewed": "تمت مراجعته",
-      "matched": "له منتجات",
-      "ignored": "متجاهَل"
+      "matched": "له منتجات"
     },
     "matchType": {
       "exact": "مطابقة تامة",

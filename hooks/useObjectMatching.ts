@@ -5,6 +5,7 @@ import { cropFromDataUrl } from "@/lib/crop";
 import { deservesAutoSearch } from "@/lib/priority";
 import { cropQualityScore } from "@/lib/video/tracker";
 import type { DetectedItem, ProductMatchingMode } from "@/lib/types";
+import type { DetectionMatchResult } from "@/lib/matching/types";
 import type { VisualMatch } from "@/lib/visualSearch/types";
 
 /**
@@ -23,10 +24,14 @@ import type { VisualMatch } from "@/lib/visualSearch/types";
 const MAX_PER_FRAME = Number(process.env.NEXT_PUBLIC_MAX_REVERSE_SEARCHES_PER_FRAME ?? "3");
 const MAX_CONCURRENT = Number(process.env.NEXT_PUBLIC_MAX_CONCURRENT_MATCHES ?? "3");
 const MIN_CROP_CONFIDENCE = Number(process.env.NEXT_PUBLIC_MIN_CROP_CONFIDENCE ?? "0.55");
-// SUPERIOR al peor caso real del backend (upload ~3s + espera enrichment 2.5s
-// + Lens hasta 15s + escalado/fallback hasta ~15s más). Con 20s el navegador
-// cancelaba peticiones que el servidor terminaba bien.
-const MATCH_TIMEOUT_MS = Number(process.env.NEXT_PUBLIC_VIDEO_MATCHING_TIMEOUT_MS ?? "45000");
+// SUPERIOR al peor caso real del backend. Con el catálogo como fuente
+// principal ese peor caso creció: la llamada incluye el embedding CLIP del
+// recorte y el barrido del índice ANTES de cualquier camino externo (upload
+// ~3s + enrichment 2.5s + Lens hasta 15s + fallback ~15s más). Medido en local
+// con 1048 fichas: hasta ~25s por objeto con 3 en paralelo. Con 20s el
+// navegador cancelaba peticiones que el servidor terminaba bien y la tarjeta
+// se quedaba cargando para siempre.
+const MATCH_TIMEOUT_MS = Number(process.env.NEXT_PUBLIC_VIDEO_MATCHING_TIMEOUT_MS ?? "60000");
 /** Calidad mínima (área×confianza, 0-1) para buscar sin esperar mejor frame. */
 const MIN_CROP_SEARCH_QUALITY = Number(
   process.env.NEXT_PUBLIC_MIN_CROP_SEARCH_QUALITY ?? "0.35"
@@ -59,6 +64,14 @@ export type MatchingEntry = {
   matchingMode?: ProductMatchingMode;
   /** El catálogo no bastó y se recurrió a la búsqueda externa. */
   externalFallbackUsed?: boolean;
+  /**
+   * CONTRATO PRINCIPAL: catálogo e Internet en bloques separados. Es lo que
+   * pinta la UI; `match`/`similarCandidates` son la forma anterior y se
+   * conservan para los componentes que aún no leen `detection`.
+   */
+  detection?: DetectionMatchResult;
+  /** true mientras se resuelve una búsqueda externa pedida a mano. */
+  externalLoading?: boolean;
 };
 
 /**
@@ -100,6 +113,29 @@ type EnqueueMeta = {
   itemIdByFingerprint?: Map<string, string>;
   /** Fuente de coincidencias elegida por el usuario para este análisis. */
   matchingMode?: ProductMatchingMode;
+  /**
+   * Segundo del vídeo del frame. Viaja al backend y vuelve en
+   * `detection.timestampSeconds` para que un resultado quede anclado al
+   * instante en que se detectó y no se confunda con el de otro frame.
+   */
+  timestampSeconds?: number | null;
+};
+
+/** Forma de la respuesta de /api/vision/match-object que consume el hook. */
+type MatchObjectPayload = {
+  ok: boolean;
+  status?: MatchingEntry["status"] | "storage_unavailable";
+  match?: VisualMatch | null;
+  similarCandidates?: SimilarCandidate[];
+  providerUsed?: string | null;
+  fallbackUsed?: boolean;
+  cached?: boolean;
+  detail?: string;
+  timings?: { totalMs?: number };
+  error?: string;
+  matchingMode?: ProductMatchingMode;
+  matching?: { externalFallbackUsed?: boolean };
+  detection?: DetectionMatchResult;
 };
 
 type PendingBetterCrop = {
@@ -161,6 +197,13 @@ export function canRetryMatching(
   return betterCrop || state.lastStatus === "provider_error";
 }
 
+/** Lo necesario para repetir la búsqueda de un objeto a petición del usuario. */
+type LastRequest = {
+  item: DetectedItem;
+  frameDataUrl: string;
+  meta: EnqueueMeta;
+};
+
 export function useObjectMatching() {
   const [results, setResults] = useState<Map<string, MatchingEntry>>(new Map());
   const attempts = useRef(new Map<string, MatchingAttemptState>());
@@ -168,6 +211,14 @@ export function useObjectMatching() {
   const queue = useRef<Array<() => Promise<void>>>([]);
   /** Objetos con crop pobre esperando un encuadre mejor, por fingerprint. */
   const pendingBetter = useRef(new Map<string, PendingBetterCrop>());
+  /**
+   * Último frame+item con el que se buscó cada objeto. Hace falta para poder
+   * regenerar SU crop cuando el usuario pulsa "Buscar también en Internet":
+   * sin esto habría que pedirle que rebobine el vídeo al frame exacto.
+   */
+  const lastRequest = useRef(new Map<string, LastRequest>());
+  /** Fingerprints con búsqueda externa ya pedida: no se paga dos veces. */
+  const externalRequested = useRef(new Set<string>());
 
   const setEntry = useCallback((fp: string, entry: Partial<MatchingEntry>) => {
     setResults((prev) => {
@@ -214,6 +265,92 @@ export function useObjectMatching() {
     []
   );
 
+  /**
+   * Una petición de matching, del crop a la actualización de estado.
+   * Compartida por la búsqueda automática y por la que pide el usuario: el
+   * único parámetro que cambia es `forceExternal`, así que duplicar el fetch
+   * sería la forma más fácil de que las dos rutas divergieran.
+   */
+  const runMatch = useCallback(
+    async (
+      fp: string,
+      item: DetectedItem,
+      frameDataUrl: string,
+      meta: EnqueueMeta,
+      opts: { forceExternal?: boolean } = {}
+    ): Promise<void> => {
+      try {
+        const crop = await cropFromDataUrl(frameDataUrl, item.bounding_box!);
+        if (!crop) {
+          finishAttempt(fp, "no_match");
+          setEntry(fp, {
+            status: "no_match",
+            externalLoading: false,
+            detail: "No hay suficiente detalle visual para identificar el producto exacto.",
+          });
+          return;
+        }
+        const res = await fetch("/api/vision/match-object", {
+          method: "POST",
+          signal: AbortSignal.timeout(MATCH_TIMEOUT_MS),
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            crop,
+            item,
+            videoKey: meta.videoKey,
+            itemId: meta.itemIdByFingerprint?.get(fp),
+            matchingMode: meta.matchingMode,
+            // El fingerprint ES el detectionId: la misma identidad que usa la
+            // UI para casar tarjeta y bounding box entre frames.
+            detectionId: fp,
+            timestampSeconds: meta.timestampSeconds ?? null,
+            forceExternal: opts.forceExternal === true,
+          }),
+        });
+        const data = (await res.json()) as MatchObjectPayload;
+        if (!data.ok) {
+          finishAttempt(fp, "provider_error");
+          setEntry(fp, {
+            status: "provider_error",
+            detail: data.error,
+            externalLoading: false,
+          });
+          return;
+        }
+        const status: MatchingEntry["status"] =
+          data.status === "storage_unavailable"
+            ? "provider_error"
+            : (data.status ?? "no_match");
+        finishAttempt(fp, status);
+        setEntry(fp, {
+          status,
+          match: data.match ?? null,
+          similarCandidates: data.similarCandidates ?? [],
+          providerUsed: data.providerUsed ?? null,
+          fallbackUsed: Boolean(data.fallbackUsed),
+          cached: Boolean(data.cached),
+          detail: data.detail,
+          totalMs: data.timings?.totalMs,
+          matchingMode: data.matchingMode,
+          externalFallbackUsed: Boolean(data.matching?.externalFallbackUsed),
+          detection: data.detection,
+          externalLoading: false,
+        });
+      } catch (err) {
+        const timeout =
+          err instanceof Error &&
+          (err.name === "TimeoutError" || err.name === "AbortError");
+        finishAttempt(fp, "provider_error");
+        setEntry(fp, {
+          status: "provider_error",
+          externalLoading: false,
+          detail: timeout ? "Timeout del matching" : "Error de red",
+        });
+      }
+    },
+    [setEntry, finishAttempt]
+  );
+
   /** Crea y encola la tarea real de matching para un objeto. */
   const pushTask = useCallback(
     (fp: string, item: DetectedItem, frameDataUrl: string, meta: EnqueueMeta, quality: number) => {
@@ -225,80 +362,35 @@ export function useObjectMatching() {
         lastAttemptAt: Date.now(),
         inFlight: true,
       });
+      // Se recuerda el frame para poder repetir la búsqueda de ESTE objeto si
+      // el usuario pide Internet más tarde, ya con el vídeo en otro punto.
+      lastRequest.current.set(fp, { item, frameDataUrl, meta });
       setEntry(fp, { status: "searching" });
-
-      queue.current.push(async () => {
-        try {
-          const crop = await cropFromDataUrl(frameDataUrl, item.bounding_box!);
-          if (!crop) {
-            finishAttempt(fp, "no_match");
-            setEntry(fp, {
-              status: "no_match",
-              detail: "No hay suficiente detalle visual para identificar el producto exacto.",
-            });
-            return;
-          }
-          const res = await fetch("/api/vision/match-object", {
-            method: "POST",
-            signal: AbortSignal.timeout(MATCH_TIMEOUT_MS),
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              crop,
-              item,
-              videoKey: meta.videoKey,
-              itemId: meta.itemIdByFingerprint?.get(fp),
-              matchingMode: meta.matchingMode,
-            }),
-          });
-          const data = (await res.json()) as {
-            ok: boolean;
-            status?: MatchingEntry["status"] | "storage_unavailable";
-            match?: VisualMatch | null;
-            similarCandidates?: SimilarCandidate[];
-            providerUsed?: string | null;
-            fallbackUsed?: boolean;
-            cached?: boolean;
-            detail?: string;
-            timings?: { totalMs?: number };
-            error?: string;
-            matchingMode?: ProductMatchingMode;
-            matching?: { externalFallbackUsed?: boolean };
-          };
-          if (!data.ok) {
-            finishAttempt(fp, "provider_error");
-            setEntry(fp, { status: "provider_error", detail: data.error });
-            return;
-          }
-          const status: MatchingEntry["status"] =
-            data.status === "storage_unavailable"
-              ? "provider_error"
-              : (data.status ?? "no_match");
-          finishAttempt(fp, status);
-          setEntry(fp, {
-            status,
-            match: data.match ?? null,
-            similarCandidates: data.similarCandidates ?? [],
-            providerUsed: data.providerUsed ?? null,
-            fallbackUsed: Boolean(data.fallbackUsed),
-            cached: Boolean(data.cached),
-            detail: data.detail,
-            totalMs: data.timings?.totalMs,
-            matchingMode: data.matchingMode,
-            externalFallbackUsed: Boolean(data.matching?.externalFallbackUsed),
-          });
-        } catch (err) {
-          const timeout =
-            err instanceof Error &&
-            (err.name === "TimeoutError" || err.name === "AbortError");
-          finishAttempt(fp, "provider_error");
-          setEntry(fp, {
-            status: "provider_error",
-            detail: timeout ? "Timeout del matching" : "Error de red",
-          });
-        }
-      });
+      queue.current.push(() => runMatch(fp, item, frameDataUrl, meta));
     },
-    [setEntry, finishAttempt]
+    [setEntry, runMatch]
+  );
+
+  /**
+   * Búsqueda externa a PETICIÓN del usuario ("Buscar también en Internet").
+   *
+   * Es la única vía por la que se gasta una llamada externa cuando el catálogo
+   * ya había resuelto, y se cobra una sola vez por objeto: repetir el clic no
+   * vuelve a pagar (además de la caché por hash de crop del servidor).
+   */
+  const requestExternal = useCallback(
+    (fp: string): void => {
+      const req = lastRequest.current.get(fp);
+      if (!req) return;
+      if (externalRequested.current.has(fp)) return;
+      externalRequested.current.add(fp);
+      setEntry(fp, { externalLoading: true });
+      queue.current.push(() =>
+        runMatch(fp, req.item, req.frameDataUrl, req.meta, { forceExternal: true })
+      );
+      pump();
+    },
+    [runMatch, setEntry, pump]
   );
 
   /**
@@ -372,6 +464,8 @@ export function useObjectMatching() {
     queue.current = [];
     for (const p of pendingBetter.current.values()) clearTimeout(p.timer);
     pendingBetter.current.clear();
+    lastRequest.current.clear();
+    externalRequested.current.clear();
     setResults(new Map());
   }, []);
 
@@ -383,5 +477,5 @@ export function useObjectMatching() {
     };
   }, []);
 
-  return { results, enqueue, reset };
+  return { results, enqueue, reset, requestExternal };
 }

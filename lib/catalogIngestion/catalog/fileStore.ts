@@ -12,6 +12,7 @@ import type { CatalogStore, ExtractionStats, StoreStats } from "./store";
 import { aggregateExtractionStats } from "./store";
 import { getConfig } from "../config/index";
 import { normalizeText } from "../normalization/normalize";
+import { invalidateProductSnapshot } from "./productSnapshot";
 
 /**
  * Store en fichero JSON (data/catalog.json). Es el backend por defecto cuando
@@ -85,6 +86,9 @@ export class FileCatalogStore implements CatalogStore {
 
   async saveProduct(product: CatalogProduct): Promise<void> {
     this.data.products[product.id] = product;
+    // La búsqueda lee de una instantánea compartida: sin tirarla, un producto
+    // recién guardado no sería buscable hasta que expirase el TTL.
+    invalidateProductSnapshot();
     this.scheduleSave();
   }
 

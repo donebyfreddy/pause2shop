@@ -188,7 +188,7 @@ function filterMock(
  *  - `catalog_only` no llega nunca a llamar al proveedor externo;
  *  - `catalog_first` solo lo llama por lo que el catálogo no resolvió;
  *  - `external_only` mantiene el pipeline de siempre, sin tocar el catálogo;
- *  - `hybrid` consulta ambos y deja que el mejor candidato gane.
+ *  - `catalog_and_external` consulta ambos y deja que el mejor candidato gane.
  */
 async function resolveProducts(
   imageDataUrl: string,
@@ -225,7 +225,7 @@ async function resolveProducts(
   const pending = catalogPass ? catalogPass.unresolved.length : current.items.length;
   const callExternal =
     allowsExternal(mode) &&
-    (mode === "external_only" || mode === "hybrid" || pending > 0);
+    (mode === "external_only" || mode === "catalog_and_external" || pending > 0);
 
   if (callExternal) {
     const tExternal = Date.now();

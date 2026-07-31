@@ -30,6 +30,7 @@ import {
   useToast,
 } from "@/components/ui";
 import { MatchingSourceCard } from "@/components/admin/MatchingSourceCard";
+import { MatchingMetricsCard } from "@/components/admin/MatchingMetricsCard";
 import { adminPost, useAdminResource } from "@/lib/admin/client";
 import type { Settings } from "@/lib/catalogService/types";
 
@@ -258,6 +259,8 @@ export function SettingsView() {
 
         {/* --------------- fuente de coincidencias (producto) -------------- */}
         <MatchingSourceCard />
+
+        <MatchingMetricsCard />
 
         {/* --------------------------- scraping --------------------------- */}
         <Card className="lg:col-span-2">

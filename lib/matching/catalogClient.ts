@@ -39,7 +39,16 @@ export type CatalogSearchMatch = {
   finalScore: number;
   source: "catalog";
   matchStage: "exact_hash" | "perceptual_hash" | "embedding";
-  origin: "scraped" | "externally_discovered";
+  origin: "scraped" | "externally_discovered" | "dataset_demo";
+  /**
+   * Ficha de dataset de investigación: sirve para el matching pero no tiene
+   * precio ni URL de compra. La UI no puede ofrecer "Comprar" sobre ella.
+   */
+  isDemoProduct?: boolean;
+  /** Taxonomía de la ficha (≠ atributos detectados en el frame). */
+  category?: string | null;
+  subcategory?: string | null;
+  color?: string | null;
 };
 
 export type CatalogSearchResponse = {
@@ -54,6 +63,14 @@ export type CatalogImageSearchRequest = {
   category?: string;
   brand?: string;
   color?: string;
+  /** Tipo de artículo detectado; señal de ranking, no filtro duro. */
+  type?: string;
+  /** Género; solo excluye si la ficha declara uno incompatible. */
+  gender?: string;
+  material?: string;
+  pattern?: string;
+  /** Exigir imagen presentable en la ficha (default true en el servicio). */
+  requireImage?: boolean;
   topK?: number;
   minScore?: number;
 };
