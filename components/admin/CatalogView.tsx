@@ -20,7 +20,7 @@ import {
   Search,
 } from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Badge,
   Button,
@@ -48,6 +48,7 @@ import {
 } from "@/components/ui";
 import { adminPost, useAdminResource } from "@/lib/admin/client";
 import { formatPrice, timeAgo } from "@/lib/admin/status";
+import { DatasetImportPanel } from "./DatasetImportPanel";
 import type {
   CatalogProductSummary,
   ConnectorsResponse,
@@ -81,6 +82,9 @@ export function CatalogView() {
   const [source, setSource] = useState("all");
   const [origin, setOrigin] = useState("all");
   const [active, setActive] = useState("all");
+  const [embeddingStatus, setEmbeddingStatus] = useState("all");
+  const [colorFilter, setColorFilter] = useState("");
+  const [genderFilter, setGenderFilter] = useState("all");
   const [openId, setOpenId] = useState<string | null>(null);
 
   // búsqueda semántica / visual
@@ -103,18 +107,21 @@ export function CatalogView() {
   if (debouncedQuery) params.set("q", debouncedQuery);
   if (source !== "all") params.set("source", source);
   if (active !== "all") params.set("active", active);
+  // Estos cuatro ya se filtran en SERVIDOR. `origin` se filtraba en cliente
+  // sobre la página cargada, lo que con miles de fichas no es un filtro sino
+  // una casualidad: mostraba "0 resultados" cuando sí había, solo porque no
+  // caían en los 24 visibles.
+  if (origin !== "all") params.set("origin", origin);
+  if (embeddingStatus !== "all") params.set("embeddingStatus", embeddingStatus);
+  if (colorFilter.trim()) params.set("color", colorFilter.trim());
+  if (genderFilter !== "all") params.set("gender", genderFilter);
 
   const { data, error, loading, refreshing, reload } = useAdminResource<ProductsResponse>(
     `products?${params.toString()}`
   );
   const connectors = useAdminResource<ConnectorsResponse>("connectors");
 
-  const products = useMemo(() => {
-    const list = data?.products ?? [];
-    // `origin` no está en el contrato de filtros del servicio: se filtra aquí y
-    // se advierte de que aplica solo a la página cargada.
-    return origin === "all" ? list : list.filter((p) => p.origin === origin);
-  }, [data?.products, origin]);
+  const products = data?.products ?? [];
 
   const total = data?.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
@@ -180,6 +187,10 @@ export function CatalogView() {
 
   return (
     <div className="space-y-5">
+      {/* Importación de catálogo de demostración: da productos de moda reales
+          con foto sin depender del scraping de tiendas que bloquean por IP. */}
+      <DatasetImportPanel />
+
       {/* ------------------------- modos ------------------------- */}
       <div className="flex flex-wrap items-center gap-3">
         <Segmented
@@ -242,13 +253,17 @@ export function CatalogView() {
           </Select>
           <Select
             value={origin}
-            onChange={(e) => setOrigin(e.target.value)}
+            onChange={(e) => {
+              setOrigin(e.target.value);
+              setPage(1);
+            }}
             className="w-auto min-w-40"
             aria-label={t("filters.originAriaLabel")}
           >
             <option value="all">{t("filters.allOrigins")}</option>
             <option value="scraped">{t("origin.scraped")}</option>
             <option value="externally_discovered">{t("origin.external")}</option>
+            <option value="dataset_demo">{t("origin.datasetDemo")}</option>
           </Select>
           <Select
             value={active}
@@ -263,6 +278,47 @@ export function CatalogView() {
             <option value="true">{t("filters.onlyActive")}</option>
             <option value="false">{t("filters.onlyInactive")}</option>
           </Select>
+          <Select
+            value={embeddingStatus}
+            onChange={(e) => {
+              setEmbeddingStatus(e.target.value);
+              setPage(1);
+            }}
+            className="w-auto min-w-40"
+            aria-label={t("filters.embeddingAriaLabel")}
+          >
+            <option value="all">{t("filters.allEmbeddings")}</option>
+            <option value="ready">{t("embedding.ready")}</option>
+            <option value="pending">{t("embedding.pending")}</option>
+            <option value="failed">{t("embedding.failed")}</option>
+            <option value="skipped">{t("embedding.skipped")}</option>
+          </Select>
+          <Select
+            value={genderFilter}
+            onChange={(e) => {
+              setGenderFilter(e.target.value);
+              setPage(1);
+            }}
+            className="w-auto min-w-32"
+            aria-label={t("filters.genderAriaLabel")}
+          >
+            <option value="all">{t("filters.allGenders")}</option>
+            <option value="Men">Men</option>
+            <option value="Women">Women</option>
+            <option value="Boys">Boys</option>
+            <option value="Girls">Girls</option>
+            <option value="Unisex">Unisex</option>
+          </Select>
+          <Input
+            value={colorFilter}
+            onChange={(e) => {
+              setColorFilter(e.target.value);
+              setPage(1);
+            }}
+            placeholder={t("filters.colorPlaceholder")}
+            className="w-auto min-w-32"
+            aria-label={t("filters.colorAriaLabel")}
+          />
         </div>
       )}
 
@@ -351,10 +407,11 @@ export function CatalogView() {
         <MatchResults matches={matches} onClear={() => setMatches(null)} />
       ) : (
         <>
-          {origin !== "all" && (
-            <Callout tone="info">{t("originFilterNotice")}</Callout>
-          )}
-
+          {/*
+            Aquí había un aviso de que el filtro de origen solo aplicaba a la
+            página cargada. Ya no hace falta: el filtro se aplica en servidor,
+            así que el total y la paginación son los del filtro de verdad.
+          */}
           {error && !data ? (
             <Card>
               <EmptyState
@@ -509,6 +566,12 @@ function ProductGrid({
               {product.origin === "externally_discovered" && (
                 <Badge tone="info">{t("badges.external")}</Badge>
               )}
+              {/* Marca de demo: estas fichas NO son catálogo comercial. */}
+              {product.isDemoProduct && (
+                <Badge tone="brand" title={product.dataset?.repo ?? undefined}>
+                  {t("badges.datasetDemo")}
+                </Badge>
+              )}
             </div>
             <div className="absolute top-2 right-2 flex flex-col items-end gap-1">
               {product.hasImageEmbedding && (
@@ -521,8 +584,18 @@ function ProductGrid({
               )}
             </div>
             <div className="absolute inset-x-0 bottom-0 bg-linear-to-t from-black/85 to-transparent px-3 pt-8 pb-2.5">
+              {/*
+                Sin precio no se pinta un hueco que parezca un fallo de scraping:
+                se dice que el dataset no lo trae.
+              */}
               <p className="text-[13px] font-semibold text-white tabular-nums">
-                {formatPrice(product.price, product.currency)}
+                {product.price != null ? (
+                  formatPrice(product.price, product.currency)
+                ) : (
+                  <span className="text-[10px] font-normal text-white/70">
+                    {t("badges.noPriceInDataset")}
+                  </span>
+                )}
               </p>
             </div>
           </div>
@@ -610,18 +683,59 @@ function ProductList({
                     <p className="truncate text-[10px] text-ink-faint">
                       {product.brand ?? "—"}
                       {product.color ? ` · ${product.color}` : ""}
+                      {product.gender ? ` · ${product.gender}` : ""}
+                      {product.datasetAttributes?.articleType
+                        ? ` · ${product.datasetAttributes.articleType}`
+                        : ""}
+                      {product.datasetAttributes?.season
+                        ? ` · ${product.datasetAttributes.season} ${product.datasetAttributes.year ?? ""}`
+                        : ""}
                     </p>
                   </TD>
-                  <TD className="text-[11px]">{product.source}</TD>
+                  <TD className="text-[11px]">
+                    <div className="flex flex-col gap-0.5">
+                      <span>{product.source}</span>
+                      {product.isDemoProduct && (
+                        <Badge tone="brand" size="sm">
+                          {t("badges.datasetDemo")}
+                        </Badge>
+                      )}
+                    </div>
+                  </TD>
                   <TD className="text-[11px]">{product.category ?? "—"}</TD>
                   <TD className="text-right text-[12px] font-medium text-ink tabular-nums">
-                    {formatPrice(product.price, product.currency)}
+                    {product.price != null ? (
+                      formatPrice(product.price, product.currency)
+                    ) : (
+                      <span className="text-[10px] font-normal text-ink-faint">
+                        {t("badges.noPriceInDataset")}
+                      </span>
+                    )}
                   </TD>
                   <TD>
-                    <div className="flex gap-1">
+                    <div className="flex flex-wrap gap-1">
                       <Badge tone={product.hasImageEmbedding ? "success" : "muted"}>img</Badge>
                       <Badge tone={product.hasTextEmbedding ? "success" : "muted"}>txt</Badge>
                       <Badge tone={product.perceptualHash ? "success" : "muted"}>hash</Badge>
+                      {/* El estado importa: `pending` y `failed` se distinguen. */}
+                      <Badge
+                        tone={
+                          product.embeddingStatus === "ready"
+                            ? "success"
+                            : product.embeddingStatus === "failed"
+                              ? "danger"
+                              : product.embeddingStatus === "skipped"
+                                ? "muted"
+                                : "warning"
+                        }
+                        title={
+                          product.embeddingProvider
+                            ? `${product.embeddingProvider} · ${product.embeddingDimension ?? "?"}d`
+                            : undefined
+                        }
+                      >
+                        {product.embeddingStatus}
+                      </Badge>
                     </div>
                   </TD>
                   <TD className="text-[11px] whitespace-nowrap">
@@ -691,6 +805,11 @@ function MatchResults({
                       {Math.round(match.finalScore * 100)}%
                     </Badge>
                     <Badge tone="neutral">{match.matchStage}</Badge>
+                    {match.isDemoProduct && (
+                      <Badge tone="info" title={match.dataset?.repo ?? undefined}>
+                        {t("demoBadge")}
+                      </Badge>
+                    )}
                   </div>
                 </div>
               </div>
@@ -700,15 +819,23 @@ function MatchResults({
                   {format.number(match.textScore, "precise")} · a
                   {format.number(match.attributeScore, "precise")}
                 </span>
-                <a
-                  href={match.productUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 text-[11px] text-brand-bright hover:underline"
-                >
-                  {t("matches.viewListing")}
-                  <ExternalLink className="size-3" aria-hidden />
-                </a>
+                {/*
+                  Sin URL no hay enlace. Las fichas de dataset no tienen ficha de
+                  tienda, así que se dice eso en vez de pintar un enlace muerto.
+                */}
+                {match.productUrl ? (
+                  <a
+                    href={match.productUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 text-[11px] text-brand-bright hover:underline"
+                  >
+                    {t("matches.viewListing")}
+                    <ExternalLink className="size-3" aria-hidden />
+                  </a>
+                ) : (
+                  <span className="text-[11px] text-ink-faint">{t("noPurchaseUrl")}</span>
+                )}
               </div>
             </Card>
           ))}
@@ -748,22 +875,107 @@ function ProductDrawer({ id, onClose }: { id: string | null; onClose: () => void
             <Badge tone={data.isActive ? "success" : "danger"} size="md">
               {data.isActive ? t("status.active") : t("status.inactive")}
             </Badge>
-            <Badge tone={data.origin === "scraped" ? "neutral" : "info"} size="md">
-              {data.origin === "scraped" ? t("origin.scraped") : t("origin.external")}
+            <Badge
+              tone={
+                data.origin === "scraped"
+                  ? "neutral"
+                  : data.origin === "dataset_demo"
+                    ? "brand"
+                    : "info"
+              }
+              size="md"
+            >
+              {data.origin === "scraped"
+                ? t("origin.scraped")
+                : data.origin === "dataset_demo"
+                  ? t("origin.datasetDemo")
+                  : t("origin.external")}
             </Badge>
-            <Badge tone={data.hasImageEmbedding ? "success" : "muted"} size="md">
-              {t("drawer.hasImageEmbeddingBadge")}
+            <Badge
+              tone={
+                data.embeddingStatus === "ready"
+                  ? "success"
+                  : data.embeddingStatus === "failed"
+                    ? "danger"
+                    : "warning"
+              }
+              size="md"
+            >
+              {t("drawer.embeddingStatus", { status: data.embeddingStatus })}
             </Badge>
             <Badge tone={data.perceptualHash ? "success" : "muted"} size="md">
               {t("drawer.hasPerceptualHashBadge")}
             </Badge>
           </div>
 
+          {/*
+            Bloque de procedencia del dataset. Es donde se responde "¿por qué
+            esta ficha no tiene precio?" sin que nadie tenga que suponerlo.
+          */}
+          {data.isDemoProduct && data.dataset && (
+            <Callout tone="brand" icon={Database} title={t("drawer.datasetTitle")}>
+              <div className="space-y-1">
+                <DataRow label={t("drawer.datasetRepo")} mono>
+                  {data.dataset.repo}
+                </DataRow>
+                <DataRow label={t("drawer.datasetVersion")} mono>
+                  {data.dataset.version.slice(0, 12)}
+                </DataRow>
+                <DataRow label={t("drawer.datasetRow")} mono>
+                  {data.dataset.split}#{data.dataset.rowIndex}
+                </DataRow>
+                <DataRow label={t("drawer.datasetImportedAt")}>
+                  {timeAgo(data.dataset.importedAt)}
+                </DataRow>
+              </div>
+              <p className="mt-2 text-[11px]">{t("drawer.datasetUnavailableNote")}</p>
+              <div className="mt-1 flex flex-wrap gap-1">
+                {data.dataset.unavailableFields.map((f) => (
+                  <span
+                    key={f}
+                    className="rounded border border-line bg-surface-sunken px-1.5 py-0.5 font-mono text-[10px] text-ink-faint"
+                  >
+                    {f}
+                  </span>
+                ))}
+              </div>
+            </Callout>
+          )}
+
+          {/* Atributos propios del dataset que no tienen columna en el catálogo. */}
+          {data.datasetAttributes && (
+            <div>
+              <SectionLabel>{t("drawer.datasetAttributesTitle")}</SectionLabel>
+              <div className="mt-2">
+                <DataRow label={t("drawer.masterCategory")}>
+                  {data.datasetAttributes.masterCategory ?? "—"}
+                </DataRow>
+                <DataRow label={t("drawer.articleType")}>
+                  {data.datasetAttributes.articleType ?? "—"}
+                </DataRow>
+                <DataRow label={t("drawer.baseColour")}>
+                  {data.datasetAttributes.baseColour ?? "—"}
+                </DataRow>
+                <DataRow label={t("drawer.season")}>
+                  {data.datasetAttributes.season ?? "—"}
+                </DataRow>
+                <DataRow label={t("drawer.year")} mono>
+                  {data.datasetAttributes.year ?? "—"}
+                </DataRow>
+                <DataRow label={t("drawer.usage")}>{data.datasetAttributes.usage ?? "—"}</DataRow>
+              </div>
+            </div>
+          )}
+
           <div>
             <SectionLabel>{t("drawer.normalizedDataTitle")}</SectionLabel>
             <div className="mt-2">
               <DataRow label={t("drawer.price")}>
-                {formatPrice(data.price, data.currency)}
+                {data.price != null ? (
+                  formatPrice(data.price, data.currency)
+                ) : (
+                  <span className="text-ink-faint">{t("drawer.notInDataset")}</span>
+                )}
               </DataRow>
               {data.originalPrice != null && (
                 <DataRow label={t("drawer.originalPrice")}>
@@ -879,15 +1091,28 @@ function ProductDrawer({ id, onClose }: { id: string | null; onClose: () => void
           )}
 
           <div className="flex flex-wrap gap-2">
-            <a
-              href={data.canonicalUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 rounded-lg border border-line bg-white/[0.02] px-3 py-2 text-[12px] text-ink-muted transition-colors hover:border-brand/40 hover:text-ink"
-            >
-              <ExternalLink className="size-3.5" aria-hidden />
-              {t("drawer.viewInStore")}
-            </a>
+            {/*
+              Solo se enlaza a la tienda si hay tienda. Las fichas de dataset
+              tienen `productUrl: null` por contrato (su canonicalUrl es un URI
+              `dataset://` no navegable), así que aquí se explica en vez de
+              ofrecer un enlace que no lleva a ningún sitio.
+            */}
+            {data.productUrl ? (
+              <a
+                href={data.productUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-line bg-white/[0.02] px-3 py-2 text-[12px] text-ink-muted transition-colors hover:border-brand/40 hover:text-ink"
+              >
+                <ExternalLink className="size-3.5" aria-hidden />
+                {t("drawer.viewInStore")}
+              </a>
+            ) : (
+              <span className="inline-flex items-center gap-1.5 rounded-lg border border-line border-dashed px-3 py-2 text-[12px] text-ink-faint">
+                <ImageOff className="size-3.5" aria-hidden />
+                {t("drawer.noStoreUrl")}
+              </span>
+            )}
             <button
               type="button"
               onClick={() => void navigator.clipboard?.writeText(data.id)}

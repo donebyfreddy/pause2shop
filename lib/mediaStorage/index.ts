@@ -21,23 +21,41 @@
  *     además el fallback real en producción cuando el deploy es alcanzable
  *     (Vercel). En localhost no funciona a propósito: un proveedor externo no
  *     puede descargar de 127.0.0.1, y lo detectamos para no gastar créditos.
- *   · s3 | r2 | vercel_blob — NO IMPLEMENTADOS. Están declarados para que el
- *     día que se necesiten haya un sitio evidente donde ponerlos, y para que
- *     configurar STORAGE_PROVIDER=s3 falle con un mensaje claro en vez de
- *     caer en silencio al local y dejar a alguien preguntándose por qué sus
- *     imágenes caducan a los 15 minutos.
+ *   · vercel_blob — almacenamiento persistente real. Es el único proveedor
+ *     apto para el catálogo: las URLs no caducan y sobreviven a los cold
+ *     starts, cosa que `local` no hace. Requiere BLOB_READ_WRITE_TOKEN.
+ *   · s3 | r2 — NO IMPLEMENTADOS. Están declarados para que el día que se
+ *     necesiten haya un sitio evidente donde ponerlos, y para que configurar
+ *     STORAGE_PROVIDER=s3 falle con un mensaje claro en vez de caer en
+ *     silencio al local y dejar a alguien preguntándose por qué sus imágenes
+ *     caducan a los 15 minutos.
  */
 import {
   isPubliclyReachable,
   publishCropLocally,
 } from "@/lib/server/cropStore";
+import { blobPut, blobTokenPresent } from "./vercelBlob";
 
 export type StorageProviderId = "local" | "s3" | "r2" | "vercel_blob";
 
-const IMPLEMENTED: readonly StorageProviderId[] = ["local"];
+const IMPLEMENTED: readonly StorageProviderId[] = ["local", "vercel_blob"];
+
+/** Proveedores cuyos objetos sobreviven a un reinicio del proceso. */
+const PERSISTENT: readonly StorageProviderId[] = ["vercel_blob", "s3", "r2"];
 
 export type PublishResult =
-  | { ok: true; url: string; provider: StorageProviderId }
+  | {
+      ok: true;
+      url: string;
+      provider: StorageProviderId;
+      /**
+       * El objeto ya estaba publicado y no se resubió. Lo usa el importador de
+       * datasets para contar cuántas imágenes se ahorró al reanudar; sin esto,
+       * una reimportación completa parecería haber subido 1.000 imágenes que en
+       * realidad ya estaban.
+       */
+      alreadyExisted?: boolean;
+    }
   | { ok: false; reason: string };
 
 export type StorageConfig = {
@@ -67,7 +85,7 @@ function parseProvider(raw: string | undefined): StorageProviderId {
   if ((IMPLEMENTED as readonly string[]).includes(value)) {
     return value as StorageProviderId;
   }
-  if (["s3", "r2", "vercel_blob"].includes(value)) {
+  if (["s3", "r2"].includes(value)) {
     return value as StorageProviderId;
   }
   warnOnce(
@@ -95,7 +113,18 @@ export function getStorageConfig(
 
 /** ¿El proveedor configurado está realmente implementado? */
 export function isStorageConfigured(config = getStorageConfig()): boolean {
-  return IMPLEMENTED.includes(config.provider);
+  if (!IMPLEMENTED.includes(config.provider)) return false;
+  // Estar implementado no basta: sin token, `vercel_blob` no puede subir nada.
+  if (config.provider === "vercel_blob") return blobTokenPresent();
+  return true;
+}
+
+/**
+ * ¿Los objetos publicados sobreviven a un reinicio? El catálogo lo exige: una
+ * ficha cuya imagen caduca a los 15 minutos no es un catálogo.
+ */
+export function isPersistentStorage(config = getStorageConfig()): boolean {
+  return PERSISTENT.includes(config.provider) && isStorageConfigured(config);
 }
 
 /**
@@ -126,6 +155,13 @@ export async function publishPublicObject(options: {
   mime: string;
   /** Carpeta lógica: "frames" (frame completo) o "crops" (recorte). */
   prefix?: "frames" | "crops";
+  /**
+   * Clave explícita del objeto. Cuando se pasa, manda sobre `hash`/`prefix`:
+   * el catálogo necesita rutas estables y legibles
+   * (`catalog/datasets/<dataset>/<id>.jpg`) y no un hash opaco, para poder
+   * localizar y borrar los objetos de un dataset concreto.
+   */
+  pathname?: string;
   requestOrigin?: string | null;
   config?: StorageConfig;
 }): Promise<PublishResult> {
@@ -138,6 +174,20 @@ export async function publishPublicObject(options: {
       reason:
         `El proveedor de storage "${config.provider}" está declarado pero no ` +
         `implementado. Proveedores disponibles: ${IMPLEMENTED.join(", ")}.`,
+    };
+  }
+
+  if (config.provider === "vercel_blob") {
+    const pathname =
+      options.pathname ??
+      `${config.bucket}/${options.prefix ?? "frames"}/${hash}.${extensionForMime(mime)}`;
+    const result = await blobPut({ pathname, buffer, contentType: mime });
+    if (!result.ok) return { ok: false, reason: result.reason };
+    return {
+      ok: true,
+      url: result.url,
+      provider: "vercel_blob",
+      alreadyExisted: result.alreadyExisted,
     };
   }
 
@@ -186,6 +236,6 @@ export function describeStorage(config = getStorageConfig()): {
     implemented: IMPLEMENTED.includes(config.provider),
     bucket: config.bucket,
     publicBaseUrl: config.publicBaseUrl,
-    ephemeral: config.provider === "local",
+    ephemeral: !isPersistentStorage(config),
   };
 }

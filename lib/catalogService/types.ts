@@ -160,8 +160,13 @@ export type JobStatus =
   | "queued"
   | "running"
   | "discovering"
+  // Etapas de la importación de datasets: leer el dataset y subir las imágenes
+  // al almacenamiento son fases distintas, y verlas por separado dice si lo que
+  // va lento es el proveedor del dataset o nuestro storage.
+  | "downloading"
   | "scraping"
   | "normalizing"
+  | "uploading_images"
   | "saving"
   | "embedding"
   | "partially_completed"
@@ -183,6 +188,10 @@ export type JobProgress = {
   withBrowser: number;
   aiCostUsd: number;
   aiTokens: number;
+  imagesUploaded: number;
+  imagesSkipped: number;
+  embeddingsReady: number;
+  embeddingsQueued: number;
   stage: string | null;
 };
 
@@ -209,6 +218,8 @@ export type JobRecord = {
   isActive: boolean;
   isTerminal: boolean;
 };
+
+export type JobsResponse = { jobs: JobRecord[]; total: number };
 
 export type Connector = {
   id: string;
@@ -380,10 +391,127 @@ export type CatalogProductSummary = {
   lastSeenAt: string;
   firstSeenAt: string;
   isActive: boolean;
-  origin: "scraped" | "externally_discovered";
+  origin: "scraped" | "externally_discovered" | "dataset_demo";
   externalScore: number | null;
   /** Null en productos descubiertos por proveedores externos. */
   extraction: ProductExtractionMeta | null;
+  /** Ciclo de vida del embedding: pending | processing | ready | failed | skipped. */
+  embeddingStatus: "pending" | "processing" | "ready" | "failed" | "skipped";
+  embeddingProvider: string | null;
+  embeddingDimension: number | null;
+  /**
+   * true en fichas importadas de un dataset público. NO son catálogo comercial:
+   * no tienen precio, ni stock, ni URL de compra.
+   */
+  isDemoProduct: boolean;
+  /**
+   * URL de compra, o null cuando no existe. Para las fichas de dataset SIEMPRE
+   * es null: su `canonicalUrl` es un URI `dataset://` interno no navegable, así
+   * que la UI no debe ofrecer "Comprar" sobre ellas.
+   */
+  productUrl: string | null;
+  dataset: DatasetProvenanceSummary | null;
+  /** Atributos del dataset sin columna propia en el catálogo. */
+  datasetAttributes: {
+    masterCategory: string | null;
+    articleType: string | null;
+    season: string | null;
+    year: number | null;
+    usage: string | null;
+    baseColour: string | null;
+  } | null;
+};
+
+export type DatasetProvenanceSummary = {
+  id: string;
+  repo: string;
+  provider: "huggingface" | "kaggle";
+  version: string;
+  split: string;
+  rowIndex: number;
+  importedAt: string;
+  /** Campos que el dataset no trae: la UI dice "no disponible en dataset". */
+  unavailableFields: string[];
+};
+
+export type DatasetsResponse = {
+  datasets: Array<{
+    id: string;
+    repo: string;
+    originRepo: string;
+    provider: "huggingface" | "kaggle";
+    license: string;
+    split: string;
+    availableFields: string[];
+    unavailableFields: string[];
+    importedProducts: number;
+  }>;
+  storage: { provider: string; persistent: boolean; warning: string | null };
+};
+
+export type DatasetInspectResponse = {
+  reachable: boolean;
+  unreachableReason: string | null;
+  provider: string;
+  repo: string;
+  totalRows: number | null;
+  version: string;
+  sizeBytes: number | null;
+  features: Record<string, string>;
+  availableFields: string[];
+  unavailableFields: string[];
+  license: string;
+  sample: Record<string, unknown> | null;
+};
+
+export type DatasetTestMatchResponse = {
+  target: {
+    productId: string;
+    sourceProductId: string;
+    title: string;
+    brand: string | null;
+    category: string | null;
+    image: string | null;
+    embeddingProvider: string | null;
+    embeddingDimension: number | null;
+    isDemoProduct: true;
+  };
+  matches: SearchMatch[];
+  /**
+   * Puesto en el que la ficha se encuentra a SÍ MISMA buscando con su propia
+   * foto, o null si no aparece. Es la comprobación honesta: si no se encuentra,
+   * el índice está roto aunque los resultados parezcan razonables.
+   */
+  selfFoundAtRank: number | null;
+  selfScore: number | null;
+  /** false con el proveedor `hash`, cuyo recall es malo y hay que declararlo. */
+  productionGradeEmbeddings: boolean;
+};
+
+export type DatasetDryRunResponse = {
+  dryRun: true;
+  datasetId: string;
+  counters: Record<string, number>;
+  warnings: string[];
+  errors: Array<{ rowIndex: number; sourceProductId: string | null; message: string }>;
+  limitApplied: number;
+  preview: Array<{
+    sourceProductId: string;
+    title: string;
+    brand: string | null;
+    category: string | null;
+    subcategory: string | null;
+    gender: string | null;
+    color: string | null;
+    collection: string | null;
+    style: string | null;
+    price: null;
+    currency: null;
+    productUrl: null;
+    merchant: null;
+    isDemoProduct: true;
+    unavailableFields: string[];
+  }>;
 };
 
 export type ProductsResponse = {
@@ -398,7 +526,8 @@ export type SearchMatch = {
   title: string;
   brand: string | null;
   image: string | null;
-  productUrl: string;
+  /** null en fichas de dataset: no tienen URL de compra. */
+  productUrl: string | null;
   price: number | null;
   currency: string | null;
   availability: string;
@@ -408,6 +537,8 @@ export type SearchMatch = {
   finalScore: number;
   matchStage: string;
   origin: string;
+  isDemoProduct: boolean;
+  dataset: DatasetProvenanceSummary | null;
 };
 
 export type SearchResponse = { queryId: string; matches: SearchMatch[] };

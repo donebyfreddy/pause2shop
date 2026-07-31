@@ -949,7 +949,13 @@
       "statusAriaLabel": "状态",
       "allStatuses": "启用与停用",
       "onlyActive": "仅显示启用",
-      "onlyInactive": "仅显示停用"
+      "onlyInactive": "仅显示停用",
+      "embeddingAriaLabel": "Embedding status",
+      "allEmbeddings": "Any embedding",
+      "genderAriaLabel": "Gender",
+      "allGenders": "Any gender",
+      "colorAriaLabel": "Colour",
+      "colorPlaceholder": "Colour…"
     },
     "pagination": "共 {count} 件商品 · 第 {page} 页，共 {totalPages} 页",
     "modeAriaLabel": "浏览模式",
@@ -970,7 +976,8 @@
     },
     "origin": {
       "scraped": "从店铺采集",
-      "external": "外部发现"
+      "external": "外部发现",
+      "datasetDemo": "Demo dataset"
     },
     "textSearch": {
       "placeholder": "红色绸缎连衣裙、黑色针织西装外套…"
@@ -1003,7 +1010,9 @@
     "badges": {
       "inactive": "已停用",
       "external": "外部",
-      "hasImageEmbeddingTooltip": "含视觉嵌入"
+      "hasImageEmbeddingTooltip": "含视觉嵌入",
+      "datasetDemo": "Demo",
+      "noPriceInDataset": "Price not in dataset"
     },
     "noCategory": "无类别",
     "card": {
@@ -1049,7 +1058,31 @@
       "evidenceSource": "来源",
       "evidenceSnippet": "证据",
       "viewInStore": "在店铺中查看",
-      "copyId": "复制 ID"
+      "copyId": "复制 ID",
+      "embeddingStatus": "Embedding: {status}",
+      "datasetTitle": "Dataset provenance",
+      "datasetRepo": "Repository",
+      "datasetVersion": "Revision",
+      "datasetRow": "Row",
+      "datasetImportedAt": "Imported",
+      "datasetUnavailableNote": "Fields this dataset does not contain, which is why they are empty:",
+      "datasetAttributesTitle": "Dataset attributes",
+      "masterCategory": "Master category",
+      "articleType": "Article type",
+      "baseColour": "Base colour",
+      "season": "Season",
+      "year": "Year",
+      "usage": "Usage",
+      "notInDataset": "Not available in dataset",
+      "noStoreUrl": "No store listing (demo catalog product)"
+    },
+    "demoBadge": "Demo",
+    "noPurchaseUrl": "No purchase URL",
+    "embedding": {
+      "ready": "Embedding ready",
+      "pending": "Embedding pending",
+      "failed": "Embedding failed",
+      "skipped": "Embedding skipped"
     }
   },
   "jobs": {
@@ -1972,5 +2005,86 @@
         }
       }
     }
+  },
+  "datasets": {
+    "title": "Import demo catalog",
+    "description": "Real fashion products with photos, from a public research dataset. No store scraping required.",
+    "origin": "origin",
+    "demoBadge": "Demo dataset",
+    "importedCount": "{count} imported",
+    "noDatasets": "No datasets registered",
+    "noDatasetsDetail": "The dataset registry could not be read.",
+    "storageEphemeralTitle": "Storage is not persistent",
+    "storageEphemeralBody": "The current provider is “{provider}”. Imported images will NOT survive a restart. Set STORAGE_PROVIDER=vercel_blob with BLOB_READ_WRITE_TOKEN before importing.",
+    "unavailableTitle": "What this dataset does NOT provide",
+    "unavailableBody": "These fields stay empty because the dataset does not contain them. They are not invented: a fake price or link would reach the buy button.",
+    "licenseNote": "Licence: {license}. Demo and research use only; do not redistribute or use commercially.",
+    "activeImportTitle": "Import in progress",
+    "activeImportBody": "{processed} of {total} rows · status {status}",
+    "resumableTitle": "An import was interrupted",
+    "resumableBody": "Job {jobId} stopped at row {row}. It can continue from there without repeating what was already imported.",
+    "customTitle": "Custom import",
+    "inspectTitle": "Dataset inspection",
+    "dryRunTitle": "Dry run of {count} rows",
+    "dryRunNoWrite": "Nothing was written",
+    "dryRunCounters": "{read} rows read · {would} would be saved · {skipped} skipped · {errors} failed",
+    "dryRunRow": "id {id} · brand {brand} · category {category} · colour {color}",
+    "brandNotVerifiable": "not verifiable",
+    "actions": {
+      "inspect": "Inspect dataset",
+      "import100": "Import 100",
+      "import1000": "Import 1,000",
+      "custom": "Custom",
+      "hideCustom": "Hide",
+      "dryRun": "Dry run",
+      "runCustom": "Import",
+      "resume": "Resume",
+      "cancel": "Cancel",
+      "viewJob": "View job",
+      "testMatch": "Test matching"
+    },
+    "fields": {
+      "source": "Source",
+      "needsCredentials": "needs credentials",
+      "limit": "Count",
+      "offset": "Offset",
+      "batchSize": "Batch size",
+      "categories": "Categories",
+      "genders": "Gender",
+      "uploadImages": "Upload images to storage",
+      "generateEmbeddings": "Generate embeddings"
+    },
+    "inspect": {
+      "provider": "Provider",
+      "totalRows": "Total rows",
+      "version": "Revision",
+      "size": "Split size",
+      "fields": "Fields",
+      "unreachable": "The dataset is unreachable"
+    },
+    "toast": {
+      "inspectOk": "Dataset reachable: {rows} rows",
+      "inspectFailed": "Could not inspect the dataset",
+      "dryRunOk": "Dry run complete: {count} sample products",
+      "dryRunFailed": "The dry run failed",
+      "importQueued": "Import queued",
+      "importQueuedDetail": "Job {jobId} · follow progress in Jobs",
+      "importFailed": "Could not queue the import",
+      "resumeFailed": "Could not resume",
+      "resumed": "Import resumed",
+      "cancelFailed": "Could not cancel",
+      "cancelled": "Import cancelled",
+      "matchFailed": "Could not run the matching test",
+      "matchExact": "The product was found at rank 1",
+      "matchFoundAt": "The product was found at rank {rank}",
+      "matchNotFound": "The product did NOT find itself"
+    },
+    "matchTitle": "Matching test",
+    "matchSelfFound": "The product finds itself at rank {rank}",
+    "matchSelfMissing": "The product does NOT find itself: the index is not working",
+    "matchExplain": "A random product was picked, its own image downloaded from storage, and searched against the catalog. If a product does not come back when searching with its own photo, the index is broken even if the other results look reasonable.",
+    "matchHashWarningTitle": "Non-semantic embeddings",
+    "matchHashWarningBody": "These products were indexed with the “hash” provider (64-bit dHash + histogram), which is not a visual embedding. Recall is poor. Reindex with CATALOG_IMAGE_EMBEDDING_PROVIDER=local to use CLIP.",
+    "matchTargetMeta": "id {id} · category {category} · embedding {provider} {dimension}d"
   }
 }

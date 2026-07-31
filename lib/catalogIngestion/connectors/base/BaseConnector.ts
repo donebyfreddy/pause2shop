@@ -698,6 +698,13 @@ export class BaseConnector implements CatalogConnector {
       perceptualHash: null,
       textEmbedding: null,
       imageEmbedding: null,
+      // La ficha nace sin embedding: se genera más adelante, cuando el pipeline
+      // de imágenes descarga la foto (`enrichWithImages`). `pending` es el
+      // estado honesto en este punto.
+      embeddingStatus: "pending",
+      embeddingProvider: null,
+      embeddingDimension: null,
+      dataset: null,
       scrapedAt: new Date().toISOString(),
       origin: "scraped",
     };
@@ -987,6 +994,9 @@ export class BaseConnector implements CatalogConnector {
             };
             normalized.perceptualHash = processed.perceptualHash;
             normalized.imageEmbedding = processed.embedding;
+            normalized.embeddingStatus = "ready";
+            normalized.embeddingProvider = provider.name;
+            normalized.embeddingDimension = processed.embedding.length;
             log({
               stage: "download_image",
               level: "success",
@@ -995,6 +1005,8 @@ export class BaseConnector implements CatalogConnector {
               durationMs: Date.now() - imgStarted,
             });
           } else {
+            // Se queda en `pending`, no en `failed`: la imagen puede volver a
+            // estar disponible y `reindex_embeddings` debe reintentarla.
             log({
               stage: "download_image",
               level: "warn",

@@ -33,8 +33,16 @@ export class JobQueue {
   constructor(private store: CatalogStore) {}
 
   async enqueue(params: EnqueueParams): Promise<JobRecord> {
-    // Idempotencia: un sync idéntico ya en vuelo no se duplica
-    if (params.type.startsWith("sync") && params.source) {
+    // Idempotencia: un job idéntico ya en vuelo no se duplica.
+    //
+    // `dataset_import` entra aquí igual que los syncs: dos importaciones del
+    // mismo dataset a la vez no romperían el catálogo (el upsert por
+    // `(source, source_product_id)` es idempotente), pero se pisarían el
+    // checkpoint y harían el doble de trabajo para el mismo resultado. Un
+    // doble clic en "Importar 1.000" es exactamente ese caso.
+    const isIdempotentType =
+      params.type.startsWith("sync") || params.type === "dataset_import";
+    if (isIdempotentType && params.source) {
       for (const job of await this.store.listJobs(50)) {
         if (
           job.source === params.source &&

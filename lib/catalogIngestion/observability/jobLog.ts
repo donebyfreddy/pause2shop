@@ -27,6 +27,11 @@ export type JobStage =
   | "ai_extract"
   | "normalize"
   | "download_image"
+  // Importación de datasets: leer el dataset y subir la imagen a storage son
+  // etapas distintas de descargarla, y separarlas permite ver en el admin si lo
+  // que falla es el proveedor del dataset o nuestro almacenamiento.
+  | "dataset"
+  | "upload_image"
   | "embedding"
   | "database"
   | "complete"
@@ -199,10 +204,24 @@ export function logJobEvent(input: LogJobEventInput): JobLogEntry {
  * Escritor ligado a un job/conector: evita repetir jobId y connectorId en cada
  * llamada, que es donde se cuelan las inconsistencias.
  */
+type JobLogExtras = Partial<
+  Pick<LogJobEventInput, "url" | "productId" | "durationMs" | "retry" | "metadata">
+>;
+
 export interface JobLogger {
   (input: Omit<LogJobEventInput, "jobId" | "connectorId">): JobLogEntry;
   jobId: string | null;
   connectorId: string | null;
+  /**
+   * Atajos por nivel. La forma invocable sigue existiendo, pero un job con
+   * decenas de trazas se lee mucho mejor como `log.success("database", …)` que
+   * repitiendo `{ level: "success", stage: "database", message: … }`.
+   */
+  debug: (stage: JobStage, message: string, extras?: JobLogExtras) => JobLogEntry;
+  info: (stage: JobStage, message: string, extras?: JobLogExtras) => JobLogEntry;
+  success: (stage: JobStage, message: string, extras?: JobLogExtras) => JobLogEntry;
+  warn: (stage: JobStage, message: string, extras?: JobLogExtras) => JobLogEntry;
+  error: (stage: JobStage, message: string, extras?: JobLogExtras) => JobLogEntry;
 }
 
 export function createJobLogger(jobId: string | null, connectorId: string | null): JobLogger {
@@ -210,6 +229,15 @@ export function createJobLogger(jobId: string | null, connectorId: string | null
     logJobEvent({ ...input, jobId, connectorId })) as JobLogger;
   fn.jobId = jobId;
   fn.connectorId = connectorId;
+  const at =
+    (level: JobLogLevel) =>
+    (stage: JobStage, message: string, extras: JobLogExtras = {}): JobLogEntry =>
+      fn({ level, stage, message, ...extras });
+  fn.debug = at("debug");
+  fn.info = at("info");
+  fn.success = at("success");
+  fn.warn = at("warn");
+  fn.error = at("error");
   return fn;
 }
 

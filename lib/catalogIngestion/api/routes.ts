@@ -60,6 +60,27 @@ import { computeContentHash, normalizeAvailability, normalizeCategory } from "..
 const healthCache = new Map<string, ConnectorHealth>();
 const HEALTH_TTL_MS = 10 * 60 * 1000;
 
+/**
+ * ¿Es una ficha de dataset de demostración? Estas NO tienen URL de compra: su
+ * `canonicalUrl` es un URI `dataset://` interno y no navegable.
+ */
+function isDemo(p: CatalogProduct): boolean {
+  return p.origin === "dataset_demo";
+}
+
+/**
+ * URL de compra, o null si no existe.
+ *
+ * Devolver `canonicalUrl` a secas era seguro mientras todo el catálogo venía de
+ * tiendas reales. Con las fichas de dataset dejaría de serlo: su canonicalUrl es
+ * `dataset://…`, y un cliente que la use para pintar "Comprar" produce un enlace
+ * roto. Se anula en el contrato, no en cada consumidor, para que no dependa de
+ * que cada UI se acuerde.
+ */
+function purchaseUrl(p: CatalogProduct): string | null {
+  return isDemo(p) ? null : p.canonicalUrl;
+}
+
 function toMatchPayload(m: ProductMatch) {
   const p = m.product;
   return {
@@ -67,7 +88,7 @@ function toMatchPayload(m: ProductMatch) {
     title: p.title,
     brand: p.brand,
     image: p.primaryImage ?? p.images[0]?.url ?? null,
-    productUrl: p.canonicalUrl,
+    productUrl: purchaseUrl(p),
     price: p.price,
     currency: p.currency,
     availability: p.availability,
@@ -78,6 +99,9 @@ function toMatchPayload(m: ProductMatch) {
     source: "catalog" as const,
     matchStage: m.matchStage,
     origin: p.origin,
+    isDemoProduct: isDemo(p),
+    /** Procedencia del dataset, para poder citarla en la UI. */
+    dataset: p.dataset,
   };
 }
 
@@ -88,7 +112,31 @@ function round(n: number): number {
 /** Ficha pública sin embeddings (son enormes y no le sirven al cliente). */
 function toProductPayload(p: CatalogProduct) {
   const { imageEmbedding, textEmbedding, ...rest } = p;
-  return { ...rest, hasImageEmbedding: imageEmbedding != null, hasTextEmbedding: textEmbedding != null };
+  return {
+    ...rest,
+    hasImageEmbedding: imageEmbedding != null,
+    hasTextEmbedding: textEmbedding != null,
+    isDemoProduct: isDemo(p),
+    productUrl: purchaseUrl(p),
+    /**
+     * Atributos del dataset que no tienen columna propia en el catálogo. Se
+     * exponen aparte para que el admin los pinte sin tener que bucear en
+     * `sourceMetadata.raw`.
+     */
+    datasetAttributes: isDemo(p)
+      ? {
+          masterCategory:
+            (p.sourceMetadata?.raw as Record<string, unknown> | undefined)?.masterCategory ?? null,
+          articleType:
+            (p.sourceMetadata?.raw as Record<string, unknown> | undefined)?.articleType ?? null,
+          season: (p.sourceMetadata?.raw as Record<string, unknown> | undefined)?.season ?? null,
+          year: (p.sourceMetadata?.raw as Record<string, unknown> | undefined)?.year ?? null,
+          usage: (p.sourceMetadata?.raw as Record<string, unknown> | undefined)?.usage ?? null,
+          baseColour:
+            (p.sourceMetadata?.raw as Record<string, unknown> | undefined)?.baseColour ?? null,
+        }
+      : null,
+  };
 }
 
 function toJobPayload(job: JobRecord) {
@@ -115,8 +163,18 @@ function toJobPayload(job: JobRecord) {
     percent: total > 0 ? Math.min(100, Math.round((done / total) * 100)) : null,
     productsPerMinute: elapsedMinutes > 0 ? Math.round((done / elapsedMinutes) * 10) / 10 : null,
     aiRatio: progress.fetched > 0 ? Math.round((progress.withAi / progress.fetched) * 100) / 100 : null,
-    /** Índice del checkpoint: dice exactamente por dónde se reanudaría. */
-    resumeIndex: typeof job.checkpoint.index === "number" ? job.checkpoint.index : null,
+    /**
+     * Índice del checkpoint: dice exactamente por dónde se reanudaría. Los
+     * syncs lo guardan como `index` y las importaciones de dataset como
+     * `nextOffset` (una fila del split); se normaliza a un solo campo para que
+     * el admin no tenga que saber de qué tipo de job viene.
+     */
+    resumeIndex:
+      typeof job.checkpoint.index === "number"
+        ? job.checkpoint.index
+        : typeof job.checkpoint.nextOffset === "number"
+          ? job.checkpoint.nextOffset
+          : null,
     isActive: isActiveJobStatus(job.status),
     isTerminal: isTerminalJobStatus(job.status),
   };
@@ -573,9 +631,296 @@ export function buildRouter(store: CatalogStore): Router {
 
   /* ----------------------------- products ----------------------------- */
 
-  router.add("POST", "/products/reindex", async ({ res }) => {
-    const job = await queue.enqueue({ type: "reindex_embeddings" });
+  router.add("POST", "/products/reindex", async ({ res, body }) => {
+    const b = (body ?? {}) as { source?: unknown; onlyMissing?: unknown };
+    const source = typeof b.source === "string" && b.source.trim() ? b.source.trim() : null;
+    const job = await queue.enqueue({
+      type: "reindex_embeddings",
+      source,
+      checkpoint: { source, onlyMissing: b.onlyMissing === true },
+    });
     sendJson(res, 202, { jobId: job.jobId });
+  });
+
+  /* ---------------------------- datasets ------------------------------ */
+
+  /** Datasets registrados y qué campos trae cada uno. No toca la red. */
+  router.add("GET", "/datasets", async ({ res }) => {
+    const { listDatasets } = await import("../datasets/index");
+    const { describeStorage } = await import("@/lib/mediaStorage");
+    const storage = describeStorage();
+    const counts = await store.countProductsBySource();
+    sendJson(res, 200, {
+      datasets: listDatasets().map((d) => ({
+        id: d.id,
+        repo: d.repo,
+        originRepo: d.originRepo,
+        provider: d.provider,
+        license: d.license,
+        split: d.split,
+        availableFields: d.availableFields,
+        unavailableFields: d.unavailableFields,
+        importedProducts: counts.get(d.id) ?? 0,
+      })),
+      storage: {
+        provider: storage.provider,
+        persistent: !storage.ephemeral,
+        // Se informa explícitamente: importar con storage efímero deja un
+        // catálogo que se queda sin fotos, y eso hay que verlo ANTES.
+        warning: storage.ephemeral
+          ? "El storage no es persistente: las imágenes no sobrevivirán a un reinicio."
+          : null,
+      },
+    });
+  });
+
+  /**
+   * Comprueba que el dataset es alcanzable y devuelve su esquema real.
+   * Es la comprobación previa del botón "Inspeccionar" del admin.
+   */
+  router.add("POST", "/datasets/inspect", async ({ res, body }) => {
+    const b = (body ?? {}) as { datasetId?: unknown };
+    const { DatasetImporter } = await import("../datasets/index");
+    const datasetId = typeof b.datasetId === "string" ? b.datasetId : undefined;
+    try {
+      const info = await new DatasetImporter().inspect(datasetId);
+      sendJson(res, 200, {
+        reachable: info.reachable,
+        unreachableReason: info.unreachableReason,
+        provider: info.descriptor.provider,
+        repo: info.descriptor.repo,
+        totalRows: info.totalRows,
+        version: info.version,
+        sizeBytes: info.sizeBytes,
+        features: info.features,
+        availableFields: info.descriptor.availableFields,
+        unavailableFields: info.descriptor.unavailableFields,
+        license: info.descriptor.license,
+        sample: info.sample,
+      });
+    } catch (error) {
+      throw new ApiError(
+        502,
+        "dataset_unreachable",
+        error instanceof Error ? error.message : "el dataset no es alcanzable"
+      );
+    }
+  });
+
+  /**
+   * Encola una importación. Devuelve 202 + jobId: la importación de mil fichas
+   * no cabe en una petición HTTP, así que se sigue por /admin/jobs.
+   *
+   * `dryRun` es la excepción y se ejecuta en línea: su valor está justamente en
+   * ver el resultado ahora, y sin escribir nada es seguro y acotado.
+   */
+  router.add("POST", "/datasets/import", async ({ res, body }) => {
+    const b = (body ?? {}) as Record<string, unknown>;
+    const { getDataset, resolveOptions, DatasetImporter } = await import("../datasets/index");
+
+    const asInt = (value: unknown, fallback?: number): number | undefined => {
+      if (value === undefined || value === null || value === "") return fallback;
+      const n = Number(value);
+      if (!Number.isFinite(n) || n < 0) {
+        throw new ApiError(400, "invalid_number", `valor numérico inválido: ${String(value)}`);
+      }
+      return Math.trunc(n);
+    };
+    const asList = (value: unknown): string[] | undefined => {
+      if (Array.isArray(value)) return value.map(String).filter(Boolean);
+      if (typeof value === "string" && value.trim()) {
+        return value.split(",").map((v) => v.trim()).filter(Boolean);
+      }
+      return undefined;
+    };
+
+    if (b.source !== undefined && b.source !== "huggingface" && b.source !== "kaggle") {
+      throw new ApiError(400, "invalid_source", "source debe ser huggingface o kaggle");
+    }
+
+    const options = resolveOptions({
+      source: b.source as "huggingface" | "kaggle" | undefined,
+      limit: asInt(b.limit),
+      offset: asInt(b.offset, 0),
+      batchSize: asInt(b.batchSize),
+      categories: asList(b.categories),
+      genders: asList(b.genders),
+      generateEmbeddings: b.generateEmbeddings === undefined ? undefined : b.generateEmbeddings === true,
+      uploadImages: b.uploadImages === undefined ? undefined : b.uploadImages === true,
+      dryRun: b.dryRun === true,
+      datasetId: typeof b.datasetId === "string" ? b.datasetId : undefined,
+    });
+
+    // Techo duro: una petición no puede encolar una importación de 44.000
+    // fichas por un cero de más en el formulario.
+    const MAX_PER_REQUEST = 5000;
+    if (options.limit > MAX_PER_REQUEST) {
+      throw new ApiError(
+        400,
+        "limit_too_large",
+        `limit máximo por petición: ${MAX_PER_REQUEST} (se pidió ${options.limit})`
+      );
+    }
+
+    const descriptor = getDataset(options.datasetId);
+
+    if (options.dryRun) {
+      // El ensayo se acota aparte: no tiene sentido "ensayar" 1.000 filas.
+      const capped = { ...options, limit: Math.min(options.limit, 25) };
+      const result = await new DatasetImporter({ store }).import(capped);
+      sendJson(res, 200, {
+        dryRun: true,
+        datasetId: result.datasetId,
+        counters: result.counters,
+        warnings: result.warnings,
+        errors: result.errors,
+        limitApplied: capped.limit,
+        preview: result.preview.map((p) => ({
+          sourceProductId: p.sourceProductId,
+          title: p.title,
+          brand: p.brand,
+          category: p.category,
+          subcategory: p.subcategory,
+          gender: p.gender,
+          color: p.color,
+          collection: p.collection,
+          style: p.style,
+          // Se devuelven explícitamente a null para que quede claro en la
+          // respuesta que el dataset no los trae.
+          price: null,
+          currency: null,
+          productUrl: null,
+          merchant: null,
+          isDemoProduct: true,
+          unavailableFields: p.dataset?.unavailableFields ?? [],
+        })),
+      });
+      return;
+    }
+
+    const job = await queue.enqueue({
+      type: "dataset_import",
+      source: descriptor.id,
+      limit: options.limit,
+      checkpoint: {
+        options,
+        nextOffset: options.offset,
+        endOffset: options.offset + options.limit,
+      },
+    });
+    sendJson(res, 202, { jobId: job.jobId, datasetId: descriptor.id, options });
+  });
+
+  /**
+   * Prueba el matching con un producto aleatorio del dataset.
+   *
+   * Coge una ficha, descarga SU PROPIA imagen del storage y la busca en el
+   * catálogo. Es la comprobación de extremo a extremo del modo `catalog_only`:
+   * si el propio producto no aparece en el top-10 de su propia foto, el índice
+   * está roto — y eso es un fallo que de otro modo no se nota, porque el
+   * matching devuelve resultados plausibles igualmente.
+   */
+  router.add("POST", "/datasets/test-match", async ({ res, body }) => {
+    const b = (body ?? {}) as { datasetId?: unknown; topK?: unknown };
+    const { getDataset } = await import("../datasets/index");
+    const descriptor = getDataset(typeof b.datasetId === "string" ? b.datasetId : undefined);
+    const topK = Math.min(Number(b.topK) || 10, 25);
+
+    const { items } = await store.listProducts({
+      source: descriptor.id,
+      embeddingStatus: "ready",
+      limit: 100,
+      page: 1,
+    });
+    const candidates = items.filter((p) => p.primaryImage);
+    if (candidates.length === 0) {
+      throw new ApiError(
+        422,
+        "no_indexed_products",
+        `No hay productos de "${descriptor.id}" con embedding e imagen. Importa primero.`
+      );
+    }
+    const target = candidates[Math.floor(Math.random() * candidates.length)];
+
+    const image = await processQueryImage({ imageUrl: target.primaryImage as string });
+    if (!image) {
+      throw new ApiError(
+        502,
+        "image_unreachable",
+        `La imagen de ${target.sourceProductId} no se pudo descargar del storage. ` +
+          "Si el storage no es persistente, las imágenes ya han caducado."
+      );
+    }
+
+    const matches = await matchProducts(store, {
+      imageSha256: image.sha256,
+      perceptualHash: image.perceptualHash,
+      imageEmbedding: image.embedding,
+      topK,
+      // Umbral bajo a propósito: interesa ver los similares además del exacto.
+      minScore: 0.4,
+    });
+
+    const payload = matches.map(toMatchPayload);
+    const selfIndex = payload.findIndex((m) => m.productId === target.id);
+    sendJson(res, 200, {
+      target: {
+        productId: target.id,
+        sourceProductId: target.sourceProductId,
+        title: target.title,
+        brand: target.brand,
+        category: target.category,
+        image: target.primaryImage,
+        embeddingProvider: target.embeddingProvider,
+        embeddingDimension: target.embeddingDimension,
+        isDemoProduct: true,
+      },
+      matches: payload,
+      // La comprobación honesta: ¿se encuentra a sí mismo, y en qué puesto?
+      selfFoundAtRank: selfIndex >= 0 ? selfIndex + 1 : null,
+      selfScore: selfIndex >= 0 ? payload[selfIndex].finalScore : null,
+      // Con el proveedor `hash` el recall es malo y hay que decirlo, no dejar
+      // que unos resultados mediocres parezcan lo mejor posible.
+      productionGradeEmbeddings: target.embeddingProvider !== null && target.embeddingProvider !== "hash",
+    });
+  });
+
+  /** Reanuda una importación desde el checkpoint de un job anterior. */
+  router.add("POST", "/datasets/resume/:jobId", async ({ res, params }) => {
+    const previous = await store.getJob(params.jobId);
+    if (!previous) throw new ApiError(404, "job_not_found", `job desconocido: ${params.jobId}`);
+    if (previous.type !== "dataset_import") {
+      throw new ApiError(
+        422,
+        "wrong_job_type",
+        `el job ${params.jobId} es de tipo ${previous.type}, no dataset_import`
+      );
+    }
+    const checkpoint = previous.checkpoint as {
+      options?: Record<string, unknown>;
+      nextOffset?: number;
+      endOffset?: number;
+      datasetId?: string;
+    };
+    if (!checkpoint?.options || checkpoint.nextOffset == null || checkpoint.endOffset == null) {
+      throw new ApiError(422, "no_checkpoint", `el job ${params.jobId} no tiene checkpoint reanudable`);
+    }
+    const remaining = Math.max(0, checkpoint.endOffset - checkpoint.nextOffset);
+    if (remaining === 0) {
+      throw new ApiError(422, "already_complete", "el rango del job ya estaba completo");
+    }
+
+    const job = await queue.enqueue({
+      type: "dataset_import",
+      source: previous.source,
+      limit: remaining,
+      checkpoint: {
+        ...checkpoint,
+        options: { ...checkpoint.options, offset: checkpoint.nextOffset, limit: remaining },
+        resumeOfJobId: previous.jobId,
+      },
+    });
+    sendJson(res, 202, { jobId: job.jobId, resumeOf: previous.jobId, remaining });
   });
 
   router.add("POST", "/products/external", async ({ res, body }) => {
@@ -661,6 +1006,12 @@ export function buildRouter(store: CatalogStore): Router {
       perceptualHash: processed?.perceptualHash ?? null,
       textEmbedding: await provider.embedText(`${body.brand ?? ""} ${body.title}`),
       imageEmbedding: processed?.embedding ?? null,
+      // `pending` si la imagen del proveedor externo no se pudo procesar: queda
+      // a la espera de `reindex_embeddings`, no marcada como lista.
+      embeddingStatus: processed ? "ready" : "pending",
+      embeddingProvider: processed ? provider.name : null,
+      embeddingDimension: processed?.embedding.length ?? null,
+      dataset: null,
       scrapedAt: now,
       origin: "externally_discovered",
     };
@@ -678,12 +1029,29 @@ export function buildRouter(store: CatalogStore): Router {
 
   router.add("GET", "/products", async ({ res, query }) => {
     const activeParam = query.get("active");
+    const originParam = query.get("origin");
+    const statusParam = query.get("embeddingStatus");
+    const VALID_ORIGINS = new Set(["scraped", "externally_discovered", "dataset_demo"]);
+    const VALID_STATUS = new Set(["pending", "processing", "ready", "failed", "skipped"]);
+
+    // Un valor inválido se ignora en vez de reventar: un filtro desconocido en
+    // la URL no debe convertir la pantalla de catálogo en un 400.
     const { items, total } = await store.listProducts({
       source: query.get("source") ?? undefined,
       category: query.get("category") ?? undefined,
       brand: query.get("brand") ?? undefined,
+      color: query.get("color") ?? undefined,
+      gender: query.get("gender") ?? undefined,
       q: query.get("q") ?? undefined,
       active: activeParam === null ? undefined : activeParam === "true",
+      origin:
+        originParam && VALID_ORIGINS.has(originParam)
+          ? (originParam as CatalogProduct["origin"])
+          : undefined,
+      embeddingStatus:
+        statusParam && VALID_STATUS.has(statusParam)
+          ? (statusParam as CatalogProduct["embeddingStatus"])
+          : undefined,
       page: Number(query.get("page") ?? 1) || 1,
       limit: Number(query.get("limit") ?? 20) || 20,
     });

@@ -6,6 +6,7 @@ import type {
   ProductFilters,
   SourceState,
 } from "./types";
+import { hydrateProduct } from "./types";
 import type { CatalogStore, ExtractionStats, StoreStats } from "./store";
 import { normalizeText } from "../normalization/normalize";
 
@@ -27,7 +28,9 @@ interface Row {
 }
 
 function rowToProduct(row: Row): CatalogProduct {
-  return row.doc;
+  // Se hidrata al leer: el `doc` puede venir de una versión anterior del
+  // esquema y faltarle campos que hoy son obligatorios.
+  return hydrateProduct(row.doc);
 }
 
 export class PostgresCatalogStore implements CatalogStore {
@@ -58,8 +61,11 @@ export class PostgresCatalogStore implements CatalogStore {
       `insert into catalog_products
          (id, source, source_product_id, canonical_url, brand, title, category,
           availability, sku, gtin, content_hash, perceptual_hash, is_active,
-          image_embedding, text_embedding, origin, doc, updated_at)
-       values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,${embeddingSql},$16,$17,now())
+          image_embedding, text_embedding, origin, doc,
+          embedding_status, embedding_provider, embedding_dimension,
+          dataset_id, dataset_version, updated_at)
+       values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,${embeddingSql},$16,$17,
+               $18,$19,$20,$21,$22,now())
        on conflict (source, source_product_id) do update set
          canonical_url = excluded.canonical_url,
          brand = excluded.brand,
@@ -75,12 +81,25 @@ export class PostgresCatalogStore implements CatalogStore {
          text_embedding = excluded.text_embedding,
          origin = excluded.origin,
          doc = excluded.doc,
+         embedding_status = excluded.embedding_status,
+         embedding_provider = excluded.embedding_provider,
+         embedding_dimension = excluded.embedding_dimension,
+         dataset_id = excluded.dataset_id,
+         dataset_version = excluded.dataset_version,
          updated_at = now()`,
       [
         p.id, p.source, p.sourceProductId, p.canonicalUrl, p.brand, p.title,
         p.category, p.availability, p.sku, p.gtin, p.contentHash,
         p.perceptualHash, p.isActive, imageEmb, textEmb, p.origin,
         JSON.stringify(p),
+        // Estos cinco viven además en `doc`, pero como columnas permiten
+        // filtrar y contar en SQL sin traerse el jsonb entero: es la diferencia
+        // entre "cuántos embeddings faltan" en 20 ms o en 20 segundos.
+        p.embeddingStatus ?? "pending",
+        p.embeddingProvider,
+        p.embeddingDimension,
+        p.dataset?.id ?? null,
+        p.dataset?.version ?? null,
       ]
     );
     // Imágenes en tabla propia para dedup por sha256 con índice
@@ -116,6 +135,12 @@ export class PostgresCatalogStore implements CatalogStore {
     if (filters.brand) add("lower(brand) = ?", normalizeText(filters.brand));
     if (filters.active !== undefined) add("is_active = ?", filters.active);
     if (filters.origin) add("origin = ?", filters.origin);
+    if (filters.embeddingStatus) add("embedding_status = ?", filters.embeddingStatus);
+    // `color` y `gender` no tienen columna: viven en el doc. Se filtran con el
+    // operador ->> en vez de traerse la página y filtrarla en el cliente, que
+    // es lo que hacía el admin y solo filtraba los 24 resultados visibles.
+    if (filters.color) add("lower(doc->>'color') = ?", normalizeText(filters.color));
+    if (filters.gender) add("lower(doc->>'gender') = ?", normalizeText(filters.gender));
     if (filters.q) add("(title ilike ? or brand ilike '%' || $" + (params.length + 1) + " || '%')", `%${filters.q}%`);
     const whereSql = where.length ? `where ${where.join(" and ")}` : "";
     const limit = Math.min(filters.limit ?? 20, 100);

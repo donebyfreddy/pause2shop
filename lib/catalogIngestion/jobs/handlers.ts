@@ -46,9 +46,109 @@ export async function runJob(
       return runCleanup(store, job, persist);
     case "retry_failed":
       return runRetryFailed(store, job, persist, shouldCancel);
+    case "dataset_import":
+      return runDatasetImport(store, job, persist, shouldCancel);
     default:
       throw new Error(`tipo de job desconocido: ${job.type}`);
   }
+}
+
+/**
+ * Importación de un dataset público de moda.
+ *
+ * El handler no reimplementa nada: delega en `DatasetImporter` y se limita a
+ * conectar el checkpoint del job con el del importador. Eso permite reanudar
+ * desde el punto exacto tras un timeout de la lambda, porque el estado que hay
+ * que recordar es un único número (la siguiente fila del split).
+ */
+async function runDatasetImport(
+  store: CatalogStore,
+  job: JobRecord,
+  persist: Persist,
+  shouldCancel: () => boolean
+): Promise<JobResult> {
+  const { DatasetImporter, countersToProgress, resolveOptions, buildCheckpoint } =
+    await import("../datasets/index");
+
+  const checkpoint = job.checkpoint as {
+    options?: Partial<import("../datasets/types").DatasetImportOptions>;
+    nextOffset?: number;
+    endOffset?: number;
+    counters?: import("../datasets/types").DatasetImportCounters;
+    version?: string;
+  };
+
+  const options = resolveOptions({
+    ...(checkpoint.options ?? {}),
+    // Al reanudar, el offset y el límite salen del checkpoint: si no, el job
+    // volvería a importar desde el principio en cada invocación.
+    offset: checkpoint.nextOffset ?? checkpoint.options?.offset ?? 0,
+    limit:
+      checkpoint.nextOffset != null && checkpoint.endOffset != null
+        ? Math.max(0, checkpoint.endOffset - checkpoint.nextOffset)
+        : job.limit ?? checkpoint.options?.limit,
+  });
+
+  const endOffset = checkpoint.endOffset ?? options.offset + options.limit;
+  let progress = countersToProgress(
+    { ...(checkpoint.counters ?? {}) } as import("../datasets/types").DatasetImportCounters,
+    "downloading",
+    endOffset - (checkpoint.options?.offset ?? options.offset)
+  );
+
+  const importer = new DatasetImporter({
+    store,
+    jobId: job.jobId,
+    isCancelled: shouldCancel,
+    // Mismo presupuesto que el resto de jobs: se sale limpio con checkpoint
+    // antes de que la plataforma mate el proceso.
+    deadline: Date.now() + invocationTimeBudgetMs(),
+    onProgress: async ({ counters, nextOffset, endOffset: end, stage }) => {
+      progress = countersToProgress(counters, stage, end - options.offset + counters.rowsRead);
+      // El total mostrado es el rango pedido, no un estimado: `discovered` es
+      // cuántas filas se van a leer, que se sabe desde el principio.
+      progress.discovered = endOffset - (checkpoint.options?.offset ?? options.offset);
+      await persist(
+        progress,
+        buildCheckpoint({
+          options,
+          counters,
+          nextOffset,
+          endOffset: end,
+          version: checkpoint.version ?? "unknown",
+        }) as unknown as Record<string, unknown>
+      );
+    },
+  });
+
+  const result = await importer.import(options);
+  const finalProgress = countersToProgress(
+    result.counters,
+    result.status === "completed" ? null : "saving",
+    endOffset - (checkpoint.options?.offset ?? options.offset)
+  );
+
+  await persist(
+    finalProgress,
+    buildCheckpoint({
+      options,
+      counters: result.counters,
+      nextOffset: result.nextOffset,
+      endOffset,
+      version: checkpoint.version ?? "unknown",
+    }) as unknown as Record<string, unknown>
+  );
+
+  return {
+    progress: finalProgress,
+    // `completed: false` deja el job como parcial y reanudable. Se marca
+    // completo solo cuando de verdad se agotó el rango pedido.
+    completed: result.status === "completed" || result.status === "dry_run",
+    errors: result.errors.map((e) => ({
+      url: `row:${e.rowIndex}`,
+      message: e.message,
+    })),
+  };
 }
 
 async function runSync(
@@ -193,22 +293,59 @@ async function runReindex(
   const progress = emptyProgress();
   const errors: JobResult["errors"] = [];
   const provider = await getEmbeddingProvider();
-  const products = await store.allProducts();
+  const log = createJobLogger(job.jobId, job.source ?? "reindex");
+
+  // Filtros del checkpoint: permiten reindexar solo una fuente (un dataset) o
+  // solo lo que falta, en vez de recalcular el catálogo entero cada vez.
+  const sourceFilter = typeof job.checkpoint.source === "string" ? job.checkpoint.source : null;
+  const onlyMissing = job.checkpoint.onlyMissing === true;
+
+  const all = await store.allProducts();
+  const products = all.filter((p) => {
+    if (sourceFilter && p.source !== sourceFilter) return false;
+    if (onlyMissing && p.embeddingStatus === "ready") return false;
+    return true;
+  });
+
   const startIndex = (job.checkpoint.index as number) ?? 0;
   progress.discovered = products.length;
+  log.info("embedding", `Reindexando ${products.length} fichas con ${provider.name}`, {
+    metadata: {
+      provider: provider.name,
+      model: provider.model,
+      dimension: provider.dimension(),
+      productionGrade: provider.name !== "hash",
+      source: sourceFilter,
+      onlyMissing,
+    },
+  });
 
   for (let i = startIndex; i < products.length; i++) {
     if (shouldCancel()) {
-      await persist(progress, { index: i });
+      await persist(progress, { index: i, source: sourceFilter, onlyMissing });
       return { progress, completed: false, errors };
     }
     const p = products[i];
     try {
-      const local = p.images.find((img) => img.localPath && existsSync(img.localPath));
-      if (local?.localPath) {
-        const processed = await processImageBuffer(readFileSync(local.localPath));
+      const bytes = await loadProductImageBytes(p);
+      if (bytes) {
+        const processed = await processImageBuffer(bytes);
         p.imageEmbedding = processed.embedding;
         p.perceptualHash = processed.perceptualHash;
+        p.embeddingStatus = "ready";
+        p.embeddingProvider = provider.name;
+        p.embeddingDimension = processed.embedding.length;
+        progress.embeddingsReady++;
+      } else if (p.images.length > 0) {
+        // Tiene imagen declarada pero no se pudo recuperar. `failed` (y no
+        // `pending`) para que se pueda distinguir y reintentar aparte.
+        p.embeddingStatus = "failed";
+        log.warn("embedding", "Imagen no recuperable, embedding marcado failed", {
+          productId: p.id,
+          url: p.images[0]?.url ?? null,
+        });
+      } else {
+        p.embeddingStatus = "skipped";
       }
       p.textEmbedding = await provider.embedText(
         `${p.brand ?? ""} ${p.title} ${p.category ?? ""} ${p.color ?? ""}`
@@ -220,10 +357,45 @@ async function runReindex(
       progress.errors++;
       errors.push({ url: p.canonicalUrl, message: err instanceof Error ? err.message : String(err) });
     }
-    if (i % 10 === 0) await persist(progress, { index: i + 1 });
+    if (i % 10 === 0) await persist(progress, { index: i + 1, source: sourceFilter, onlyMissing });
   }
-  await persist(progress, { index: products.length });
+  await persist(progress, { index: products.length, source: sourceFilter, onlyMissing });
+  log.success("complete", `Reindex terminado: ${progress.updated} fichas actualizadas`);
   return { progress, completed: true, errors };
+}
+
+/**
+ * Recupera los bytes de la imagen principal de una ficha.
+ *
+ * Antes esto solo miraba `localPath` en disco, y por eso el reindex no hacía
+ * NADA en serverless: `localPath` apuntaba a `os.tmpdir()`, que se borra en cada
+ * cold start, así que `existsSync` siempre daba false y el embedding de imagen
+ * se saltaba en silencio. Ahora el disco es solo el atajo heredado y la fuente
+ * real es la URL persistida.
+ */
+async function loadProductImageBytes(p: {
+  images: Array<{ url: string; localPath: string | null }>;
+}): Promise<Buffer | null> {
+  for (const img of p.images) {
+    // Atajo heredado: si resulta que el fichero sigue en disco, se ahorra la red.
+    if (img.localPath && existsSync(img.localPath)) {
+      try {
+        return readFileSync(img.localPath);
+      } catch {
+        /* se intenta por URL */
+      }
+    }
+    if (!img.url || !/^https?:\/\//i.test(img.url)) continue;
+    try {
+      const res = await fetch(img.url, { signal: AbortSignal.timeout(20_000) });
+      if (!res.ok) continue;
+      const buffer = Buffer.from(await res.arrayBuffer());
+      if (buffer.byteLength > 0) return buffer;
+    } catch {
+      /* se prueba la siguiente imagen */
+    }
+  }
+  return null;
 }
 
 /** Desactiva productos que llevan >30 días sin verse en la tienda. */

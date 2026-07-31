@@ -181,6 +181,55 @@ reanudación, Playwright en Vercel, y el camino para jobs grandes.
 📊 **[docs/ESTADO_FUENTES.md](docs/ESTADO_FUENTES.md)** — estado **medido** de las
 68 fuentes: verificadas, bloqueadas y con acuerdo pendiente.
 
+## 👗 Catálogo de demostración desde dataset
+
+Zara, Mango y H&M bloquean por IP, así que probar el matching visual dependía de
+poder scrapear justo lo que no se puede scrapear. La salida es un dataset público
+de investigación: **44.072 fichas de moda con imagen**, sin depender de ninguna
+tienda.
+
+```bash
+npm run catalog:dataset:inspect                          # ¿alcanzable? ¿qué trae?
+npm run catalog:dataset:import -- --limit=10 --dry-run   # ensayo, no escribe
+npm run catalog:dataset:import -- --limit=1000           # importación real
+```
+
+Repetirlo **no duplica**: hace upsert sobre `(source, source_product_id)`, y el id
+del dataset es la clave, así que la idempotencia es por construcción. Verificado
+en real: segunda pasada = `0 creados · 1000 actualizados · 0 imágenes resubidas`.
+
+**Lo que el dataset NO trae, y por tanto queda a `null`:** precio, stock, URL de
+compra, merchant, SKU, descripción, tallas. No se derivan ni se estiman — un
+precio inventado en un catálogo llega hasta el botón de comprar. Las fichas se
+marcan `origin = 'dataset_demo'`, la API devuelve `productUrl: null` **en el
+contrato** (no en cada consumidor) y la UI muestra «Dato no disponible en
+dataset» en lugar de un hueco.
+
+La marca tampoco se adivina: se extrae solo si está en una lista **derivada del
+propio dataset** por frecuencia (≥ 4 apariciones en una muestra de 5.600 nombres,
+reproducible con `npm run catalog:dataset:brands`). Así «Turtle Check Men Navy
+Blue Shirt» da `Turtle` y no `Turtle Check`, y lo no verificable queda a `null`.
+
+Las imágenes van a **Vercel Blob** (persistente), nunca a Postgres ni a `/tmp`, y
+los embeddings los genera **CLIP local (512d)** — no el fallback `hash` de 64
+bits, que el propio código documenta como no semántico.
+
+```bash
+npm run catalog:embeddings:reindex -- --status   # reparto de estados y dimensiones
+npm run catalog:dataset:resume                   # reanuda el último interrumpido
+npm run catalog:dataset:cleanup -- --dry-run     # qué borraría
+```
+
+Desde `/admin/catalog` hay un panel con Inspeccionar · Importar 100 · Importar
+1.000 · Personalizada · Ensayo · **Probar matching** · Cancelar · Reanudar. El
+botón de matching coge una ficha al azar, busca con **su propia foto** y dice en
+qué puesto se encuentra a sí misma: si no aparece, el índice está roto aunque los
+demás resultados parezcan razonables.
+
+📖 **[docs/FASHION_DATASET_IMPORT.md](docs/FASHION_DATASET_IMPORT.md)** —
+arquitectura, deduplicación, estados de embedding, reanudación, limitaciones
+legales y funcionales.
+
 ## 🛒 Matching de producto (automático con OpenAI)
 
 `lib/products` define la interfaz `ProductProvider` y dos implementaciones:
@@ -219,6 +268,9 @@ npm test
 
 Cubre funciones puras y de catálogo: normalización, `generateItemFingerprint`,
 deduplicación por ventana de timestamp, parseo de la respuesta de IA y proveedor mock.
+La importación de dataset añade cinco suites (marca, normalización, lector,
+imágenes e importador) que cubren idempotencia, reanudación, fallo parcial y
+tolerancia a filas corruptas con un lector inyectado, sin tocar la red.
 
 ## 🔒 Privacidad y seguridad
 
@@ -270,6 +322,14 @@ test/*.test.ts
   las imágenes son placeholders (no son la foto real del producto).
 - `bounding_box` se guarda pero **no se recortan** imágenes todavía (no guardamos frames).
 - El rate limit es en memoria por instancia (suficiente para desarrollo).
+- **La búsqueda vectorial no usa pgvector todavía.** `matchProducts` carga hasta
+  5.000 documentos y puntúa el coseno en memoria: ~5 s con 1.000 fichas indexadas.
+  Las columnas `image_embedding`/`text_embedding` se escriben pero no se leen para
+  buscar, y no existe índice ANN. Funciona a escala de demo; para producción hace
+  falta un índice ivfflat y mover el coseno a SQL.
+- **El catálogo de dataset no es catálogo comercial**: sin precio, stock ni URL de
+  compra, porque el dataset no los trae. Está marcado como `dataset_demo` en todas
+  las capas, incluida la respuesta de la API.
 
 ## 🗺️ Siguientes pasos (productos reales / proveedores)
 

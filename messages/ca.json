@@ -949,7 +949,13 @@
       "statusAriaLabel": "Estat",
       "allStatuses": "Actius i inactius",
       "onlyActive": "Només actius",
-      "onlyInactive": "Només inactius"
+      "onlyInactive": "Només inactius",
+      "embeddingAriaLabel": "Estado del embedding",
+      "allEmbeddings": "Cualquier embedding",
+      "genderAriaLabel": "Género",
+      "allGenders": "Cualquier género",
+      "colorAriaLabel": "Color",
+      "colorPlaceholder": "Color…"
     },
     "pagination": "{count} productes · pàgina {page} de {totalPages}",
     "modeAriaLabel": "Mode d'exploració",
@@ -970,7 +976,8 @@
     },
     "origin": {
       "scraped": "Ingerit de botiga",
-      "external": "Descobert externament"
+      "external": "Descobert externament",
+      "datasetDemo": "Dataset de demostración"
     },
     "textSearch": {
       "placeholder": "vestit vermell setinat, blazer de punt negre…"
@@ -1003,7 +1010,9 @@
     "badges": {
       "inactive": "inactiu",
       "external": "extern",
-      "hasImageEmbeddingTooltip": "Amb embedding visual"
+      "hasImageEmbeddingTooltip": "Amb embedding visual",
+      "datasetDemo": "Demo",
+      "noPriceInDataset": "Precio no disponible en dataset"
     },
     "noCategory": "sense categoria",
     "card": {
@@ -1049,7 +1058,31 @@
       "evidenceSource": "Origen",
       "evidenceSnippet": "Evidència",
       "viewInStore": "Veure a la botiga",
-      "copyId": "Copia l'ID"
+      "copyId": "Copia l'ID",
+      "embeddingStatus": "Embedding: {status}",
+      "datasetTitle": "Procedencia del dataset",
+      "datasetRepo": "Repositorio",
+      "datasetVersion": "Revisión",
+      "datasetRow": "Fila",
+      "datasetImportedAt": "Importado",
+      "datasetUnavailableNote": "Campos que este dataset no contiene y por eso quedan vacíos:",
+      "datasetAttributesTitle": "Atributos del dataset",
+      "masterCategory": "Categoría maestra",
+      "articleType": "Tipo de artículo",
+      "baseColour": "Color base",
+      "season": "Temporada",
+      "year": "Año",
+      "usage": "Uso",
+      "notInDataset": "Dato no disponible en dataset",
+      "noStoreUrl": "Sin ficha de tienda (producto de catálogo demo)"
+    },
+    "demoBadge": "Demo",
+    "noPurchaseUrl": "Sin URL de compra",
+    "embedding": {
+      "ready": "Embedding listo",
+      "pending": "Embedding pendiente",
+      "failed": "Embedding fallido",
+      "skipped": "Embedding omitido"
     }
   },
   "jobs": {
@@ -1972,5 +2005,86 @@
         }
       }
     }
+  },
+  "datasets": {
+    "title": "Importar catálogo de demostración",
+    "description": "Productos de moda reales con foto, desde un dataset público de investigación. No dependen del scraping de ninguna tienda.",
+    "origin": "origen",
+    "demoBadge": "Dataset de demostración",
+    "importedCount": "{count} importados",
+    "noDatasets": "No hay datasets registrados",
+    "noDatasetsDetail": "No se pudo leer el registro de datasets.",
+    "storageEphemeralTitle": "El almacenamiento no es persistente",
+    "storageEphemeralBody": "El proveedor actual es «{provider}». Las imágenes importadas NO sobrevivirán a un reinicio. Configura STORAGE_PROVIDER=vercel_blob con BLOB_READ_WRITE_TOKEN antes de importar.",
+    "unavailableTitle": "Lo que este dataset NO trae",
+    "unavailableBody": "Estos campos quedan vacíos porque el dataset no los contiene. No se inventan: un precio o un enlace falso llegaría hasta el botón de comprar.",
+    "licenseNote": "Licencia: {license}. Uso de demostración e investigación; no redistribuir ni usar comercialmente.",
+    "activeImportTitle": "Importación en curso",
+    "activeImportBody": "{processed} de {total} filas · estado {status}",
+    "resumableTitle": "Hay una importación interrumpida",
+    "resumableBody": "Job {jobId} se detuvo en la fila {row}. Puede continuar desde ahí sin repetir lo ya importado.",
+    "customTitle": "Importación personalizada",
+    "inspectTitle": "Inspección del dataset",
+    "dryRunTitle": "Ensayo de {count} filas",
+    "dryRunNoWrite": "No se ha escrito nada",
+    "dryRunCounters": "{read} filas leídas · {would} se guardarían · {skipped} omitidas · {errors} con error",
+    "dryRunRow": "id {id} · marca {brand} · categoría {category} · color {color}",
+    "brandNotVerifiable": "no verificable",
+    "actions": {
+      "inspect": "Inspeccionar dataset",
+      "import100": "Importar 100",
+      "import1000": "Importar 1.000",
+      "custom": "Personalizada",
+      "hideCustom": "Ocultar",
+      "dryRun": "Ensayo (dry run)",
+      "runCustom": "Importar",
+      "resume": "Reanudar",
+      "cancel": "Cancelar",
+      "viewJob": "Ver job",
+      "testMatch": "Probar matching"
+    },
+    "fields": {
+      "source": "Fuente",
+      "needsCredentials": "requiere credenciales",
+      "limit": "Cantidad",
+      "offset": "Desplazamiento",
+      "batchSize": "Tamaño de lote",
+      "categories": "Categorías",
+      "genders": "Género",
+      "uploadImages": "Subir imágenes al almacenamiento",
+      "generateEmbeddings": "Generar embeddings"
+    },
+    "inspect": {
+      "provider": "Proveedor",
+      "totalRows": "Filas totales",
+      "version": "Revisión",
+      "size": "Tamaño del split",
+      "fields": "Campos",
+      "unreachable": "El dataset no es alcanzable"
+    },
+    "toast": {
+      "inspectOk": "Dataset alcanzable: {rows} filas",
+      "inspectFailed": "No se pudo inspeccionar el dataset",
+      "dryRunOk": "Ensayo completado: {count} fichas de muestra",
+      "dryRunFailed": "El ensayo ha fallado",
+      "importQueued": "Importación encolada",
+      "importQueuedDetail": "Job {jobId} · sigue el progreso en Jobs",
+      "importFailed": "No se pudo encolar la importación",
+      "resumeFailed": "No se pudo reanudar",
+      "resumed": "Importación reanudada",
+      "cancelFailed": "No se pudo cancelar",
+      "cancelled": "Importación cancelada",
+      "matchFailed": "No se pudo probar el matching",
+      "matchExact": "El producto se ha encontrado en el puesto 1",
+      "matchFoundAt": "El producto se ha encontrado en el puesto {rank}",
+      "matchNotFound": "El producto NO se ha encontrado a sí mismo"
+    },
+    "matchTitle": "Prueba de matching",
+    "matchSelfFound": "El producto se encuentra a sí mismo en el puesto {rank}",
+    "matchSelfMissing": "El producto NO se encuentra a sí mismo: el índice no está funcionando",
+    "matchExplain": "Se ha cogido una ficha al azar, se ha descargado su propia imagen del almacenamiento y se ha buscado en el catálogo. Si una ficha no aparece al buscar con su propia foto, el índice está roto aunque el resto de resultados parezca razonable.",
+    "matchHashWarningTitle": "Embeddings no semánticos",
+    "matchHashWarningBody": "Estas fichas se indexaron con el proveedor «hash» (dHash de 64 bits + histograma), que no es un embedding visual. El recall es malo. Reindexa con CATALOG_IMAGE_EMBEDDING_PROVIDER=local para usar CLIP.",
+    "matchTargetMeta": "id {id} · categoría {category} · embedding {provider} {dimension}d"
   }
 }

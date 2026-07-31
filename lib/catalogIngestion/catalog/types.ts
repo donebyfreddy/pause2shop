@@ -5,7 +5,31 @@
  */
 
 export type Availability = "in_stock" | "out_of_stock" | "unknown";
-export type Origin = "scraped" | "externally_discovered";
+
+/**
+ * Procedencia de la ficha.
+ *
+ * `dataset_demo` son productos importados de un dataset público de
+ * investigación: sirven para probar el matching visual sin depender del
+ * scraping de tiendas reales. No tienen precio, ni stock, ni URL de compra,
+ * porque el dataset no los trae — y por eso NO se puede ofrecer "Comprar"
+ * sobre ellos. Se marcan aparte precisamente para que nadie los confunda con
+ * catálogo comercial vivo.
+ */
+export type Origin = "scraped" | "externally_discovered" | "dataset_demo";
+
+/**
+ * Estado del embedding de una ficha. Existe porque `image_embedding is not
+ * null` no distingue tres casos que hay que tratar distinto: nunca intentado,
+ * intentado y fallido, y omitido a propósito. Sin la distinción no se puede
+ * reintentar solo lo fallido.
+ */
+export type EmbeddingStatus =
+  | "pending"
+  | "processing"
+  | "ready"
+  | "failed"
+  | "skipped";
 
 export interface ProductVariant {
   id: string;
@@ -61,6 +85,31 @@ export interface ProductExtractionMeta {
   durationMs: number;
 }
 
+/**
+ * Trazabilidad de la importación desde un dataset. Permite reimportar tras un
+ * cambio upstream (comparando `version`) y borrar un dataset concreto sin
+ * tocar el catálogo scrapeado.
+ */
+export interface DatasetProvenance {
+  /** Id del dataset en el registro interno, ej. "fashion-product-images-small". */
+  id: string;
+  /** Repo real del que se leyó, ej. "hgjun/fashion-product-images-small". */
+  repo: string;
+  provider: "huggingface" | "kaggle";
+  /** Revisión/commit del dataset, o "unknown" si el proveedor no la expone. */
+  version: string;
+  split: string;
+  /** Índice de fila en el split — hace la importación reanudable y auditable. */
+  rowIndex: number;
+  importedAt: string;
+  /**
+   * Campos que este dataset NO contiene y que por tanto quedan a null. Se
+   * enumeran explícitamente para que la UI pueda decir "dato no disponible en
+   * dataset" en vez de dejar un hueco que parezca un fallo de scraping.
+   */
+  unavailableFields: string[];
+}
+
 export interface CatalogProduct {
   id: string;
   source: string;
@@ -98,6 +147,18 @@ export interface CatalogProduct {
   perceptualHash: string | null; // dHash de la imagen principal
   textEmbedding: number[] | null;
   imageEmbedding: number[] | null;
+  /** Ciclo de vida del embedding. Ver `EmbeddingStatus`. */
+  embeddingStatus: EmbeddingStatus;
+  /**
+   * Proveedor y dimensión con los que se generó `imageEmbedding`. Se guardan
+   * porque un índice con vectores de 64d (hash) y 512d (CLIP) mezclados hace
+   * que `matchProducts` descarte los de dimensión distinta en silencio: sin
+   * esto, un reindex a medias parece funcionar y en realidad no busca nada.
+   */
+  embeddingProvider: string | null;
+  embeddingDimension: number | null;
+  /** Dataset de procedencia. Solo en `origin = "dataset_demo"`. */
+  dataset: DatasetProvenance | null;
   priceHistory: PricePoint[];
   firstSeenAt: string;
   lastSeenAt: string;
@@ -107,6 +168,29 @@ export interface CatalogProduct {
   origin: Origin;
   /** Score reportado por el proveedor externo (solo origin=externally_discovered). */
   externalScore: number | null;
+}
+
+/**
+ * Normaliza un producto persistido por una versión anterior del esquema.
+ *
+ * Hace falta porque el catálogo se lee del `doc` jsonb, no de las columnas: una
+ * ficha guardada antes de que existiera `embeddingStatus` vuelve sin ese campo,
+ * y el tipo lo declara obligatorio. Sin esta hidratación, el código que hace
+ * `product.embeddingStatus === "pending"` recibiría `undefined` y contaría mal.
+ *
+ * El estado se deduce del dato que sí hay: si tiene vector, está listo.
+ */
+export function hydrateProduct(raw: CatalogProduct): CatalogProduct {
+  if (raw.embeddingStatus && raw.dataset !== undefined) return raw;
+  return {
+    ...raw,
+    embeddingStatus:
+      raw.embeddingStatus ?? (raw.imageEmbedding ? "ready" : "pending"),
+    embeddingProvider: raw.embeddingProvider ?? null,
+    embeddingDimension:
+      raw.embeddingDimension ?? raw.imageEmbedding?.length ?? null,
+    dataset: raw.dataset ?? null,
+  };
 }
 
 /** Producto tal y como sale de un conector, antes de dedup/persistencia. */
@@ -133,8 +217,10 @@ export type JobStatus =
   | "queued"
   | "running"
   | "discovering"
+  | "downloading"
   | "scraping"
   | "normalizing"
+  | "uploading_images"
   | "saving"
   | "embedding"
   | "partially_completed"
@@ -146,8 +232,10 @@ export type JobStatus =
 export const ACTIVE_JOB_STATUSES: JobStatus[] = [
   "running",
   "discovering",
+  "downloading",
   "scraping",
   "normalizing",
+  "uploading_images",
   "saving",
   "embedding",
 ];
@@ -167,7 +255,8 @@ export type JobType =
   | "refresh_availability"
   | "reindex_embeddings"
   | "cleanup_inactive"
-  | "retry_failed";
+  | "retry_failed"
+  | "dataset_import";
 
 /**
  * Contadores del job. Todos son observables desde el admin y ninguno se
@@ -194,6 +283,14 @@ export interface JobProgress {
   /** Coste estimado en USD de las llamadas a la IA de este job. */
   aiCostUsd: number;
   aiTokens: number;
+  /** Imágenes subidas con éxito a storage persistente. */
+  imagesUploaded: number;
+  /** Imágenes que ya estaban en storage y no se resubieron. */
+  imagesSkipped: number;
+  /** Embeddings generados con éxito en este job. */
+  embeddingsReady: number;
+  /** Fichas guardadas con el embedding en cola (embeddingStatus=pending). */
+  embeddingsQueued: number;
   /** Etapa en curso. Null en jobs que no reportan etapas. */
   stage: string | null;
 }
@@ -214,6 +311,10 @@ export function emptyJobProgress(): JobProgress {
     withBrowser: 0,
     aiCostUsd: 0,
     aiTokens: 0,
+    imagesUploaded: 0,
+    imagesSkipped: 0,
+    embeddingsReady: 0,
+    embeddingsQueued: 0,
     stage: null,
   };
 }
@@ -260,6 +361,17 @@ export interface ProductFilters {
   q?: string;
   active?: boolean;
   origin?: Origin;
+  /**
+   * Los tres siguientes se filtran en SERVIDOR a propósito.
+   *
+   * El admin filtraba `origin` en cliente sobre la página ya cargada, con un
+   * aviso de que solo aplicaba a esos 24 resultados. Con un catálogo de miles de
+   * fichas eso no es un filtro: es una coincidencia. `color` y `gender` viven en
+   * el `doc` jsonb y `embeddingStatus` tiene columna e índice propios.
+   */
+  color?: string;
+  gender?: string;
+  embeddingStatus?: EmbeddingStatus;
   page?: number;
   limit?: number;
 }

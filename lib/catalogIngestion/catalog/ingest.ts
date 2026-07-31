@@ -24,6 +24,12 @@ export interface IngestOptions {
   externalScore?: number | null;
   /** Si false, el producto se guarda inactivo (external con score bajo). */
   active?: boolean;
+  /**
+   * Limita la deduplicación a los niveles exactos e indexables. Ver
+   * `FindDuplicateOptions.exactOnly`: lo usan las fuentes con ids propios y
+   * únicos, donde el escaneo difuso es caro y además solo puede equivocarse.
+   */
+  exactDedupOnly?: boolean;
 }
 
 export async function ingestProduct(
@@ -46,7 +52,7 @@ export async function ingestProduct(
     imageSha256: primaryImage?.sha256 ?? null,
     perceptualHash: normalized.perceptualHash,
     imageEmbedding: normalized.imageEmbedding,
-  });
+  }, { exactOnly: options.exactDedupOnly });
 
   if (duplicate) {
     const existing = duplicate.product;

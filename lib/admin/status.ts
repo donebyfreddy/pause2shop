@@ -184,6 +184,18 @@ export const JOB_META: Record<JobStatus, StatusMeta> = {
     tone: "info",
     description: "Descargando y extrayendo fichas de producto.",
   },
+  // Etapas propias de la importación de datasets. Separarlas de "extrayendo"
+  // permite ver si lo que va lento es el proveedor del dataset o el storage.
+  downloading: {
+    label: "Descargando",
+    tone: "info",
+    description: "Leyendo filas e imágenes del dataset de origen.",
+  },
+  uploading_images: {
+    label: "Subiendo imágenes",
+    tone: "info",
+    description: "Publicando las imágenes en el almacenamiento persistente.",
+  },
   normalizing: {
     label: "Normalizando",
     tone: "info",
@@ -308,6 +320,7 @@ export const JOB_TYPE_LABEL: Record<string, string> = {
   reindex_embeddings: "Reindexado de embeddings",
   cleanup_inactive: "Limpieza de inactivos",
   retry_failed: "Reintento",
+  dataset_import: "Importación de dataset",
 };
 
 /** Fallback seguro: un estado nuevo del backend se muestra tal cual, en neutro. */

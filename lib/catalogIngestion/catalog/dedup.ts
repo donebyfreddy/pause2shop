@@ -48,9 +48,32 @@ export interface DedupMatch {
   level: DedupLevel;
 }
 
+export interface FindDuplicateOptions {
+  /**
+   * Salta los niveles difusos (perceptual_hash, embedding, brand_title_color) y
+   * se queda en los exactos e indexables.
+   *
+   * Existe por dos razones, las dos medidas:
+   *
+   *  · COSTE. Los niveles difusos recorren `store.allProducts()`, que trae
+   *    hasta 5.000 `doc` jsonb completos (embeddings incluidos) por CADA
+   *    producto que no case por un nivel exacto. Un producto nuevo nunca casa,
+   *    así que importar 1.000 fichas nuevas serían 1.000 escaneos completos:
+   *    gigabytes de egreso de Neon para no encontrar nada.
+   *
+   *  · CORRECCIÓN. Cuando la fuente tiene ids propios y únicos por construcción
+   *    (un dataset cerrado), el id ES la autoridad y el nivel difuso solo puede
+   *    equivocarse. Y se equivoca precisamente con fotos de catálogo sobre
+   *    fondo blanco, que es lo que hay aquí: el mismo fallo que fusionó tres
+   *    productos de Ecoalf.
+   */
+  exactOnly?: boolean;
+}
+
 export async function findDuplicate(
   store: CatalogStore,
-  c: DedupCandidate
+  c: DedupCandidate,
+  options: FindDuplicateOptions = {}
 ): Promise<DedupMatch | null> {
   const config = getConfig();
 
@@ -74,6 +97,10 @@ export async function findDuplicate(
     const byGtin = await store.findByGtin(c.gtin);
     if (byGtin) return { product: byGtin, level: "sku_gtin" };
   }
+
+  // A partir de aquí empieza lo caro. Quien sabe que su fuente tiene ids
+  // autoritativos se baja antes de pagar el escaneo completo.
+  if (options.exactOnly) return null;
 
   // Niveles difusos: recorren candidatos en memoria. El identityKey se
   // comprueba junto a los visuales para no pagar dos pasadas.

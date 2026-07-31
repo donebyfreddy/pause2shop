@@ -7,6 +7,7 @@ import type {
   ProductFilters,
   SourceState,
 } from "./types";
+import { hydrateProduct } from "./types";
 import type { CatalogStore, ExtractionStats, StoreStats } from "./store";
 import { aggregateExtractionStats } from "./store";
 import { getConfig } from "../config/index";
@@ -48,6 +49,11 @@ export class FileCatalogStore implements CatalogStore {
         this.data.duplicatesDetected ??= 0;
         this.data.jobs ??= {};
         this.data.sources ??= {};
+        // Igual que en Postgres: el fichero puede venir de un esquema anterior.
+        // Se hidrata una vez al cargar en vez de en cada lectura.
+        for (const [id, product] of Object.entries(this.data.products)) {
+          this.data.products[id] = hydrateProduct(product);
+        }
       } catch {
         // Fichero corrupto: empezamos vacío antes que impedir el arranque.
         this.data = { products: {}, sources: {}, jobs: {}, duplicatesDetected: 0 };
@@ -94,6 +100,9 @@ export class FileCatalogStore implements CatalogStore {
       if (filters.brand && normalizeText(p.brand) !== normalizeText(filters.brand)) return false;
       if (filters.active !== undefined && p.isActive !== filters.active) return false;
       if (filters.origin && p.origin !== filters.origin) return false;
+      if (filters.embeddingStatus && p.embeddingStatus !== filters.embeddingStatus) return false;
+      if (filters.color && normalizeText(p.color) !== normalizeText(filters.color)) return false;
+      if (filters.gender && normalizeText(p.gender) !== normalizeText(filters.gender)) return false;
       if (q && !normalizeText(`${p.title} ${p.brand} ${p.description}`).includes(q)) return false;
       return true;
     });

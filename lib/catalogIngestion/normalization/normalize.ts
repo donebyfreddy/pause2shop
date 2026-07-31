@@ -68,18 +68,73 @@ const CATEGORY_MAP: Record<string, string> = {
   sneakers: "sneakers", trainers: "sneakers", bota: "boots", botas: "boots", boots: "boots",
   sandalia: "sandals", sandalias: "sandals", sandals: "sandals", tacon: "heels", heels: "heels",
   bolso: "bag", bolsos: "bag", bag: "bag", bags: "bag", mochila: "backpack", backpack: "backpack",
-  cinturon: "belt", belt: "belt", bufanda: "scarf", scarf: "scarf",
+  cinturon: "belt", belt: "belt", bufanda: "scarf", scarf: "scarf", scarves: "scarf",
   gorra: "cap", cap: "cap", sombrero: "hat", hat: "hat",
   gafas: "sunglasses", sunglasses: "sunglasses", reloj: "watch", watch: "watch",
   short: "shorts", shorts: "shorts", bermuda: "shorts",
   top: "top", tops: "top", body: "bodysuit", bodysuit: "bodysuit", mono: "jumpsuit", jumpsuit: "jumpsuit",
+  // Vocabulario de `articleType` del dataset fashion-product-images-small que
+  // la regla de plural no resuelve sola (o cuyo singular tampoco estaba).
+  handbag: "bag", handbags: "bag", clutch: "bag", clutches: "bag",
+  "flip flop": "sandals", "flip flops": "sandals", chanclas: "sandals",
+  flat: "shoes", flats: "shoes", mocasin: "shoes", loafers: "shoes",
+  tunic: "top", tunics: "top", kurta: "top", kurtas: "top", kurtis: "top",
+  saree: "dress", sarees: "dress", sari: "dress",
+  wallet: "wallet", wallets: "wallet", cartera: "wallet",
+  earring: "jewelry", earrings: "jewelry", pendientes: "jewelry",
+  necklace: "jewelry", collar: "jewelry", bracelet: "jewelry", pulsera: "jewelry",
+  ring: "jewelry", anillo: "jewelry", pendant: "jewelry",
+  sock: "socks", socks: "socks", calcetines: "socks",
+  capri: "trousers", capris: "trousers", leggings: "trousers", jeggings: "trousers",
+  // Cuidado personal. Estos NO son prendas, pero el dataset los trae y el
+  // catálogo tiene que decir algo honesto de ellos.
+  //
+  // Sin estas entradas, "Perfume and Body Mist" caía en el bucle por palabras,
+  // encontraba "body" y quedaba clasificado como `bodysuit`: 22 perfumes
+  // catalogados como bodies. Como el bucle recorre las palabras EN ORDEN, tener
+  // "perfume" en el mapa lo resuelve antes de llegar a "body".
+  perfume: "fragrance", fragrance: "fragrance", colonia: "fragrance",
+  perfumes: "fragrance", deodorant: "fragrance", desodorante: "fragrance",
+  lipstick: "makeup", makeup: "makeup", maquillaje: "makeup",
+  "nail polish": "makeup", "lip gloss": "makeup", mascara: "makeup",
+  foundation: "makeup", kajal: "makeup", eyeshadow: "makeup",
 };
+
+/**
+ * Singular inglés aproximado. No pretende ser un lematizador: solo cubre los
+ * plurales regulares con los que llegan los `articleType` del dataset
+ * ("Shirts", "Watches", "Jackets").
+ */
+function singularize(word: string): string {
+  if (word.length <= 3) return word;
+  if (word.endsWith("ies")) return `${word.slice(0, -3)}y`;
+  // "watches" -> "watch", pero no "dresses" -> "dress" por esta vía (ya está
+  // en el mapa) ni "shoes" -> "sho".
+  if (/(ch|sh|s|x|z)es$/.test(word)) return word.slice(0, -2);
+  if (word.endsWith("s") && !word.endsWith("ss")) return word.slice(0, -1);
+  return word;
+}
 
 export function normalizeCategory(input: string | null | undefined): string | null {
   const t = normalizeText(input);
   if (!t) return null;
   if (CATEGORY_MAP[t]) return CATEGORY_MAP[t];
-  for (const w of t.split(" ")) if (CATEGORY_MAP[w]) return CATEGORY_MAP[w];
+  const words = t.split(" ");
+  for (const w of words) if (CATEGORY_MAP[w]) return CATEGORY_MAP[w];
+
+  // Último recurso: plural inglés. Se intenta SOLO cuando nada ha casado, así
+  // que no puede alterar ningún resultado que ya funcionaba.
+  //
+  // Sin esto, "Shirts" se quedaba como "shirts" — que no está en el mapa ni en
+  // CATEGORY_FAMILY —, así que un producto de dataset con articleType "Shirts"
+  // no casaba por categoría ni por familia con un item detectado como "shirt".
+  // El matching fallaba en silencio, sin error y sin resultado.
+  const singularFull = singularize(t);
+  if (CATEGORY_MAP[singularFull]) return CATEGORY_MAP[singularFull];
+  for (const w of words) {
+    const singular = singularize(w);
+    if (CATEGORY_MAP[singular]) return CATEGORY_MAP[singular];
+  }
   return t;
 }
 
@@ -98,8 +153,13 @@ const CATEGORY_FAMILY: Record<string, string> = {
   heels: "footwear",
   bag: "bags_accessories", backpack: "bags_accessories", belt: "bags_accessories",
   scarf: "bags_accessories", cap: "bags_accessories", hat: "bags_accessories",
-  sunglasses: "bags_accessories",
-  watch: "watches_jewelry",
+  sunglasses: "bags_accessories", wallet: "bags_accessories",
+  socks: "clothing",
+  watch: "watches_jewelry", jewelry: "watches_jewelry",
+  // `beauty` no es una familia que pause2shop detecte en vídeo: se declara para
+  // que estas fichas tengan una familia real en vez de `null`, y para que quede
+  // explícito que NO son ropa.
+  fragrance: "beauty", makeup: "beauty",
 };
 
 export function categoryFamily(canonical: string | null): string | null {
@@ -146,6 +206,19 @@ export function identityKey(
 /**
  * Hash de contenido: sha256 de los campos que definen la ficha. Si no cambia
  * entre syncs, el producto solo actualiza lastSeenAt (sync incremental barato).
+ *
+ * La TAXONOMÍA cuenta como contenido. Antes no entraba, y eso hacía que un
+ * cambio de categoría fuese invisible al detector de cambios: se corrigió el
+ * mapeo que clasificaba 22 perfumes como `bodysuit`, se reimportaron las 1.000
+ * fichas, el job reportó "995 actualizados"… y los 22 perfumes seguían siendo
+ * bodies, porque el hash no había cambiado y `ingestProduct` solo tocaba
+ * `lastSeenAt`. La categoría decide con qué casa un producto en el matching, así
+ * que un cambio de categoría ES un cambio de la ficha.
+ *
+ * Coste de incluirla: la primera ejecución tras este cambio ve todas las fichas
+ * existentes como "cambiadas" y las reescribe una vez. Es una escritura por
+ * producto, sin pérdida de datos (`ingestProduct` conserva id, origen,
+ * priceHistory y firstSeenAt).
  */
 export function computeContentHash(p: {
   title: string;
@@ -157,10 +230,14 @@ export function computeContentHash(p: {
   color: string | null;
   images: Array<{ url: string }>;
   sizes: string[];
+  category?: string | null;
+  subcategory?: string | null;
+  gender?: string | null;
 }): string {
   const payload = JSON.stringify([
     p.title, p.brand, p.description, p.price, p.currency,
     p.availability, p.color, p.images.map((i) => i.url), p.sizes,
+    p.category ?? null, p.subcategory ?? null, p.gender ?? null,
   ]);
   return createHash("sha256").update(payload).digest("hex");
 }
