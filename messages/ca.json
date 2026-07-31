@@ -935,7 +935,8 @@
         "alternativesTitle": "Alternatives del catàleg",
         "threshold": "Llindar {pct}%",
         "demoProduct": "Fitxa de dataset: sense preu ni compra",
-        "noPrice": "Sense preu"
+        "noPrice": "Sense preu",
+        "notSearched": "Aquest objecte no s'ha cercat al catàleg."
       },
       "external": {
         "title": "Resultats a Internet",

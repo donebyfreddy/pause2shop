@@ -161,8 +161,18 @@ interface ScoredCandidate {
   matchStage: MatchStage;
 }
 
-/** Cascada visual sobre un producto candidato. */
-function visualScoreFor(q: MatchQuery, p: CatalogProduct): ScoredCandidate | null {
+/**
+ * Cascada visual sobre un producto candidato.
+ *
+ * `precomputedSimilarity` viene de pgvector cuando la preselección se hizo en
+ * la base: en ese caso la ficha llega SIN embedding (no se transfiere) y
+ * calcularlo aquí sería imposible además de redundante.
+ */
+function visualScoreFor(
+  q: MatchQuery,
+  p: CatalogProduct,
+  precomputedSimilarity?: number
+): ScoredCandidate | null {
   // 1. Hash exacto: coincidencia perfecta
   if (q.imageSha256 && p.images.some((i) => i.sha256 === q.imageSha256)) {
     return { product: p, visualScore: 1, matchStage: "exact_hash" };
@@ -175,8 +185,17 @@ function visualScoreFor(q: MatchQuery, p: CatalogProduct): ScoredCandidate | nul
       return { product: p, visualScore: 1 - dist / 64, matchStage: "perceptual_hash" };
     }
   }
-  // 3. Embedding coseno (solo si las dimensiones coinciden — un reindex a
-  // medias puede dejar vectores de providers distintos conviviendo)
+  // 3a. Coseno ya calculado por pgvector.
+  if (precomputedSimilarity != null) {
+    return {
+      product: p,
+      visualScore: Math.max(0, precomputedSimilarity),
+      matchStage: "embedding",
+    };
+  }
+  // 3b. Coseno en memoria (store de fichero, o sin pgvector). Solo si las
+  // dimensiones coinciden — un reindex a medias puede dejar vectores de
+  // providers distintos conviviendo.
   if (
     q.imageEmbedding &&
     p.imageEmbedding &&
@@ -186,6 +205,56 @@ function visualScoreFor(q: MatchQuery, p: CatalogProduct): ScoredCandidate | nul
     return { product: p, visualScore: Math.max(0, sim), matchStage: "embedding" };
   }
   return null;
+}
+
+/**
+ * Cuántos candidatos pide la preselección vectorial. Generoso a propósito: los
+ * filtros de categoría/marca/género se aplican DESPUÉS, en memoria, así que un
+ * shortlist corto podría quedarse sin nada que ofrecer tras filtrar.
+ * Medido con ~1000 fichas: 300 candidatos = 1,05 MB (frente a 14,5 MB del
+ * catálogo entero).
+ */
+const VECTOR_SHORTLIST = Number(process.env.CATALOG_VECTOR_SHORTLIST) || 300;
+
+/**
+ * Candidatos sobre los que puntuar.
+ *
+ * Con pgvector se preseleccionan en la base por similitud; si no, se recorre el
+ * catálogo en memoria como siempre. Que la preselección sea por embedding no
+ * pierde identidades por hash: una imagen idéntica o casi idéntica tiene
+ * también un embedding casi idéntico, así que entra en el shortlist por su
+ * propio pie y sus etapas `exact_hash` / `perceptual_hash` se siguen evaluando.
+ */
+async function gatherCandidates(
+  store: CatalogStore,
+  q: MatchQuery
+): Promise<{
+  candidates: CatalogProduct[];
+  similarityById: Map<string, number>;
+}> {
+  const similarityById = new Map<string, number>();
+  if (q.imageEmbedding?.length && store.searchByImageEmbedding) {
+    try {
+      const shortlist = await store.searchByImageEmbedding(q.imageEmbedding, {
+        limit: Math.max(VECTOR_SHORTLIST, (q.topK ?? 10) * 4),
+      });
+      if (shortlist.length > 0) {
+        for (const { product, similarity } of shortlist) {
+          similarityById.set(product.id, similarity);
+        }
+        return { candidates: shortlist.map((s) => s.product), similarityById };
+      }
+    } catch (err) {
+      // La preselección es una optimización: si falla (extensión ausente,
+      // dimensiones mezcladas…) se recorre el catálogo como antes en vez de
+      // devolver cero resultados.
+      console.warn(
+        "[catalog] preselección vectorial no disponible, se recorre el catálogo:",
+        err instanceof Error ? err.message : err
+      );
+    }
+  }
+  return { candidates: await getProductsForMatching(store), similarityById };
 }
 
 export function combineScores(
@@ -219,8 +288,12 @@ export async function matchProducts(store: CatalogStore, q: MatchQuery): Promise
   // Una búsqueda VISUAL sin imagen presentable no da resultado utilizable.
   const requireImage = q.requireImage ?? hasImage;
 
+  // Candidatos: preselección por pgvector si el store la ofrece, o el catálogo
+  // entero en memoria. Ver `shortlistByEmbedding`.
+  const { candidates, similarityById } = await gatherCandidates(store, q);
+
   const results: ProductMatch[] = [];
-  for (const p of await getProductsForMatching(store)) {
+  for (const p of candidates) {
     if (!p.isActive) continue;
     if (requireImage && !hasPresentableImage(p)) continue;
     // Filtros duros: si el caller especifica categoría/marca los usamos también
@@ -233,7 +306,7 @@ export async function matchProducts(store: CatalogStore, q: MatchQuery): Promise
     let visual = 0;
     let stage: MatchStage = "embedding";
     if (hasImage) {
-      const scored = visualScoreFor(q, p);
+      const scored = visualScoreFor(q, p, similarityById.get(p.id));
       if (!scored) continue; // sin señal visual comparable, fuera
       visual = scored.visualScore;
       stage = scored.matchStage;

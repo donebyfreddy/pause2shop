@@ -935,7 +935,8 @@
         "alternativesTitle": "Alternativas del catálogo",
         "threshold": "Umbral {pct}%",
         "demoProduct": "Ficha de dataset: sin precio ni compra",
-        "noPrice": "Sin precio"
+        "noPrice": "Sin precio",
+        "notSearched": "Este objeto no se ha buscado en el catálogo."
       },
       "external": {
         "title": "Resultados en Internet",

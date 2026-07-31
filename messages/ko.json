@@ -935,7 +935,8 @@
         "alternativesTitle": "카탈로그 대안",
         "threshold": "임계값 {pct}%",
         "demoProduct": "데이터셋 항목: 가격 및 구매 없음",
-        "noPrice": "가격 없음"
+        "noPrice": "가격 없음",
+        "notSearched": "이 객체는 카탈로그에서 검색되지 않았습니다."
       },
       "external": {
         "title": "인터넷 결과",

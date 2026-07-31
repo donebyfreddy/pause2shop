@@ -935,7 +935,8 @@
         "alternativesTitle": "بدائل الكتالوج",
         "threshold": "الحد {pct}%",
         "demoProduct": "سجل مجموعة بيانات: بلا سعر ولا شراء",
-        "noPrice": "بلا سعر"
+        "noPrice": "بلا سعر",
+        "notSearched": "لم يتم البحث عن هذا الكائن في الكتالوج."
       },
       "external": {
         "title": "نتائج على الإنترنت",

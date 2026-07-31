@@ -43,6 +43,11 @@ type Props = {
    * muestra en vez del skeleton para que un fallo no parezca una carga eterna.
    */
   failureDetail?: string | null;
+  /**
+   * Estado de la cola de matching. `undefined` significa que este objeto NUNCA
+   * se encoló, que no es lo mismo que haber fallado.
+   */
+  matchingStatus?: DetectedItem["matchingStatus"];
   /** Resaltada por sincronización con el bounding box. */
   selected?: boolean;
   /** Clic en la tarjeta: resalta su bounding box en la imagen/vídeo. */
@@ -98,17 +103,27 @@ function DetectedAttributes({ item }: { readonly item: DetectedItem }) {
 }
 
 /**
- * El matching terminó sin resultado utilizable (timeout, proveedor caído).
- * Se dice, con el detalle técnico si lo hay: es lo que permite distinguir
- * "tu catálogo no lo tiene" de "no se pudo mirar".
+ * Estado sin bloque de catálogo: o no se buscó, o la búsqueda falló.
+ *
+ * Son cosas distintas y decirlas igual es mentir: "no se pudo consultar el
+ * catálogo" en un objeto que ni siquiera se encoló hace pensar que el catálogo
+ * está caído cuando no lo está.
  */
-function MatchFailed({ detail }: { readonly detail?: string | null }) {
+function NoCatalogBlock({
+  reason,
+  detail,
+}: {
+  readonly reason: "not_searched" | "failed";
+  readonly detail?: string | null;
+}) {
   const t = useTranslations("studio.matching.catalog");
+  const text =
+    reason === "not_searched" ? t("notSearched") : detail?.trim() || t("error");
   return (
     <section className="rounded-xl border border-line-strong bg-white/[0.02] p-3">
       <p className="flex items-start gap-1.5 text-xs text-ink-muted">
         <PackageSearch className="mt-0.5 size-3.5 shrink-0 text-ink-faint" aria-hidden />
-        <span>{detail?.trim() || t("error")}</span>
+        <span>{text}</span>
       </p>
     </section>
   );
@@ -121,6 +136,7 @@ export default function DetectionResultCard({
   loading,
   externalLoading,
   failureDetail,
+  matchingStatus,
   selected,
   onSelect,
   onSearchExternal,
@@ -141,12 +157,16 @@ export default function DetectionResultCard({
   const detectionId = detection?.detectionId;
 
   /**
-   * Bloque de catálogo, o el estado honesto cuando no hay resultado.
+   * Bloque de catálogo, o el estado honesto cuando no hay resultado. Son TRES
+   * casos distintos y cada uno pide al usuario algo diferente:
    *
-   * El caso que importa es el tercero: matching TERMINADO y sin
-   * `detection` (timeout de red, proveedor caído). Antes se pintaba el mismo
-   * skeleton que durante la búsqueda, así que un fallo era indistinguible de
-   * "todavía cargando" y la tarjeta giraba para siempre.
+   *   buscando            → skeleton
+   *   nunca se buscó      → no hay nada roto; este objeto no entró en la cola
+   *                         (prioridad baja, o el tope de búsquedas del frame)
+   *   se buscó y falló    → el motivo real (timeout, catálogo caído)
+   *
+   * Antes los tres caían en el mismo mensaje de fallo, así que un objeto que ni
+   * se intentó buscar acusaba al catálogo de estar caído.
    */
   function renderCatalog() {
     if (detection) {
@@ -160,7 +180,9 @@ export default function DetectionResultCard({
       );
     }
     if (loading) return <MatchingProgress stage="catalog" />;
-    return <MatchFailed detail={failureDetail} />;
+    // Sin estado de matching no hubo intento: el objeto nunca se encoló.
+    if (!matchingStatus) return <NoCatalogBlock reason="not_searched" />;
+    return <NoCatalogBlock reason="failed" detail={failureDetail} />;
   }
 
   return (

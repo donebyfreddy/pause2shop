@@ -935,7 +935,8 @@
         "alternativesTitle": "Katalog-Alternativen",
         "threshold": "Schwelle {pct} %",
         "demoProduct": "Datensatz-Eintrag: ohne Preis, nicht kaufbar",
-        "noPrice": "Kein Preis"
+        "noPrice": "Kein Preis",
+        "notSearched": "Dieses Objekt wurde nicht im Katalog gesucht."
       },
       "external": {
         "title": "Ergebnisse im Internet",

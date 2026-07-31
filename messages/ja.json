@@ -935,7 +935,8 @@
         "alternativesTitle": "カタログの他の候補",
         "threshold": "しきい値 {pct}%",
         "demoProduct": "データセットの項目: 価格・購入なし",
-        "noPrice": "価格なし"
+        "noPrice": "価格なし",
+        "notSearched": "このオブジェクトはカタログで検索されていません。"
       },
       "external": {
         "title": "インターネットの結果",

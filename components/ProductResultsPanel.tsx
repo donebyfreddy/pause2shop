@@ -123,6 +123,7 @@ function GroupedProductList({
       loading={item.matchingStatus === "searching" || item.matchingStatus === "pending"}
       externalLoading={item.external_loading}
       failureDetail={item.matching_debug?.detail}
+      matchingStatus={item.matchingStatus}
       selected={Boolean(selectedKey) && itemKey(item) === selectedKey}
       onSelect={onSelectItem}
       onSearchExternal={onSearchExternal}

@@ -196,6 +196,42 @@ export class PostgresCatalogStore implements CatalogStore {
     return res.rows.map(rowToProduct);
   }
 
+  /**
+   * Top-N por similitud coseno, calculada por pgvector.
+   *
+   * Se filtra por `embedding_dimension` a propósito: el índice puede tener
+   * vectores de distinta dimensión conviviendo (un reindex a medias, o fichas
+   * antiguas del provider `hash` de 64d). Sin el filtro, pgvector aborta la
+   * consulta entera con "different vector dimensions" en cuanto se topa con
+   * una — no la ignora.
+   *
+   * El `doc` viaja sin embeddings (`- 'imageEmbedding' - 'textEmbedding'`):
+   * son el 75% del payload y aquí ya no sirven para nada, porque la similitud
+   * la ha calculado la base.
+   */
+  async searchByImageEmbedding(
+    embedding: number[],
+    opts: { limit: number }
+  ): Promise<Array<{ product: CatalogProduct; similarity: number }>> {
+    if (!this.hasVector) return [];
+    const res = await getPool().query<Row & { similarity: string | number }>(
+      `select doc - 'imageEmbedding' - 'textEmbedding' as doc,
+              1 - (image_embedding <=> $1::vector) as similarity
+         from catalog_products
+        where is_active
+          and image_embedding is not null
+          and embedding_dimension = $2
+        order by image_embedding <=> $1::vector
+        limit $3`,
+      [JSON.stringify(embedding), embedding.length, opts.limit]
+    );
+    return res.rows.map((row) => ({
+      product: rowToProduct(row),
+      // pgvector puede devolver el escalar como texto según el driver.
+      similarity: Math.max(0, Math.min(1, Number(row.similarity))),
+    }));
+  }
+
   async setActive(id: string, active: boolean): Promise<void> {
     await getPool().query(
       `update catalog_products

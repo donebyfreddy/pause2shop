@@ -935,7 +935,8 @@
         "alternativesTitle": "Alternative del catalogo",
         "threshold": "Soglia {pct}%",
         "demoProduct": "Scheda di dataset: senza prezzo né acquisto",
-        "noPrice": "Senza prezzo"
+        "noPrice": "Senza prezzo",
+        "notSearched": "Questo oggetto non è stato cercato nel catalogo."
       },
       "external": {
         "title": "Risultati su Internet",

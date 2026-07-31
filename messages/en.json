@@ -935,7 +935,8 @@
         "alternativesTitle": "Catalog alternatives",
         "threshold": "Threshold {pct}%",
         "demoProduct": "Dataset record: no price, not purchasable",
-        "noPrice": "No price"
+        "noPrice": "No price",
+        "notSearched": "This object has not been searched in the catalog."
       },
       "external": {
         "title": "Results on the internet",

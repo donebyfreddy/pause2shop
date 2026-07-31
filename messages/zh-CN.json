@@ -935,7 +935,8 @@
         "alternativesTitle": "目录备选",
         "threshold": "阈值 {pct}%",
         "demoProduct": "数据集条目：无价格、不可购买",
-        "noPrice": "无价格"
+        "noPrice": "无价格",
+        "notSearched": "尚未在目录中搜索此对象。"
       },
       "external": {
         "title": "互联网结果",

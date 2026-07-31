@@ -75,6 +75,27 @@ export interface CatalogStore {
   /** Candidatos para matching/dedup en memoria. En Postgres se limita el
    * conjunto; con pgvector la búsqueda vectorial se hace en SQL. */
   allProducts(): Promise<CatalogProduct[]>;
+  /**
+   * Preselección por similitud visual RESUELTA EN LA BASE (pgvector).
+   *
+   * Opcional: solo la implementa el store de Postgres con la extensión
+   * `vector` disponible. Quien la use debe seguir funcionando sin ella (el
+   * store de fichero no la tiene) recorriendo `allProducts()`.
+   *
+   * Existe porque recorrer el catálogo en memoria obligaba a traerse el
+   * documento completo de cada ficha —con el embedding de 512 floats dentro
+   * del JSONB—: 14,5 MB y ~7 s por búsqueda con ~1000 productos, que bajo
+   * concurrencia se comía el `query_timeout` del pool y dejaba el catálogo
+   * "no disponible". Medido con la misma base: 300 candidatos = 1,05 MB y
+   * ~2,5 s.
+   *
+   * Devuelve las fichas SIN embeddings (no hacen falta: la similitud ya viene
+   * calculada) ordenadas de más a menos parecida.
+   */
+  searchByImageEmbedding?(
+    embedding: number[],
+    opts: { limit: number }
+  ): Promise<Array<{ product: CatalogProduct; similarity: number }>>;
   setActive(id: string, active: boolean): Promise<void>;
   recordPrice(id: string, point: PricePoint): Promise<void>;
   countProducts(source?: string): Promise<number>;

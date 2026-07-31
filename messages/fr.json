@@ -935,7 +935,8 @@
         "alternativesTitle": "Alternatives du catalogue",
         "threshold": "Seuil {pct} %",
         "demoProduct": "Fiche de jeu de données : sans prix ni achat",
-        "noPrice": "Sans prix"
+        "noPrice": "Sans prix",
+        "notSearched": "Cet objet n'a pas été recherché dans le catalogue."
       },
       "external": {
         "title": "Résultats sur Internet",
