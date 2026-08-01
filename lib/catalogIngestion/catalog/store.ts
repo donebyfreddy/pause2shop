@@ -58,6 +58,27 @@ export function emptyExtractionStats(): ExtractionStats {
   };
 }
 
+/** Filtros que la búsqueda vectorial aplica EN LA BASE, antes de ordenar. */
+export interface VectorSearchOptions {
+  /** Cuántos candidatos devolver. */
+  limit: number;
+  /**
+   * Valores de `category` compatibles con la consulta, ya expandidos por
+   * `compatibleCategories`. `undefined` = no acotar por categoría.
+   */
+  categories?: string[];
+  /** Género detectado. Solo excluye fichas que declaren otro incompatible. */
+  gender?: string;
+  /** Exigir que la ficha tenga imagen presentable. */
+  requireImage?: boolean;
+}
+
+export interface VectorSearchHit {
+  product: CatalogProduct;
+  /** Similitud coseno 0-1 calculada por pgvector. */
+  similarity: number;
+}
+
 export interface CatalogStore {
   readonly backend: "postgres" | "file";
   init(): Promise<void>;
@@ -94,8 +115,8 @@ export interface CatalogStore {
    */
   searchByImageEmbedding?(
     embedding: number[],
-    opts: { limit: number }
-  ): Promise<Array<{ product: CatalogProduct; similarity: number }>>;
+    opts: VectorSearchOptions
+  ): Promise<VectorSearchHit[]>;
   setActive(id: string, active: boolean): Promise<void>;
   recordPrice(id: string, point: PricePoint): Promise<void>;
   countProducts(source?: string): Promise<number>;

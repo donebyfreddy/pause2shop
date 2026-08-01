@@ -7,7 +7,13 @@ import type {
   SourceState,
 } from "./types";
 import { hydrateProduct } from "./types";
-import type { CatalogStore, ExtractionStats, StoreStats } from "./store";
+import type {
+  CatalogStore,
+  ExtractionStats,
+  StoreStats,
+  VectorSearchHit,
+  VectorSearchOptions,
+} from "./store";
 import { normalizeText } from "../normalization/normalize";
 import { invalidateProductSnapshot } from "./productSnapshot";
 
@@ -33,6 +39,55 @@ function rowToProduct(row: Row): CatalogProduct {
   // esquema y faltarle campos que hoy son obligatorios.
   return hydrateProduct(row.doc);
 }
+
+/**
+ * Proyección SLIM del producto para la búsqueda.
+ *
+ * El `doc` completo trae historial de precios, metadatos de la fuente, la
+ * evidencia de extracción y todas las variantes: nada de eso interviene ni en
+ * el ranking ni en la tarjeta, y multiplica por 30 el payload. Medido sobre
+ * 24 candidatos: doc entero 82 KB, esta proyección 32 KB (y 1022 KB cuando se
+ * traían 300).
+ *
+ * `hydrateProduct` rellena con valores por defecto lo que no viene, así que un
+ * documento parcial se convierte en un `CatalogProduct` válido. Si el ranking
+ * empieza a usar un campo nuevo, hay que añadirlo AQUÍ además de en el ranking
+ * — si no, llegará siempre vacío y el criterio no puntuará nunca.
+ */
+const SLIM_PRODUCT_JSON = `jsonb_build_object(
+  'id', doc->'id',
+  'title', doc->'title',
+  'brand', doc->'brand',
+  'category', doc->'category',
+  'subcategory', doc->'subcategory',
+  'style', doc->'style',
+  'color', doc->'color',
+  'secondaryColors', doc->'secondaryColors',
+  'material', doc->'material',
+  'pattern', doc->'pattern',
+  'gender', doc->'gender',
+  'primaryImage', doc->'primaryImage',
+  'images', doc->'images',
+  'price', doc->'price',
+  'currency', doc->'currency',
+  'availability', doc->'availability',
+  'canonicalUrl', doc->'canonicalUrl',
+  'source', doc->'source',
+  'origin', doc->'origin',
+  'dataset', doc->'dataset',
+  'perceptualHash', doc->'perceptualHash',
+  'isActive', doc->'isActive'
+)`;
+
+/**
+ * `hnsw.ef_search` para la búsqueda vectorial, o 0 para dejar el de pgvector.
+ * Se valida como entero en rango: interpolarlo en SQL sin comprobarlo sería
+ * una inyección, porque `SET` no admite parámetros ligados.
+ */
+const HNSW_EF_SEARCH = (() => {
+  const raw = Number(process.env.CATALOG_HNSW_EF_SEARCH);
+  return Number.isInteger(raw) && raw >= 1 && raw <= 1000 ? raw : 0;
+})();
 
 export class PostgresCatalogStore implements CatalogStore {
   readonly backend = "postgres" as const;
@@ -211,25 +266,89 @@ export class PostgresCatalogStore implements CatalogStore {
    */
   async searchByImageEmbedding(
     embedding: number[],
-    opts: { limit: number }
-  ): Promise<Array<{ product: CatalogProduct; similarity: number }>> {
+    opts: VectorSearchOptions
+  ): Promise<VectorSearchHit[]> {
     if (!this.hasVector) return [];
-    const res = await getPool().query<Row & { similarity: string | number }>(
-      `select doc - 'imageEmbedding' - 'textEmbedding' as doc,
+
+
+    const params: unknown[] = [JSON.stringify(embedding), embedding.length];
+    const where: string[] = [
+      "is_active",
+      "image_embedding is not null",
+      "embedding_dimension = $2",
+    ];
+
+    // Prefiltros EN SQL. Antes se traían 300 candidatos y se filtraban en
+    // memoria; ahora Postgres descarta lo que no aplica y basta con pedir
+    // top-K. Medido: 300 candidatos con doc = 1022 KB; 24 con esta proyección
+    // = 32 KB.
+    if (opts.categories?.length) {
+      params.push(opts.categories);
+      where.push(`category = any($${params.length})`);
+    }
+    if (opts.gender) {
+      params.push(opts.gender.toLowerCase());
+      // Solo excluye si la ficha declara un género y no casa: una ficha sin
+      // género no se descarta (ver `genderConflicts`).
+      where.push(
+        `(doc->>'gender' is null
+          or lower(doc->>'gender') = $${params.length}
+          or lower(doc->>'gender') in ('unisex','unisexo','all','todos'))`
+      );
+    }
+    if (opts.requireImage) {
+      where.push(`(doc->>'primaryImage' is not null or jsonb_array_length(coalesce(doc->'images','[]'::jsonb)) > 0)`);
+    }
+
+    params.push(opts.limit);
+    const limitParam = `$${params.length}`;
+
+    const sql = `select ${SLIM_PRODUCT_JSON} as doc,
               1 - (image_embedding <=> $1::vector) as similarity
          from catalog_products
-        where is_active
-          and image_embedding is not null
-          and embedding_dimension = $2
+        where ${where.join("\n          and ")}
         order by image_embedding <=> $1::vector
-        limit $3`,
-      [JSON.stringify(embedding), embedding.length, opts.limit]
-    );
+        limit ${limitParam}`;
+
+    const res = await this.runVectorQuery(sql, params);
+
     return res.rows.map((row) => ({
       product: rowToProduct(row),
       // pgvector puede devolver el escalar como texto según el driver.
       similarity: Math.max(0, Math.min(1, Number(row.similarity))),
     }));
+  }
+
+  /**
+   * Ejecuta la consulta vectorial, ajustando `hnsw.ef_search` si está
+   * configurado.
+   *
+   * Cuando NO lo está —el caso por defecto— va directa contra el pool: una sola
+   * ida y vuelta. Solo si alguien fija la variable se paga una transacción
+   * sobre un cliente dedicado, y hace falta que sea así: `SET LOCAL` fuera de
+   * una transacción no hace nada, y un `SET` de sesión sobre un pool afectaría
+   * a las demás consultas que compartan esa conexión.
+   */
+  private async runVectorQuery(
+    sql: string,
+    params: unknown[]
+  ): Promise<{ rows: Array<Row & { similarity: string | number }> }> {
+    if (!HNSW_EF_SEARCH) {
+      return getPool().query<Row & { similarity: string | number }>(sql, params);
+    }
+    const client = await getPool().connect();
+    try {
+      await client.query("begin");
+      await client.query(`set local hnsw.ef_search = ${HNSW_EF_SEARCH}`);
+      const res = await client.query<Row & { similarity: string | number }>(sql, params);
+      await client.query("commit");
+      return res;
+    } catch (err) {
+      await client.query("rollback").catch(() => undefined);
+      throw err;
+    } finally {
+      client.release();
+    }
   }
 
   async setActive(id: string, active: boolean): Promise<void> {

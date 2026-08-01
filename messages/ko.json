@@ -985,7 +985,10 @@
       "progress": {
         "catalog": "카탈로그 검색 중…",
         "external": "인터넷 조회 중…",
-        "detecting": "객체 감지 중…"
+        "detecting": "객체 감지 중…",
+        "queued": "대기 중…",
+        "cropping": "객체를 잘라내는 중…",
+        "searching": "카탈로그 검색 중…"
       }
     }
   },

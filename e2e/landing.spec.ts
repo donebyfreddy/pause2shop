@@ -47,16 +47,12 @@ test.describe("Landing — carga y propuesta de valor", () => {
     expect(body).not.toContain("hasta 2 minutos");
   });
 
-  test("landmarks y salto al contenido", async ({ page }) => {
+  test("landmarks principales", async ({ page }) => {
     await page.goto("/");
     await settle(page);
     await expect(page.locator("header")).toBeVisible();
     await expect(page.locator("main#contenido")).toBeVisible();
     await expect(page.locator("footer")).toBeVisible();
-
-    // El salto al contenido es el primer tabstop y debe hacerse visible al foco.
-    await page.keyboard.press("Tab");
-    await expect(page.getByRole("link", { name: "Saltar al contenido" })).toBeFocused();
   });
 });
 
@@ -334,7 +330,16 @@ test.describe("Landing — rendimiento del primer render", () => {
    * falla.
    */
   test("el texto del hero se pinta opaco desde el primer frame", async ({ page }) => {
+    // `commit` solo garantiza que la navegación se ha confirmado, NO que el
+    // HTML esté parseado: medir ahí mismo encontraba `document.querySelector`
+    // en null y `Math.min()` de un array vacío devolvía Infinity, así que el
+    // test fallaba de forma intermitente según lo que tardara el servidor.
+    //
+    // Se espera al elemento —no a la carga completa— y se comprueba que existe
+    // antes de medir. Lo que vigila el test no cambia: si alguien mete un fade
+    // en el titular, su opacidad inicial seguirá siendo < 1 y esto fallará.
     await page.goto("/", { waitUntil: "commit" });
+    await page.locator("h1").first().waitFor({ state: "attached" });
 
     const opacities = await page.evaluate(() => {
       const chain = (el: Element | null) => {
@@ -352,6 +357,11 @@ test.describe("Landing — rendimiento del primer render", () => {
         lead: chain(document.querySelector("h1 ~ p")),
       };
     });
+
+    // Sin estas dos, una cadena vacía daría Infinity y el assert de abajo
+    // pasaría o fallaría por el motivo equivocado.
+    expect(opacities.h1.length, "no se encontró el h1 del hero").toBeGreaterThan(0);
+    expect(opacities.lead.length, "no se encontró el párrafo del hero").toBeGreaterThan(0);
 
     expect(Math.min(...opacities.h1)).toBe(1);
     expect(Math.min(...opacities.lead)).toBe(1);

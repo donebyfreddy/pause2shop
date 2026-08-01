@@ -985,7 +985,10 @@
       "progress": {
         "catalog": "Buscando en el catálogo…",
         "external": "Consultando Internet…",
-        "detecting": "Detectando objetos…"
+        "detecting": "Detectando objetos…",
+        "queued": "En cola…",
+        "cropping": "Recortando el objeto…",
+        "searching": "Buscando en el catálogo…"
       }
     }
   },

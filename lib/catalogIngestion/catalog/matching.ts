@@ -1,8 +1,16 @@
+import { performance } from "node:perf_hooks";
+
 import type { CatalogProduct } from "./types";
 import type { CatalogStore } from "./store";
 import { hammingDistance } from "../images/dhash";
 import { cosineSimilarity, getEmbeddingProvider } from "../embeddings/index";
-import { normalizeText, normalizeColor, normalizeBrand, categoriesMatch } from "../normalization/normalize";
+import {
+  normalizeText,
+  normalizeColor,
+  normalizeBrand,
+  categoriesMatch,
+  compatibleCategories,
+} from "../normalization/normalize";
 import { getConfig } from "../config/index";
 import { getProductsForMatching } from "./productSnapshot";
 
@@ -50,6 +58,36 @@ export interface ProductMatch {
   attributeScore: number;
   finalScore: number;
   matchStage: MatchStage;
+}
+
+/**
+ * Tiempos por ETAPA de una búsqueda en el catálogo.
+ *
+ * Separados y no un total: el total no dice nada accionable. Perfilando este
+ * pipeline, el reparto real con ~1000 fichas resultó ser embedding 35 ms,
+ * consulta vectorial ~250 ms (de los cuales 245 son ida y vuelta de red y
+ * 0,4 ms de cómputo con índice HNSW) y ranking <5 ms. Sin el desglose, la
+ * conclusión "hay que optimizar la búsqueda vectorial" habría sido falsa.
+ */
+export interface MatchTimings {
+  /** Consulta a pgvector, incluida la red. */
+  vectorSearchMs: number;
+  /** Filtros y puntuación en memoria sobre los candidatos. */
+  rankingMs: number;
+  /** Embedding del texto de consulta, solo en búsqueda textual. */
+  textEmbeddingMs: number;
+  /** Recorrido completo del catálogo en memoria (camino sin pgvector). */
+  fullScanMs: number;
+  totalMs: number;
+  /** Candidatos que devolvió la preselección antes de filtrar y puntuar. */
+  candidateCount: number;
+  /** La preselección se resolvió en la base (pgvector) y no en memoria. */
+  usedVectorIndex: boolean;
+}
+
+export interface MatchResult {
+  matches: ProductMatch[];
+  timings: MatchTimings;
 }
 
 /** Solapamiento de tokens (Jaccard suavizado) para el score textual. */
@@ -208,13 +246,14 @@ function visualScoreFor(
 }
 
 /**
- * Cuántos candidatos pide la preselección vectorial. Generoso a propósito: los
- * filtros de categoría/marca/género se aplican DESPUÉS, en memoria, así que un
- * shortlist corto podría quedarse sin nada que ofrecer tras filtrar.
- * Medido con ~1000 fichas: 300 candidatos = 1,05 MB (frente a 14,5 MB del
- * catálogo entero).
+ * Cuántos candidatos pide la preselección vectorial.
+ *
+ * Bajó de 300 a 24 al mover los filtros de categoría y género a SQL: antes
+ * había que traer de sobra porque el descarte ocurría DESPUÉS, en memoria.
+ * Medido con ~1000 fichas: 300 candidatos con `doc` = 1022 KB / 6,5 s;
+ * 24 con proyección explícita = 32 KB / 0,5 s (y de esos 0,5 s, 0,2 son RTT).
  */
-const VECTOR_SHORTLIST = Number(process.env.CATALOG_VECTOR_SHORTLIST) || 300;
+const VECTOR_SHORTLIST = Number(process.env.CATALOG_VECTOR_SHORTLIST) || 24;
 
 /**
  * Candidatos sobre los que puntuar.
@@ -227,7 +266,8 @@ const VECTOR_SHORTLIST = Number(process.env.CATALOG_VECTOR_SHORTLIST) || 300;
  */
 async function gatherCandidates(
   store: CatalogStore,
-  q: MatchQuery
+  q: MatchQuery,
+  timings: MatchTimings
 ): Promise<{
   candidates: CatalogProduct[];
   similarityById: Map<string, number>;
@@ -235,9 +275,19 @@ async function gatherCandidates(
   const similarityById = new Map<string, number>();
   if (q.imageEmbedding?.length && store.searchByImageEmbedding) {
     try {
+      // Los filtros duros viajan a SQL. `compatibleCategories` traduce la
+      // categoría consultada al conjunto de valores que podrían casar, para no
+      // reimplementar la taxonomía de familias dentro de la consulta.
+      const categories = compatibleCategories(q.category) ?? undefined;
+      const tVec = performance.now();
       const shortlist = await store.searchByImageEmbedding(q.imageEmbedding, {
-        limit: Math.max(VECTOR_SHORTLIST, (q.topK ?? 10) * 4),
+        limit: Math.max(VECTOR_SHORTLIST, (q.topK ?? 10) * 3),
+        categories,
+        gender: q.gender ?? undefined,
+        requireImage: q.requireImage ?? true,
       });
+      timings.vectorSearchMs = performance.now() - tVec;
+      timings.usedVectorIndex = shortlist.length > 0;
       if (shortlist.length > 0) {
         for (const { product, similarity } of shortlist) {
           similarityById.set(product.id, similarity);
@@ -254,7 +304,10 @@ async function gatherCandidates(
       );
     }
   }
-  return { candidates: await getProductsForMatching(store), similarityById };
+  const tScan = performance.now();
+  const all = await getProductsForMatching(store);
+  timings.fullScanMs = performance.now() - tScan;
+  return { candidates: all, similarityById };
 }
 
 export function combineScores(
@@ -271,7 +324,28 @@ export function combineScores(
   return 0.8 * text + 0.2 * attribute;
 }
 
-export async function matchProducts(store: CatalogStore, q: MatchQuery): Promise<ProductMatch[]> {
+export async function matchProducts(
+  store: CatalogStore,
+  q: MatchQuery
+): Promise<ProductMatch[]> {
+  return (await matchProductsDetailed(store, q)).matches;
+}
+
+/** Igual que `matchProducts` pero devolviendo además los tiempos por etapa. */
+export async function matchProductsDetailed(
+  store: CatalogStore,
+  q: MatchQuery
+): Promise<MatchResult> {
+  const t0 = performance.now();
+  const timings: MatchTimings = {
+    vectorSearchMs: 0,
+    rankingMs: 0,
+    textEmbeddingMs: 0,
+    fullScanMs: 0,
+    totalMs: 0,
+    candidateCount: 0,
+    usedVectorIndex: false,
+  };
   const config = getConfig();
   const topK = Math.min(q.topK ?? 10, 50);
   const minScore = q.minScore ?? config.minImageScore;
@@ -281,8 +355,10 @@ export async function matchProducts(store: CatalogStore, q: MatchQuery): Promise
   // Embedding textual para búsqueda semántica ligera (provider activo)
   let textQueryEmbedding: number[] | null = null;
   if (hasText) {
+    const tText = performance.now();
     const provider = await getEmbeddingProvider();
     textQueryEmbedding = await provider.embedText(q.queryText!);
+    timings.textEmbeddingMs = performance.now() - tText;
   }
 
   // Una búsqueda VISUAL sin imagen presentable no da resultado utilizable.
@@ -290,8 +366,10 @@ export async function matchProducts(store: CatalogStore, q: MatchQuery): Promise
 
   // Candidatos: preselección por pgvector si el store la ofrece, o el catálogo
   // entero en memoria. Ver `shortlistByEmbedding`.
-  const { candidates, similarityById } = await gatherCandidates(store, q);
+  const { candidates, similarityById } = await gatherCandidates(store, q, timings);
+  timings.candidateCount = candidates.length;
 
+  const tRank = performance.now();
   const results: ProductMatch[] = [];
   for (const p of candidates) {
     if (!p.isActive) continue;
@@ -342,5 +420,8 @@ export async function matchProducts(store: CatalogStore, q: MatchQuery): Promise
     if (Math.abs(diff) > 0.005) return diff;
     return imageQualityScore(b.product) - imageQualityScore(a.product);
   });
-  return results.slice(0, topK);
+
+  timings.rankingMs = performance.now() - tRank;
+  timings.totalMs = performance.now() - t0;
+  return { matches: results.slice(0, topK), timings };
 }

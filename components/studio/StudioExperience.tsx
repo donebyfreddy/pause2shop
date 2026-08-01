@@ -281,6 +281,8 @@ export default function StudioExperience({
           // Contrato nuevo: dos bloques con procedencia explícita.
           detection_result: entry.detection ?? item.detection_result,
           external_loading: entry.externalLoading,
+          matching_phase: entry.phase,
+          matching_started_at: entry.startedAt,
           visual_match: entry.match ?? item.visual_match,
           similar_candidates: entry.similarCandidates.length
             ? entry.similarCandidates

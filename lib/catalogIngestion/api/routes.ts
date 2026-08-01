@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { performance } from "node:perf_hooks";
 import { Router, ApiError, sendJson, type RequestContext } from "./router";
 import type { CatalogStore } from "../catalog/store";
 import { emptyExtractionStats } from "../catalog/store";
@@ -22,7 +23,11 @@ import {
   type ConnectorHealth,
 } from "../connectors/base/BaseConnector";
 import type { ConnectorHealthState } from "../connectors/base/types";
-import { matchProducts, type ProductMatch } from "../catalog/matching";
+import {
+  matchProducts,
+  matchProductsDetailed,
+  type ProductMatch,
+} from "../catalog/matching";
 import { ingestProduct } from "../catalog/ingest";
 import { processImageBuffer, downloadAndProcessImage, type ProcessedImage } from "../images/processor";
 import { getEmbeddingProvider } from "../embeddings/index";
@@ -109,6 +114,10 @@ function toMatchPayload(m: ProductMatch) {
     /** Procedencia del dataset, para poder citarla en la UI. */
     dataset: p.dataset,
   };
+}
+
+function round2(n: number): number {
+  return Math.round(n * 100) / 100;
 }
 
 function round(n: number): number {
@@ -586,8 +595,13 @@ export function buildRouter(store: CatalogStore): Router {
     if (!body?.imageBase64 && !body?.imageUrl) {
       throw new ApiError(400, "missing_image", "se requiere imageBase64 o imageUrl");
     }
+    // El embedding del CROP se calcula aquí; los del catálogo están
+    // precalculados en la base y jamás se generan durante una búsqueda.
+    const tEmbed = performance.now();
     const img = await processQueryImage(body);
-    const matches = await matchProducts(store, {
+    const embeddingMs = performance.now() - tEmbed;
+
+    const { matches, timings } = await matchProductsDetailed(store, {
       imageSha256: img?.sha256,
       perceptualHash: img?.perceptualHash,
       imageEmbedding: img?.embedding,
@@ -602,7 +616,21 @@ export function buildRouter(store: CatalogStore): Router {
       topK: body.topK,
       minScore: body.minScore,
     });
-    sendJson(res, 200, { queryId: randomUUID(), matches: matches.map(toMatchPayload) });
+    sendJson(res, 200, {
+      queryId: randomUUID(),
+      matches: matches.map(toMatchPayload),
+      // Desglose por etapa: es lo que permite saber si un match lento fue por
+      // el embedding, por la consulta o por el ranking. Un total no lo dice.
+      timings: {
+        embeddingMs: round2(embeddingMs),
+        vectorSearchMs: round2(timings.vectorSearchMs),
+        rankingMs: round2(timings.rankingMs),
+        fullScanMs: round2(timings.fullScanMs),
+        totalMs: round2(embeddingMs + timings.totalMs),
+        candidateCount: timings.candidateCount,
+        usedVectorIndex: timings.usedVectorIndex,
+      },
+    });
   });
 
   router.add("POST", "/products/search/text", async ({ res, body }) => {

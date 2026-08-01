@@ -141,6 +141,10 @@ export type DetectedItem = {
   detection_result?: DetectionMatchResult | null;
   /** true mientras una búsqueda externa pedida a mano está en vuelo. */
   external_loading?: boolean;
+  /** Etapa en curso del matching (solo cliente): la UI muestra en qué tarda. */
+  matching_phase?: "queued" | "cropping" | "searching";
+  /** Inicio del intento (`Date.now()`), para cronometrar la espera. */
+  matching_started_at?: number;
 
   // Visual Matching Engine (reverse image shopping). Se rellenan en el
   // servidor cuando hay motores configurados; ver lib/visualSearch/engine.ts.

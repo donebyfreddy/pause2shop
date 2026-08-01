@@ -51,6 +51,17 @@ export type MatchingMetrics = {
   catalogResolutionRate: number | null;
   /** Tiempo medio de resolución por detección, en ms (null si no hay datos). */
   averageDurationMs: number | null;
+  /**
+   * Medias por ETAPA, en ms. Separadas porque el total no es accionable: al
+   * perfilar este pipeline resultó que el embedding eran 35 ms y la consulta
+   * 250 ms —de los cuales 249 eran red y 0,5 cómputo—, y ningún total lo
+   * habría revelado. `null` cuando todavía no hay muestras de esa etapa.
+   */
+  averageEmbeddingMs: number | null;
+  averageVectorSearchMs: number | null;
+  averageRankingMs: number | null;
+  /** Media de candidatos que devuelve la preselección vectorial. */
+  averageCandidateCount: number | null;
   /** Reparto por modo de matching efectivo. */
   byMode: Partial<Record<MatchingMode, number>>;
   /** Categorías que el catálogo no resuelve, de mayor a menor. */
@@ -71,6 +82,11 @@ type MutableState = {
   externalCostAvoidedUsd: number;
   totalDurationMs: number;
   timedDetections: number;
+  embeddingMs: number;
+  vectorSearchMs: number;
+  rankingMs: number;
+  candidateCount: number;
+  stagedDetections: number;
   byMode: Partial<Record<MatchingMode, number>>;
   unresolvedByCategory: Map<string, number>;
   startedAt: number;
@@ -90,6 +106,11 @@ function freshState(): MutableState {
     externalCostAvoidedUsd: 0,
     totalDurationMs: 0,
     timedDetections: 0,
+    embeddingMs: 0,
+    vectorSearchMs: 0,
+    rankingMs: 0,
+    candidateCount: 0,
+    stagedDetections: 0,
     byMode: {},
     unresolvedByCategory: new Map(),
     startedAt: Date.now(),
@@ -120,6 +141,13 @@ export type RecordDetectionArgs = {
   externalManual?: boolean;
   cacheHit?: boolean;
   externalCostUsd?: number;
+  /** Desglose por etapa de la búsqueda en catálogo, si lo hubo. */
+  stages?: {
+    embeddingMs?: number;
+    vectorSearchMs?: number;
+    rankingMs?: number;
+    candidateCount?: number;
+  };
 };
 
 export function recordDetectionResolution(args: RecordDetectionArgs): void {
@@ -134,6 +162,18 @@ export function recordDetectionResolution(args: RecordDetectionArgs): void {
     s.timedDetections += 1;
   }
   if (args.cacheHit) s.cacheHits += 1;
+
+  // Solo se promedian las búsquedas que REALMENTE ejecutaron etapas: incluir
+  // los aciertos de caché (que no ejecutan ninguna) hundiría la media y haría
+  // parecer que la consulta es más rápida de lo que es.
+  const stages = args.stages;
+  if (stages && !args.cacheHit) {
+    s.embeddingMs += stages.embeddingMs ?? 0;
+    s.vectorSearchMs += stages.vectorSearchMs ?? 0;
+    s.rankingMs += stages.rankingMs ?? 0;
+    s.candidateCount += stages.candidateCount ?? 0;
+    s.stagedDetections += 1;
+  }
 
   if (args.externalCalled) {
     s.externalCalls += 1;
@@ -184,6 +224,10 @@ export function getMatchingMetrics(): MatchingMetrics {
       s.timedDetections > 0
         ? Math.round(s.totalDurationMs / s.timedDetections)
         : null,
+    averageEmbeddingMs: avg(s.embeddingMs, s.stagedDetections),
+    averageVectorSearchMs: avg(s.vectorSearchMs, s.stagedDetections),
+    averageRankingMs: avg(s.rankingMs, s.stagedDetections),
+    averageCandidateCount: avg(s.candidateCount, s.stagedDetections),
     byMode: { ...s.byMode },
     topUnresolvedCategories: [...s.unresolvedByCategory.entries()]
       .map(([category, count]) => ({ category, count }))
@@ -200,4 +244,9 @@ export function resetMatchingMetrics(): void {
 
 function round(n: number): number {
   return Math.round(n * 1e6) / 1e6;
+}
+
+/** Media redondeada a una décima, o null si no hay muestras. */
+function avg(total: number, count: number): number | null {
+  return count > 0 ? Math.round((total / count) * 10) / 10 : null;
 }

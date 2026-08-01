@@ -190,6 +190,52 @@ export function categoryFamily(canonical: string | null): string | null {
 }
 
 /**
+ * Categorías canónicas de catálogo compatibles con una categoría consultada.
+ *
+ * Existe para poder PREFILTRAR EN SQL. `categoriesMatch` es una función de
+ * TypeScript con lógica de familias, y reimplementarla en SQL sería duplicar la
+ * taxonomía en dos sitios que se separarían a la primera categoría nueva. En su
+ * lugar se invierte la pregunta: en vez de "¿casa este producto?", se calcula
+ * aquí "¿qué valores de `category` podrían casar?" y se le pasa a Postgres como
+ * un array. La taxonomía sigue viviendo en un único sitio.
+ *
+ * Devuelve `null` cuando la consulta NO restringe —categoría ausente, "all", o
+ * un término que no está en la taxonomía—, y entonces no debe aplicarse filtro.
+ * Devolver un array vacío sería lo contrario: filtrar a cero resultados.
+ */
+export function compatibleCategories(
+  queryCategory: string | null | undefined
+): string[] | null {
+  const canonical = normalizeCategory(queryCategory);
+  if (!canonical || canonical === "all") return null;
+
+  const family = categoryFamily(canonical);
+  const out = new Set<string>([canonical]);
+
+  if (family) {
+    // La consulta es una categoría fina: además de ella misma, vale su familia
+    // por si el catálogo guardó el valor grueso.
+    out.add(family);
+  } else {
+    // La consulta es una FAMILIA (o algo que no está en el mapa fino): valen
+    // todas las categorías finas que pertenecen a ella. Es el caso normal
+    // cuando la visión devuelve "prenda superior" → "clothing".
+    let matched = false;
+    for (const [fine, fam] of Object.entries(CATEGORY_FAMILY)) {
+      if (fam === canonical) {
+        out.add(fine);
+        matched = true;
+      }
+    }
+    // Ni categoría fina conocida ni familia conocida: no se puede acotar sin
+    // arriesgarse a dejar fuera lo bueno, así que no se filtra.
+    if (!matched) return null;
+  }
+
+  return [...out];
+}
+
+/**
  * ¿Son compatibles dos categorías? Cubre la asimetría de granularidad entre
  * pause2shop (familias gruesas: "clothing") y el catálogo (finas: "dress"):
  * iguales tras normalizar, o una es la familia de la otra. "all" no filtra.

@@ -985,7 +985,10 @@
       "progress": {
         "catalog": "Cercant al catàleg…",
         "external": "Consultant Internet…",
-        "detecting": "Detectant objectes…"
+        "detecting": "Detectant objectes…",
+        "queued": "En cua…",
+        "cropping": "Retallant l'objecte…",
+        "searching": "Cercant al catàleg…"
       }
     }
   },

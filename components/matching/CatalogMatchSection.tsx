@@ -6,7 +6,7 @@ import { Database, PackageSearch } from "lucide-react";
 import type { DetectionMatchResult, ProductCandidate } from "@/lib/matching/types";
 import { cn } from "@/lib/utils";
 import CatalogCandidateCard from "./CatalogCandidateCard";
-import { MatchingProgress } from "./MatchingProgress";
+import { MatchingProgress, type MatchingPhase } from "./MatchingProgress";
 
 /**
  * Bloque del CATÁLOGO PROPIO: la fuente principal.
@@ -25,6 +25,8 @@ type Props = {
   maxVisible?: number;
   /** true mientras la consulta al catálogo está en vuelo. */
   loading?: boolean;
+  phase?: MatchingPhase;
+  startedAt?: number;
   onSelectCandidate?: (candidate: ProductCandidate) => void;
 };
 
@@ -32,12 +34,16 @@ export default function CatalogMatchSection({
   block,
   maxVisible = 4,
   loading,
+  phase,
+  startedAt,
   onSelectCandidate,
 }: Props) {
   const t = useTranslations("studio.matching.catalog");
   const [showAlternatives, setShowAlternatives] = useState(false);
 
-  if (loading) return <MatchingProgress stage="catalog" />;
+  if (loading) {
+    return <MatchingProgress stage="catalog" phase={phase} startedAt={startedAt} />;
+  }
   if (block.status === "not_requested") return null;
 
   const selected = block.selected;

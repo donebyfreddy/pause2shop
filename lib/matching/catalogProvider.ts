@@ -220,6 +220,17 @@ export class CatalogMatchingProvider implements ProductMatchingProvider {
       }
     }
 
+    // Desglose por etapa que reporta el servicio. Con caché no hay etapas que
+    // reportar (no se ha ejecutado ninguna): se marca el acierto y punto.
+    const stageTimings: Record<string, number> = cached
+      ? { catalogCacheHitMs: Date.now() - t0 }
+      : {
+          embeddingMs: data.timings?.embeddingMs ?? 0,
+          vectorSearchMs: data.timings?.vectorSearchMs ?? 0,
+          rankingMs: data.timings?.rankingMs ?? 0,
+          fullScanMs: data.timings?.fullScanMs ?? 0,
+        };
+
     const threshold = catalogThresholdFor(this.config, input.item.category);
     const matches = (data.matches ?? [])
       .map((m) => toNormalizedMatch(m, input.item, brand, threshold))
@@ -238,7 +249,12 @@ export class CatalogMatchingProvider implements ProductMatchingProvider {
       providerUsed: "catalog",
       fallbackUsed: false,
       cached,
-      timings: { catalogMs: Date.now() - t0 },
+      timings: {
+        ...stageTimings,
+        catalogMs: Date.now() - t0,
+        candidateCount: data.timings?.candidateCount ?? matches.length,
+        usedVectorIndex: data.timings?.usedVectorIndex ? 1 : 0,
+      },
       catalogAttempted: true,
       externalAttempted: false,
       externalFallbackUsed: false,

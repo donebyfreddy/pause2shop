@@ -16,7 +16,7 @@ import {
   Settings,
   X,
 } from "lucide-react";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useState, useSyncExternalStore, type ReactNode } from "react";
 import { useTranslations } from "next-intl";
 import { cn } from "@/lib/ui/cn";
 import { LogoMark } from "@/components/shell/Logo";
@@ -64,6 +64,22 @@ const NAV: NavItem[] = [
   { href: "/admin/settings", labelKey: "settings", icon: Settings },
 ];
 
+/** Evento propio: `storage` no llega a la pestaña que escribe. */
+const SIDEBAR_PREF_EVENT = "pause2shop:sidebar-pref";
+
+function subscribeToSidebarPref(onChange: () => void): () => void {
+  window.addEventListener("storage", onChange);
+  window.addEventListener(SIDEBAR_PREF_EVENT, onChange);
+  return () => {
+    window.removeEventListener("storage", onChange);
+    window.removeEventListener(SIDEBAR_PREF_EVENT, onChange);
+  };
+}
+
+function getSidebarCollapsed(): boolean {
+  return window.localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === "1";
+}
+
 export function AdminShell({
   title,
   description,
@@ -78,24 +94,29 @@ export function AdminShell({
   const t = useTranslations("admin.shell");
   const pathname = usePathname();
   const [navOpen, setNavOpen] = useState(false);
-  const [collapsed, setCollapsed] = useState(false);
 
-  // El ancho persistido es una preferencia de escritorio (localStorage no
-  // existe en el render de servidor): se lee tras montar, así el primer
-  // pintado siempre coincide entre servidor y cliente y no hay parpadeo de
-  // hidratación.
-  useEffect(() => {
-    if (window.localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === "1") {
-      setCollapsed(true);
-    }
-  }, []);
+  /**
+   * Ancho persistido de la barra lateral.
+   *
+   * `useSyncExternalStore` y no `useState` + `useEffect`: es la forma que React
+   * ofrece para leer estado que SOLO existe en el cliente sin provocar
+   * desajuste de hidratación. Con el efecto, el primer render pintaba siempre
+   * expandido y un `setState` inmediato lo volvía a pintar plegado — dos
+   * renders en cascada y un salto visible para quien tenía la preferencia
+   * guardada. El `getServerSnapshot` fija el valor del servidor a `false`, que
+   * es justo lo que el servidor puede saber.
+   */
+  const collapsed = useSyncExternalStore(
+    subscribeToSidebarPref,
+    getSidebarCollapsed,
+    () => false
+  );
 
   const toggleCollapsed = () => {
-    setCollapsed((prev) => {
-      const next = !prev;
-      window.localStorage.setItem(SIDEBAR_COLLAPSED_KEY, next ? "1" : "0");
-      return next;
-    });
+    window.localStorage.setItem(SIDEBAR_COLLAPSED_KEY, collapsed ? "0" : "1");
+    // `storage` solo se dispara en OTRAS pestañas, así que el aviso local hay
+    // que emitirlo a mano o esta pestaña no se enteraría de su propio cambio.
+    window.dispatchEvent(new Event(SIDEBAR_PREF_EVENT));
   };
 
   // El menú móvil se cierra al pulsar un enlace (en el propio evento, no en un

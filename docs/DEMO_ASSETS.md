@@ -48,8 +48,30 @@ producción**. El problema que queda es de licencia, no técnico.
   importadas). Descartado por licencia: el dataset **no declara ninguna** y en
   `docs/FASHION_DATASET_IMPORT.md` está marcado como uso de demo e
   investigación, "no redistribuir". Una landing pública es redistribución.
+- **Met Museum (CC0)** y **Wikimedia Commons**. Licencia impecable y revisada,
+  pero para "abrigo" solo devuelven prendas históricas de museo y escudos de
+  armas: nada que sirva como recorte de producto moderno.
+- **Openverse con filtro `cc0,pdm`.** Sí devuelve abrigos modernos, pero al
+  abrirlos son capturas de fichas de ecommerce resubidas a Flickr por usuarios
+  que les han puesto la marca de dominio público por su cuenta. Esa marca es
+  autodeclarada y en estos casos evidentemente falsa. Usarlas sería peor que el
+  estado actual: parecerían licenciadas sin estarlo.
 
 ### Cómo sustituir un asset
+
+**Vía rápida, sin tocar código.** Deja el fichero en `assets/demo/coat.png` (o
+`.webp`/`.jpg`) y lanza `npm run demo:assets`. También vale una variable, que
+además acepta URL:
+
+```bash
+DEMO_ASSET_COAT=/ruta/a/abrigo.png npm run demo:assets
+DEMO_ASSET_COAT=https://images.unsplash.com/photo-xxxx npm run demo:assets
+```
+
+El origen efectivo queda anotado en `metadata.json`, así que la trazabilidad no
+se pierde por usar el atajo.
+
+**Vía completa**, si además quieres dejar documentada la URL de origen:
 
 1. Edita la entrada correspondiente en `ASSETS`
    (`scripts/prepareDemoAssets.ts`): `sourceUrl`, `sourceName`, `license` y, si

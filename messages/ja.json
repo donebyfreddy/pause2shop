@@ -985,7 +985,10 @@
       "progress": {
         "catalog": "カタログを検索中…",
         "external": "インターネットを照会中…",
-        "detecting": "オブジェクトを検出中…"
+        "detecting": "オブジェクトを検出中…",
+        "queued": "待機中…",
+        "cropping": "オブジェクトを切り抜き中…",
+        "searching": "カタログを検索中…"
       }
     }
   },

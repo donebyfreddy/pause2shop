@@ -79,6 +79,29 @@ export async function bootstrapIngestion(): Promise<BootstrapReport> {
     );
   }
 
+  // Precalentado del modelo de embeddings, SIN esperarlo.
+  //
+  // Medido: la primera búsqueda tras arrancar tardaba 6,8 s y las siguientes
+  // 0,5 s — la diferencia es cargar CLIP (ONNX, ~90 MB) dentro de la petición
+  // del usuario. Arrancar la carga aquí traslada ese coste al arranque del
+  // proceso, donde no hay nadie mirando una tarjeta girar.
+  //
+  // Deliberadamente NO se hace `await`: bloquear el bootstrap retrasaría todo
+  // lo demás, y si el modelo no está disponible el provider ya degrada a hash
+  // por su cuenta. Un fallo aquí no puede impedir el arranque.
+  void import("./embeddings/index")
+    .then(({ getEmbeddingProvider }) => getEmbeddingProvider())
+    .then((provider) => {
+      logger.info("embeddings: modelo precalentado", {
+        dimension: provider.dimension(),
+      });
+    })
+    .catch((err) => {
+      logger.warn("embeddings: fallo al precalentar (se cargará bajo demanda)", {
+        error: err instanceof Error ? err.message : String(err),
+      });
+    });
+
   const aiReason = aiUnavailableReason();
   if (aiReason) warnings.push(`extractor por IA no disponible: ${aiReason}`);
   if (!config.playwrightEnabled) {

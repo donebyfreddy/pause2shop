@@ -985,7 +985,10 @@
       "progress": {
         "catalog": "Ricerca nel catalogo…",
         "external": "Consultazione di Internet…",
-        "detecting": "Rilevamento oggetti…"
+        "detecting": "Rilevamento oggetti…",
+        "queued": "In coda…",
+        "cropping": "Ritaglio dell'oggetto…",
+        "searching": "Ricerca nel catalogo…"
       }
     }
   },

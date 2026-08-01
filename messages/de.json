@@ -985,7 +985,10 @@
       "progress": {
         "catalog": "Suche im Katalog…",
         "external": "Internet wird abgefragt…",
-        "detecting": "Objekte werden erkannt…"
+        "detecting": "Objekte werden erkannt…",
+        "queued": "In der Warteschlange…",
+        "cropping": "Objekt wird zugeschnitten…",
+        "searching": "Suche im Katalog…"
       }
     }
   },

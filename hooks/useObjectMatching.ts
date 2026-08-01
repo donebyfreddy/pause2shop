@@ -72,6 +72,13 @@ export type MatchingEntry = {
   detection?: DetectionMatchResult;
   /** true mientras se resuelve una búsqueda externa pedida a mano. */
   externalLoading?: boolean;
+  /**
+   * Etapa en curso, para que la tarjeta diga en qué se está tardando en vez de
+   * enseñar un esqueleto estático que no cambia nunca.
+   */
+  phase?: "queued" | "cropping" | "searching";
+  /** `Date.now()` del inicio del intento: la UI cronometra desde aquí. */
+  startedAt?: number;
 };
 
 /**
@@ -209,6 +216,8 @@ export function useObjectMatching() {
   const attempts = useRef(new Map<string, MatchingAttemptState>());
   const active = useRef(0);
   const queue = useRef<Array<() => Promise<void>>>([]);
+  /** Hay un vaciado en curso: evita arrancar dos bucles sobre la misma cola. */
+  const draining = useRef(false);
   /** Objetos con crop pobre esperando un encuadre mejor, por fingerprint. */
   const pendingBetter = useRef(new Map<string, PendingBetterCrop>());
   /**
@@ -237,20 +246,42 @@ export function useObjectMatching() {
     });
   }, []);
 
-  // Bombea la cola respetando la concurrencia máxima. Función recursiva local
-  // sobre refs compartidas: estable entre renders sin escribir refs en render.
+  /**
+   * Vacía la cola con CONCURRENCIA LIMITADA y aislamiento de fallos.
+   *
+   * `Promise.allSettled` y no `Promise.all`: las detecciones de un frame se
+   * resuelven en paralelo y son independientes entre sí. Con `all`, un objeto
+   * cuyo crop falle o cuyo proveedor dé error aborta la espera de los demás y
+   * el usuario pierde coincidencias que sí estaban listas. Con `allSettled`
+   * cada detección vive o muere sola.
+   *
+   * Se lanzan tandas de `MAX_CONCURRENT` en vez de todo a la vez porque el
+   * cuello es la base de datos: medido con 10.000 productos, 1 detección son
+   * ~260 ms y 5 simultáneas ~2.300 ms — más allá de 3 en vuelo la cola solo
+   * añade espera.
+   *
+   * Sin recursión al terminar, y no hace falta: el `while` vuelve a mirar la
+   * cola tras cada tanda, así que recoge lo que haya entrado durante el
+   * `await`. Y entre la última comprobación y `draining = false` no puede
+   * colarse nada —ese tramo es síncrono—, de modo que un `enqueue` posterior
+   * encontrará la puerta abierta y arrancará su propio vaciado.
+   */
   const pump = useCallback(() => {
-    const drain = (): void => {
-      while (active.current < MAX_CONCURRENT && queue.current.length > 0) {
-        const task = queue.current.shift()!;
-        active.current++;
-        void task().finally(() => {
-          active.current--;
-          drain();
-        });
+    if (draining.current) return;
+    draining.current = true;
+
+    void (async () => {
+      try {
+        while (queue.current.length > 0) {
+          const batch = queue.current.splice(0, MAX_CONCURRENT);
+          active.current = batch.length;
+          await Promise.allSettled(batch.map((task) => task()));
+          active.current = 0;
+        }
+      } finally {
+        draining.current = false;
       }
-    };
-    drain();
+    })();
   }, []);
 
   /** Registra el desenlace de un intento en el estado reintentable. */
@@ -279,6 +310,7 @@ export function useObjectMatching() {
       meta: EnqueueMeta,
       opts: { forceExternal?: boolean } = {}
     ): Promise<void> => {
+      setEntry(fp, { phase: "cropping", startedAt: Date.now() });
       try {
         const crop = await cropFromDataUrl(frameDataUrl, item.bounding_box!);
         if (!crop) {
@@ -290,6 +322,7 @@ export function useObjectMatching() {
           });
           return;
         }
+        setEntry(fp, { phase: "searching" });
         const res = await fetch("/api/vision/match-object", {
           method: "POST",
           signal: AbortSignal.timeout(MATCH_TIMEOUT_MS),
@@ -335,6 +368,7 @@ export function useObjectMatching() {
           externalFallbackUsed: Boolean(data.matching?.externalFallbackUsed),
           detection: data.detection,
           externalLoading: false,
+          phase: undefined,
         });
       } catch (err) {
         const timeout =

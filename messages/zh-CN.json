@@ -985,7 +985,10 @@
       "progress": {
         "catalog": "正在搜索目录…",
         "external": "正在查询互联网…",
-        "detecting": "正在检测对象…"
+        "detecting": "正在检测对象…",
+        "queued": "排队中…",
+        "cropping": "正在裁剪对象…",
+        "searching": "正在搜索目录…"
       }
     }
   },

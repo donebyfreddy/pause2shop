@@ -22,7 +22,7 @@
  * sustituir antes de un uso comercial.
  */
 import { createHash } from "node:crypto";
-import { mkdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import sharp from "sharp";
 
@@ -30,6 +30,15 @@ import { PROJECT_ROOT } from "./loadEnv";
 
 type AssetSpec = {
   id: "coat" | "bag" | "shoes";
+  /**
+   * De dónde sale el original. Tres formas, por orden de prioridad:
+   *
+   *  1. `DEMO_ASSET_<ID>` en el entorno — ruta local o URL. Es la vía rápida
+   *     para sustituir un asset sin tocar código: deja el fichero y lanza el
+   *     script.
+   *  2. `assets/demo/<id>.*` en el repo, si existe.
+   *  3. `sourceUrl`, la URL documentada de abajo.
+   */
   sourceUrl: string;
   /** Quién publica el original y bajo qué condiciones. */
   sourceName: string;
@@ -144,8 +153,35 @@ function removeBorderBackground(
   return data;
 }
 
-async function fetchAsset(spec: AssetSpec): Promise<Buffer> {
-  const res = await fetch(spec.sourceUrl, {
+/**
+ * Origen efectivo del asset y de dónde ha salido, para la trazabilidad.
+ *
+ * El override por entorno existe porque el abrigo hay que sustituirlo por uno
+ * con licencia y no quiero que eso obligue a editar código: basta con
+ * `DEMO_ASSET_COAT=/ruta/abrigo.png npm run demo:assets`.
+ */
+function resolveSource(spec: AssetSpec): { source: string; kind: "env" | "local" | "url" } {
+  const override = process.env[`DEMO_ASSET_${spec.id.toUpperCase()}`]?.trim();
+  if (override) {
+    return { source: override, kind: override.startsWith("http") ? "env" : "local" };
+  }
+  for (const ext of ["png", "webp", "jpg", "jpeg"]) {
+    const local = join(PROJECT_ROOT, "assets", "demo", `${spec.id}.${ext}`);
+    if (existsSync(local)) return { source: local, kind: "local" };
+  }
+  return { source: spec.sourceUrl, kind: "url" };
+}
+
+async function fetchAsset(spec: AssetSpec): Promise<{ buffer: Buffer; origin: string }> {
+  const { source, kind } = resolveSource(spec);
+
+  if (kind === "local") {
+    // Fichero del disco: ni red ni licencia que discutir — lo aporta quien
+    // lanza el script y es responsable de su procedencia.
+    return { buffer: readFileSync(source), origin: `archivo local: ${source}` };
+  }
+
+  const res = await fetch(source, {
     headers: {
       // Sin User-Agent de navegador, varias CDN de imágenes responden 403.
       "User-Agent":
@@ -158,11 +194,11 @@ async function fetchAsset(spec: AssetSpec): Promise<Buffer> {
   if (buf.byteLength > MAX_BYTES) {
     throw new Error(`demasiado grande: ${buf.byteLength} bytes`);
   }
-  return buf;
+  return { buffer: buf, origin: source };
 }
 
 async function prepareAsset(spec: AssetSpec) {
-  const raw = await fetchAsset(spec);
+  const { buffer: raw, origin } = await fetchAsset(spec);
 
   const meta = await sharp(raw).metadata();
   const mime = `image/${meta.format}`;
@@ -218,7 +254,8 @@ async function prepareAsset(spec: AssetSpec) {
     bytes: out.byteLength,
     sha256: createHash("sha256").update(out).digest("hex"),
     source: {
-      url: spec.sourceUrl,
+      url: origin,
+      declaredUrl: spec.sourceUrl,
       name: spec.sourceName,
       license: spec.license,
       originalFormat: meta.format ?? null,

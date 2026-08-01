@@ -127,125 +127,115 @@ export function PublicHeader({
       }));
 
   return (
-    <>
-      {/* Salto al contenido: primer tabstop de la página. */}
-      <a
-        href="#contenido"
-        className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-70 focus:rounded-lg focus:bg-brand focus:px-3 focus:py-2 focus:text-sm focus:font-medium focus:text-white"
-      >
-        {t("skipToContent")}
-      </a>
+    <header
+      className={cn(
+        "sticky top-0 z-50 w-full transition-colors duration-300",
+        solid || menuOpen
+          ? "border-b border-line bg-canvas/85 backdrop-blur-xl"
+          : "border-b border-transparent"
+      )}
+    >
+      <div className="mx-auto flex h-16 w-full max-w-7xl items-center gap-4 px-4 sm:px-6 lg:px-8">
+        <Logo />
 
-      <header
-        className={cn(
-          "sticky top-0 z-50 w-full transition-colors duration-300",
-          solid || menuOpen
-            ? "border-b border-line bg-canvas/85 backdrop-blur-xl"
-            : "border-b border-transparent"
-        )}
-      >
-        <div className="mx-auto flex h-16 w-full max-w-7xl items-center gap-4 px-4 sm:px-6 lg:px-8">
-          <Logo />
-
-          <nav className="ml-auto hidden items-center gap-0.5 md:flex" aria-label={t("mainNav")}>
-            {navItems.map((item) => (
-              <Link
-                key={item.key}
-                href={item.href}
-                aria-current={item.active ? "true" : undefined}
-                className={cn(
-                  "relative rounded-lg px-3 py-2 text-[13px] font-medium transition-colors",
-                  item.active ? "text-ink" : "text-ink-subtle hover:text-ink"
-                )}
-              >
-                {item.label}
-                {item.active && (
-                  <motion.span
-                    layoutId="public-nav-active"
-                    className="absolute inset-x-3 -bottom-px h-px bg-linear-to-r from-transparent via-brand-bright to-transparent"
-                  />
-                )}
-              </Link>
-            ))}
-          </nav>
-
-          {/* En móvil este bloque solo contiene la hamburguesa: es la causa del
-              desbordamiento que se arregla aquí. */}
-          <div className={cn("flex items-center gap-2", !anchors && "ml-auto md:ml-4")}>
-            <div className="hidden sm:block">
-              <LanguageSelector />
-            </div>
-            <ButtonLink
-              href="/studio"
-              variant="primary"
-              size="sm"
-              className="hidden sm:inline-flex"
+        <nav className="ml-auto hidden items-center gap-0.5 md:flex" aria-label={t("mainNav")}>
+          {navItems.map((item) => (
+            <Link
+              key={item.key}
+              href={item.href}
+              aria-current={item.active ? "true" : undefined}
+              className={cn(
+                "relative rounded-lg px-3 py-2 text-[13px] font-medium transition-colors",
+                item.active ? "text-ink" : "text-ink-subtle hover:text-ink"
+              )}
             >
-              {tActions("tryNow")}
-              <ArrowRight className="size-3.5" aria-hidden />
-            </ButtonLink>
+              {item.label}
+              {item.active && (
+                <motion.span
+                  layoutId="public-nav-active"
+                  className="absolute inset-x-3 -bottom-px h-px bg-linear-to-r from-transparent via-brand-bright to-transparent"
+                />
+              )}
+            </Link>
+          ))}
+        </nav>
 
-            <button
-              type="button"
-              onClick={() => setMenuOpen((v) => !v)}
-              aria-label={menuOpen ? t("closeMenu") : t("openMenu")}
-              aria-expanded={menuOpen}
-              aria-controls="public-mobile-menu"
-              className="grid size-9 shrink-0 cursor-pointer place-items-center rounded-lg border border-line text-ink-muted transition-colors hover:text-ink md:hidden"
-            >
-              {menuOpen ? <X className="size-4" aria-hidden /> : <Menu className="size-4" aria-hidden />}
-            </button>
+        {/* En móvil este bloque solo contiene la hamburguesa: es la causa del
+            desbordamiento que se arregla aquí. */}
+        <div className={cn("flex items-center gap-2", !anchors && "ml-auto md:ml-4")}>
+          <div className="hidden sm:block">
+            <LanguageSelector />
           </div>
+          <ButtonLink
+            href="/studio"
+            variant="primary"
+            size="sm"
+            className="hidden sm:inline-flex"
+          >
+            {tActions("tryNow")}
+            <ArrowRight className="size-3.5" aria-hidden />
+          </ButtonLink>
+
+          <button
+            type="button"
+            onClick={() => setMenuOpen((v) => !v)}
+            aria-label={menuOpen ? t("closeMenu") : t("openMenu")}
+            aria-expanded={menuOpen}
+            aria-controls="public-mobile-menu"
+            className="grid size-9 shrink-0 cursor-pointer place-items-center rounded-lg border border-line text-ink-muted transition-colors hover:text-ink md:hidden"
+          >
+            {menuOpen ? <X className="size-4" aria-hidden /> : <Menu className="size-4" aria-hidden />}
+          </button>
         </div>
+      </div>
 
-        <AnimatePresence>
-          {menuOpen && (
-            <motion.nav
-              id="public-mobile-menu"
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: "auto", opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              transition={{ duration: 0.24, ease: [0.22, 0.61, 0.36, 1] }}
-              className="overflow-hidden border-t border-line bg-canvas/97 backdrop-blur-xl md:hidden"
-              aria-label={t("mobileNav")}
-            >
-              <div className="flex flex-col gap-1 px-4 pt-3 pb-5">
-                {navItems.map((item) => (
-                  <Link
-                    key={item.key}
-                    href={item.href}
-                    onClick={() => setMenuOpen(false)}
-                    aria-current={item.active ? "true" : undefined}
-                    className={cn(
-                      // min-h de 44 px: objetivo táctil cómodo, no un enlace de texto.
-                      "flex min-h-11 items-center rounded-lg px-3 text-[15px] transition-colors",
-                      item.active
-                        ? "bg-brand/12 text-ink"
-                        : "text-ink-muted hover:bg-white/[0.04] hover:text-ink"
-                    )}
-                  >
-                    {item.label}
-                  </Link>
-                ))}
+      <AnimatePresence>
+        {menuOpen && (
+          <motion.nav
+            id="public-mobile-menu"
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.24, ease: [0.22, 0.61, 0.36, 1] }}
+            className="overflow-hidden border-t border-line bg-canvas/97 backdrop-blur-xl md:hidden"
+            aria-label={t("mobileNav")}
+          >
+            <div className="flex flex-col gap-1 px-4 pt-3 pb-5">
+              {navItems.map((item) => (
+                <Link
+                  key={item.key}
+                  href={item.href}
+                  onClick={() => setMenuOpen(false)}
+                  aria-current={item.active ? "true" : undefined}
+                  className={cn(
+                    // min-h de 44 px: objetivo táctil cómodo, no un enlace de texto.
+                    "flex min-h-11 items-center rounded-lg px-3 text-[15px] transition-colors",
+                    item.active
+                      ? "bg-brand/12 text-ink"
+                      : "text-ink-muted hover:bg-white/[0.04] hover:text-ink"
+                  )}
+                >
+                  {item.label}
+                </Link>
+              ))}
 
-                <div className="mt-3 flex items-center gap-3 border-t border-line pt-4">
-                  <LanguageSelector align="start" />
-                  <ButtonLink
-                    href="/studio"
-                    variant="primary"
-                    size="md"
-                    className="flex-1"
-                    onClick={() => setMenuOpen(false)}
-                  >
-                    {tActions("tryNow")}
-                    <ArrowRight className="size-4" aria-hidden />
-                  </ButtonLink>
-                </div>
+              <div className="mt-3 flex items-center gap-3 border-t border-line pt-4">
+                <LanguageSelector align="start" />
+                <ButtonLink
+                  href="/studio"
+                  variant="primary"
+                  size="md"
+                  className="flex-1"
+                  onClick={() => setMenuOpen(false)}
+                >
+                  {tActions("tryNow")}
+                  <ArrowRight className="size-4" aria-hidden />
+                </ButtonLink>
               </div>
-            </motion.nav>
-          )}
-        </AnimatePresence>
-      </header>
-    </>
+            </div>
+          </motion.nav>
+        )}
+      </AnimatePresence>
+    </header>
   );
 }

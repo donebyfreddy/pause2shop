@@ -9,7 +9,7 @@ import { cn } from "@/lib/utils";
 import ItemCrop from "../ItemCrop";
 import CatalogMatchSection from "./CatalogMatchSection";
 import ExternalSearchSection from "./ExternalSearchSection";
-import { MatchingProgress } from "./MatchingProgress";
+import { MatchingProgress, type MatchingPhase } from "./MatchingProgress";
 
 /**
  * Tarjeta de UNA detección: la unidad de la nueva UI de resultados.
@@ -48,6 +48,10 @@ type Props = {
    * se encoló, que no es lo mismo que haber fallado.
    */
   matchingStatus?: DetectedItem["matchingStatus"];
+  /** Etapa en curso del matching, para que el progreso no sea mudo. */
+  matchingPhase?: MatchingPhase;
+  /** Inicio del intento (`Date.now()`), para cronometrar la espera. */
+  matchingStartedAt?: number;
   /** Resaltada por sincronización con el bounding box. */
   selected?: boolean;
   /** Clic en la tarjeta: resalta su bounding box en la imagen/vídeo. */
@@ -137,6 +141,8 @@ export default function DetectionResultCard({
   externalLoading,
   failureDetail,
   matchingStatus,
+  matchingPhase,
+  matchingStartedAt,
   selected,
   onSelect,
   onSearchExternal,
@@ -175,6 +181,8 @@ export default function DetectionResultCard({
           block={detection.catalog}
           maxVisible={maxVisibleCandidates}
           loading={loading}
+          phase={matchingPhase}
+          startedAt={matchingStartedAt}
           onSelectCandidate={onSelectCandidate}
         />
       );

@@ -124,6 +124,8 @@ function GroupedProductList({
       externalLoading={item.external_loading}
       failureDetail={item.matching_debug?.detail}
       matchingStatus={item.matchingStatus}
+      matchingPhase={item.matching_phase}
+      matchingStartedAt={item.matching_started_at}
       selected={Boolean(selectedKey) && itemKey(item) === selectedKey}
       onSelect={onSelectItem}
       onSearchExternal={onSearchExternal}

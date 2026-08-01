@@ -767,6 +767,12 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     externalFallback: detection.catalog.status !== "matched" && externalRan != null,
     externalManual: body.forceExternal === true,
     cacheHit: Boolean(catalogResult?.cached ?? externalResult?.cached),
+    stages: {
+      embeddingMs: catalogResult?.timings?.embeddingMs,
+      vectorSearchMs: catalogResult?.timings?.vectorSearchMs,
+      rankingMs: catalogResult?.timings?.rankingMs,
+      candidateCount: catalogResult?.timings?.candidateCount,
+    },
   });
 
   /* ---------------- forma anterior de la respuesta (compat) ---------------- */

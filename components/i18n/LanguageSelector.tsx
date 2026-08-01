@@ -49,9 +49,20 @@ export function LanguageSelector({ align = "end" }: { align?: "start" | "end" })
     });
   }, [query]);
 
-  useEffect(() => {
+  /**
+   * El resaltado vuelve al primero cuando cambia el filtro o se reabre el menú.
+   *
+   * Se ajusta DURANTE el render y no en un efecto: es estado derivado de
+   * `query`/`open`, y hacerlo en un efecto provocaba un render intermedio con
+   * el índice viejo apuntando a una lista ya filtrada — un instante con el
+   * resaltado en el idioma equivocado. Es el patrón que documenta React para
+   * "ajustar estado cuando cambian las props".
+   */
+  const [lastReset, setLastReset] = useState({ query, open });
+  if (lastReset.query !== query || lastReset.open !== open) {
+    setLastReset({ query, open });
     setActiveIndex(0);
-  }, [query, open]);
+  }
 
   useEffect(() => {
     if (!open) return;

@@ -51,9 +51,24 @@ export type CatalogSearchMatch = {
   color?: string | null;
 };
 
+/** Desglose por etapa que devuelve el servicio de catálogo. */
+export type CatalogSearchTimings = {
+  /** Embedding del CROP consultado (los del catálogo están precalculados). */
+  embeddingMs: number;
+  /** Consulta a pgvector, red incluida. */
+  vectorSearchMs: number;
+  rankingMs: number;
+  /** >0 solo si hubo que recorrer el catálogo en memoria (sin pgvector). */
+  fullScanMs: number;
+  totalMs: number;
+  candidateCount: number;
+  usedVectorIndex: boolean;
+};
+
 export type CatalogSearchResponse = {
   queryId: string;
   matches: CatalogSearchMatch[];
+  timings?: CatalogSearchTimings;
 };
 
 export type CatalogImageSearchRequest = {

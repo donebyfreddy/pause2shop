@@ -30,7 +30,13 @@ export interface EmbeddingProvider {
   /** Dimensión real del vector que produce este provider. */
   dimension(): number;
   embedImage(image: Buffer): Promise<number[]>;
-  embedText(text: string): Promise<number[]>;
+  /**
+   * Embedding de texto, o `null` si el proveedor no puede producir uno
+   * compatible. Nulo y no un vector de otra dimensión: la columna
+   * `text_embedding` es `vector(512)` y un vector de 64 no cabe — devolverlo
+   * convertiría un "no puedo" en un error de escritura.
+   */
+  embedText(text: string): Promise<number[] | null>;
 }
 
 function l2normalize(v: number[]): number[] {
@@ -121,7 +127,9 @@ class LocalEmbeddingProvider implements EmbeddingProvider {
   readonly model: string;
   private dim = 0;
   private imagePipeline: any = null;
-  private textPipeline: any = null;
+  /** Tokenizador y torre de TEXTO de CLIP, cargados aparte del de imagen. */
+  private tokenizer: any = null;
+  private textModel: any = null;
 
   constructor(model: string) {
     this.model = model;
@@ -131,11 +139,31 @@ class LocalEmbeddingProvider implements EmbeddingProvider {
     // Import dinámico: el paquete puede no estar instalado (es opcional).
     const transformers: any = await optionalTransformersImport();
     this.imagePipeline = await transformers.pipeline("image-feature-extraction", this.model);
+
+    // Torre de texto: tokenizador + CLIPTextModelWithProjection, NO un pipeline
+    // de "feature-extraction" sobre el modelo completo.
+    //
+    // Esto estaba mal y no se notaba: `pipeline("feature-extraction", clip)`
+    // carga el modelo CLIP ENTERO, que exige `input_ids` Y `pixel_values`.
+    // Construirlo funciona, así que el try/catch de aquí no cazaba nada; la
+    // llamada reventaba después con "Missing the following inputs:
+    // pixel_values". El único camino que llama a embedText es el reindex, que
+    // por eso terminaba con 3 errores y sin actualizar nada.
+    //
+    // La torre de texto devuelve 512 dimensiones — el MISMO espacio que las
+    // imágenes—, así que además habilita buscar imágenes por texto.
     try {
-      this.textPipeline = await transformers.pipeline("feature-extraction", this.model);
-    } catch {
-      // Algunos modelos de visión no exponen tower de texto; embedText caerá a hash.
-      this.textPipeline = null;
+      this.tokenizer = await transformers.AutoTokenizer.from_pretrained(this.model);
+      this.textModel = await transformers.CLIPTextModelWithProjection.from_pretrained(
+        this.model
+      );
+    } catch (err) {
+      logger.warn("embeddings: torre de texto no disponible", {
+        model: this.model,
+        error: err instanceof Error ? err.message : String(err),
+      });
+      this.tokenizer = null;
+      this.textModel = null;
     }
   }
 
@@ -157,10 +185,33 @@ class LocalEmbeddingProvider implements EmbeddingProvider {
     return vec;
   }
 
-  async embedText(text: string): Promise<number[]> {
-    if (!this.textPipeline) return new HashEmbeddingProvider().embedText(text);
-    const output = await this.textPipeline(text, { pooling: "mean", normalize: true });
-    return Array.from(output.data as Float32Array);
+  /**
+   * Embedding de texto en el espacio de CLIP.
+   *
+   * Devuelve `null` cuando la torre de texto no está disponible, y NO un vector
+   * del proveedor `hash`: el hash produce 64 dimensiones y la columna
+   * `text_embedding` es `vector(512)`, así que devolverlo rompería el guardado.
+   * Sin dato es mejor que un dato que no cabe.
+   */
+  async embedText(text: string): Promise<number[] | null> {
+    if (!this.tokenizer || !this.textModel) return null;
+    try {
+      const inputs = await this.tokenizer([text], {
+        padding: true,
+        truncation: true,
+      });
+      const { text_embeds } = await this.textModel(inputs);
+      const vec = Array.from(text_embeds.data as Float32Array);
+      // Normalizado L2, igual que el de imagen: si no, el coseno entre ambos
+      // espacios no sería comparable.
+      const norm = Math.sqrt(vec.reduce((a, b) => a + b * b, 0)) || 1;
+      return vec.map((x) => x / norm);
+    } catch (err) {
+      logger.warn("embeddings: fallo al embeber texto", {
+        error: err instanceof Error ? err.message : String(err),
+      });
+      return null;
+    }
   }
 }
 
