@@ -130,12 +130,12 @@
         "bag": {
           "label": "Bolso de mano",
           "title": "Bolso estructurado de piel",
-          "alt": "Bolso de mano estructurado en tono rosa empolvado"
+          "alt": "Bolso de mano estructurado en piel marrón"
         },
         "shoes": {
-          "label": "Zapatos formales",
-          "title": "Zapatos Oxford de piel",
-          "alt": "Par de zapatos Oxford de piel marrón"
+          "label": "Botas de piel",
+          "title": "Botas de piel con cordones",
+          "alt": "Par de botas de piel marrón con cordones"
         }
       },
       "sceneAlt": "Composición de moda con abrigo, bolso y zapatos sobre fondo oscuro",

@@ -9,6 +9,10 @@ import type {
   PersistenceStatus,
   SavedCatalogItem,
 } from "@/lib/api/types";
+import {
+  responseMatchesActiveSession,
+  type AnalysisIdentity,
+} from "@/lib/video/pauseAnalysis";
 
 type CachedResult = {
   analysis: FrameAnalysis;
@@ -35,6 +39,8 @@ export type AnalysisState = {
   savedItems: SavedCatalogItem[];
   frameDataUrl: string | null;
   timings: Record<string, number> | null;
+  /** Sesión/frame exactos a los que pertenece `analysis`. */
+  identity: AnalysisIdentity | null;
 };
 
 /**
@@ -72,6 +78,7 @@ const initialState: AnalysisState = {
   savedItems: [],
   frameDataUrl: null,
   timings: null,
+  identity: null,
 };
 
 type StreamEvent =
@@ -88,6 +95,9 @@ type StreamEvent =
       items: SavedCatalogItem[];
       warning?: string;
       timings?: Record<string, number>;
+      analysisSessionId?: string;
+      requestedFrameId?: string;
+      mediaTime?: number;
     }
   | { type: "error"; error: string; errorDetail?: string };
 
@@ -103,6 +113,11 @@ function buildRequestBody(
     videoUrl: meta?.videoUrl,
     videoTitle: meta?.videoTitle,
     timestampSeconds: meta?.timestampSeconds ?? 0,
+    mediaTime: meta?.mediaTime ?? meta?.timestampSeconds ?? 0,
+    frameId: meta?.frameId,
+    frameHash: meta?.frameHash,
+    analysisSessionId: meta?.analysisSessionId,
+    analysisTrigger: meta?.analysisTrigger,
     analysisConfig: config ? serializeConfig(config) : undefined,
   });
 }
@@ -116,22 +131,38 @@ function buildRequestBody(
 export function useFrameAnalysis() {
   const [state, setState] = useState<AnalysisState>(initialState);
 
-  const inFlight = useRef(false);
   const cache = useRef(new Map<string, CachedResult>());
+  const activeRequest = useRef<{
+    identity: AnalysisIdentity | null;
+    controller: AbortController;
+    version: number;
+  } | null>(null);
+  const versionRef = useRef(0);
+
+  const isActive = useCallback((identity: AnalysisIdentity | null, version: number) => {
+    const active = activeRequest.current;
+    if (!active || active.version !== version || active.controller.signal.aborted) return false;
+    if (!identity) return active.identity === null;
+    return responseMatchesActiveSession(identity, active.identity);
+  }, []);
 
   const runClassic = useCallback(
     async (
       frameDataUrl: string,
       meta?: FrameMeta,
-      config?: VideoAnalysisConfig
+      config?: VideoAnalysisConfig,
+      signal?: AbortSignal,
+      identity: AnalysisIdentity | null = null,
+      version = 0
     ): Promise<AnalyzeResult | null> => {
       const res = await fetch(ENDPOINT, {
         method: "POST",
-        signal: AbortSignal.timeout(ANALYZE_TIMEOUT_MS),
+        signal,
         headers: { "Content-Type": "application/json" },
         body: buildRequestBody(frameDataUrl, meta, config),
       });
       const data = (await res.json()) as AnalyzeFrameApiResponse;
+      if (!isActive(identity, version)) return null;
       if (!data.ok) {
         setState((s) => ({
           ...s,
@@ -140,6 +171,19 @@ export function useFrameAnalysis() {
           error: data.error,
           errorDetail: data.errorDetail ?? null,
         }));
+        return null;
+      }
+      if (
+        identity &&
+        !responseMatchesActiveSession(
+          {
+            sessionId: data.analysisSessionId ?? "",
+            frameId: data.requestedFrameId ?? "",
+            mediaTime: data.mediaTime ?? Number.NaN,
+          },
+          identity
+        )
+      ) {
         return null;
       }
       setState({
@@ -156,27 +200,31 @@ export function useFrameAnalysis() {
         savedItems: data.items,
         frameDataUrl,
         timings: data.timings ?? null,
+        identity,
       });
       return { analysis: data.analysis, savedItems: data.items, videoId: data.videoId };
     },
-    []
+    [isActive]
   );
 
   const runStreaming = useCallback(
     async (
       frameDataUrl: string,
       meta?: FrameMeta,
-      config?: VideoAnalysisConfig
+      config?: VideoAnalysisConfig,
+      signal?: AbortSignal,
+      identity: AnalysisIdentity | null = null,
+      version = 0
     ): Promise<AnalyzeResult | null> => {
       const res = await fetch(STREAM_ENDPOINT, {
         method: "POST",
-        signal: AbortSignal.timeout(ANALYZE_TIMEOUT_MS),
+        signal,
         headers: { "Content-Type": "application/json" },
         body: buildRequestBody(frameDataUrl, meta, config),
       });
       if (!res.ok || !res.body) {
         // Endpoint no disponible o error temprano → intentar la vía clásica.
-        return runClassic(frameDataUrl, meta, config);
+        return runClassic(frameDataUrl, meta, config, signal, identity, version);
       }
 
       const reader = res.body.getReader();
@@ -188,6 +236,7 @@ export function useFrameAnalysis() {
       const partialItems: DetectedItem[] = [];
 
       const handle = (event: StreamEvent) => {
+        if (!isActive(identity, version)) return;
         switch (event.type) {
           case "item":
             partialItems.push(event.item);
@@ -210,6 +259,19 @@ export function useFrameAnalysis() {
             }));
             break;
           case "complete":
+            if (
+              identity &&
+              !responseMatchesActiveSession(
+                {
+                  sessionId: event.analysisSessionId ?? "",
+                  frameId: event.requestedFrameId ?? "",
+                  mediaTime: event.mediaTime ?? Number.NaN,
+                },
+                identity
+              )
+            ) {
+              return;
+            }
             finalSavedItems = event.items;
             finalVideoId = event.videoId;
             setState((s) => ({
@@ -222,6 +284,7 @@ export function useFrameAnalysis() {
               videoId: event.videoId,
               savedItems: event.items,
               timings: event.timings ?? null,
+              identity,
             }));
             break;
           case "error":
@@ -240,6 +303,10 @@ export function useFrameAnalysis() {
 
       for (;;) {
         const { done, value } = await reader.read();
+        if (!isActive(identity, version)) {
+          await reader.cancel().catch(() => undefined);
+          return null;
+        }
         if (done) break;
         buffer += decoder.decode(value, { stream: true });
         const lines = buffer.split("\n");
@@ -253,24 +320,32 @@ export function useFrameAnalysis() {
           }
         }
       }
-      return finalAnalysis
+      return isActive(identity, version) && finalAnalysis
         ? { analysis: finalAnalysis, savedItems: finalSavedItems, videoId: finalVideoId }
         : null;
     },
-    [runClassic]
+    [isActive, runClassic]
   );
 
   const analyze = useCallback(
     async (
       frameDataUrl: string,
       meta?: FrameMeta,
-      config?: VideoAnalysisConfig
+      config?: VideoAnalysisConfig,
+      identity: AnalysisIdentity | null = null
     ): Promise<AnalyzeResult | null> => {
-      if (inFlight.current) return null;
+      // Toda captura nueva invalida el trabajo anterior. En una pausa esto es
+      // obligatorio; en preanálisis evita que un frame viejo gane la carrera.
+      activeRequest.current?.controller.abort();
+      const controller = new AbortController();
+      const version = ++versionRef.current;
+      activeRequest.current = { identity, controller, version };
+      const timeout = window.setTimeout(() => controller.abort(), ANALYZE_TIMEOUT_MS);
 
       const cacheKey = meta?.cacheKey;
       if (cacheKey && cache.current.has(cacheKey)) {
         const cached = cache.current.get(cacheKey)!;
+        window.clearTimeout(timeout);
         setState({
           ...initialState,
           analysis: cached.analysis,
@@ -280,6 +355,7 @@ export function useFrameAnalysis() {
           videoId: cached.videoId,
           savedItems: cached.savedItems,
           frameDataUrl,
+          identity,
         });
         return {
           analysis: cached.analysis,
@@ -288,7 +364,6 @@ export function useFrameAnalysis() {
         };
       }
 
-      inFlight.current = true;
       setState((s) => ({
         ...s,
         loading: true,
@@ -297,13 +372,22 @@ export function useFrameAnalysis() {
         warning: null,
         analysis: null,
         frameDataUrl,
+        identity,
       }));
+
+      const requestStartedAt = performance.now();
+      console.debug("[pause2shop:analysis]", {
+        requestStartedAt,
+        analysisSessionId: identity?.sessionId ?? null,
+        frameId: identity?.frameId ?? meta?.frameId ?? null,
+        mediaTime: identity?.mediaTime ?? meta?.mediaTime ?? null,
+      });
 
       try {
         const result = STREAMING_ENABLED
-          ? await runStreaming(frameDataUrl, meta, config)
-          : await runClassic(frameDataUrl, meta, config);
-        if (result && cacheKey) {
+          ? await runStreaming(frameDataUrl, meta, config, controller.signal, identity, version)
+          : await runClassic(frameDataUrl, meta, config, controller.signal, identity, version);
+        if (result && cacheKey && isActive(identity, version)) {
           // Cachea el resultado final con el estado ya asentado.
           setState((s) => {
             cache.current.set(cacheKey, {
@@ -317,8 +401,15 @@ export function useFrameAnalysis() {
             return s;
           });
         }
+        console.debug("[pause2shop:analysis]", {
+          requestCompletedAt: performance.now(),
+          durationMs: performance.now() - requestStartedAt,
+          analysisSessionId: identity?.sessionId ?? null,
+          frameId: identity?.frameId ?? meta?.frameId ?? null,
+        });
         return result;
       } catch (err) {
+        if (!isActive(identity, version)) return null;
         const isTimeout =
           err instanceof Error &&
           (err.name === "TimeoutError" || err.name === "AbortError");
@@ -331,13 +422,27 @@ export function useFrameAnalysis() {
         setState((s) => ({ ...s, loading: false, streaming: false, error: message, errorDetail: detail }));
         return null;
       } finally {
-        inFlight.current = false;
+        window.clearTimeout(timeout);
+        if (activeRequest.current?.version === version) activeRequest.current = null;
       }
     },
-    [runClassic, runStreaming]
+    [isActive, runClassic, runStreaming]
   );
 
-  const reset = useCallback(() => setState(initialState), []);
+  const cancel = useCallback((clearAnalysis = false) => {
+    activeRequest.current?.controller.abort();
+    activeRequest.current = null;
+    versionRef.current++;
+    setState((current) =>
+      clearAnalysis
+        ? initialState
+        : { ...current, loading: false, streaming: false, error: null }
+    );
+  }, []);
 
-  return { ...state, analyze, reset };
+  const reset = useCallback(() => {
+    cancel(true);
+  }, [cancel]);
+
+  return { ...state, analyze, cancel, reset };
 }

@@ -28,6 +28,8 @@ const FRAME_DIFF_THRESHOLD = Number(
     process.env.NEXT_PUBLIC_FRAME_DIFF_THRESHOLD ??
     "0.10",
 );
+const SCENE_CHANGE_ENABLED =
+  process.env.NEXT_PUBLIC_VIDEO_SCENE_CHANGE_ENABLED !== "false";
 /** Nº de ticks consecutivos saltados tras el cual se fuerza un análisis. */
 const FORCE_AFTER_SKIPS = Number(
   process.env.NEXT_PUBLIC_VIDEO_FORCE_ANALYSIS_AFTER_SKIPS ?? "4",
@@ -155,7 +157,8 @@ export function useVideoCaptureEngine({
 
       if (!force) {
         const sceneChanged =
-          !diffResult || diffResult.diff >= FRAME_DIFF_THRESHOLD;
+          SCENE_CHANGE_ENABLED &&
+          (!diffResult || diffResult.diff >= FRAME_DIFF_THRESHOLD);
         const tooManySkips = skipCountRef.current >= FORCE_AFTER_SKIPS;
         const tooLongSinceLast =
           now - lastAnalysisAtRef.current >= MAX_ANALYSIS_INTERVAL_MS;

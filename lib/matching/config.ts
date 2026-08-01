@@ -132,7 +132,7 @@ export function getMatchingConfig(
     externalSearchEnabled: bool(env.EXTERNAL_SEARCH_ENABLED, true),
     catalogExternalFallback: bool(
       env.EXTERNAL_SEARCH_AUTOMATIC_FALLBACK ?? env.CATALOG_EXTERNAL_FALLBACK,
-      true
+      false
     ),
     catalogSaveExternalResults: bool(env.CATALOG_SAVE_EXTERNAL_RESULTS, true),
     catalogCacheEnabled: bool(env.CATALOG_CACHE_ENABLED, true),

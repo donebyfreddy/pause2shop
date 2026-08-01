@@ -130,12 +130,12 @@
         "bag": {
           "label": "Handtasche",
           "title": "Strukturierte Ledertasche",
-          "alt": "Strukturierte Handtasche in Altrosa"
+          "alt": "Strukturierte Handtasche aus braunem Leder"
         },
         "shoes": {
-          "label": "Business-Schuhe",
-          "title": "Oxford-Schuhe aus Leder",
-          "alt": "Paar braune Oxford-Lederschuhe"
+          "label": "Lederstiefel",
+          "title": "Geschnürte Lederstiefel",
+          "alt": "Paar braune geschnürte Lederstiefel"
         }
       },
       "sceneAlt": "Mode-Komposition mit Mantel, Tasche und Schuhen vor dunklem Hintergrund",

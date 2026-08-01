@@ -130,12 +130,12 @@
         "bag": {
           "label": "Mala de mão",
           "title": "Mala estruturada em pele",
-          "alt": "Mala de mão estruturada em rosa velho"
+          "alt": "Mala de mão estruturada em pele castanha"
         },
         "shoes": {
-          "label": "Sapatos formais",
-          "title": "Sapatos Oxford em pele",
-          "alt": "Par de sapatos Oxford em pele castanha"
+          "label": "Botas de pele",
+          "title": "Botas de pele com atacadores",
+          "alt": "Par de botas de pele castanha com atacadores"
         }
       },
       "sceneAlt": "Composição de moda com casaco, mala e sapatos sobre fundo escuro",

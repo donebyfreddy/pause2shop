@@ -3,25 +3,28 @@ import { getTranslations } from "next-intl/server";
 import { PublicHeader } from "@/components/shell/PublicHeader";
 import { PublicFooter } from "@/components/shell/PublicFooter";
 import StudioExperience from "@/components/studio/StudioExperience";
-import { absoluteUrl } from "@/lib/seo";
+import { requestMetadataBase, socialCardUrl } from "@/lib/requestMetadata";
 
 /**
  * Estudio a pantalla completa. Misma herramienta que la sección `#studio` de la
  * landing, con su propia URL para enlaces directos y demos.
  */
 
-const CANONICAL = absoluteUrl("/studio");
-
 export async function generateMetadata(): Promise<Metadata> {
-  const t = await getTranslations("studio.page");
+  const [t, metadataBase] = await Promise.all([
+    getTranslations("studio.page"),
+    requestMetadataBase(),
+  ]);
+  const canonical = new URL("/studio", metadataBase).toString();
   return {
     title: t("title"),
     description: t("description"),
-    alternates: { canonical: CANONICAL },
+    alternates: { canonical },
     openGraph: {
       title: t("title"),
       description: t("description"),
-      url: CANONICAL,
+      url: canonical,
+      images: [socialCardUrl(metadataBase)],
     },
   };
 }

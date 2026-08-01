@@ -17,12 +17,27 @@ import { useVideoFrameLoop } from "@/hooks/useVideoFrameLoop";
 import { useYouTubePlayer } from "@/hooks/useYouTubePlayer";
 import { useVideoCaptureEngine, type EngineLogEvent } from "@/hooks/useVideoCaptureEngine";
 import { captureFrameDataUrl } from "@/lib/frameCapture";
-import { formatTimestamp } from "@/lib/utils";
+import { formatTimestamp, itemKey } from "@/lib/utils";
 import type { FrameMeta } from "@/lib/api/types";
 import type { FrameSourceType } from "@/lib/catalog/types";
 import type { DetectedItem } from "@/lib/types";
 import VideoOverlay from "@/components/VideoOverlay";
 import { IS_PRESENTATION } from "@/lib/presentation";
+import PausedFrameExperience from "@/components/click-to-shop/PausedFrameExperience";
+import {
+  ExactPausedFrameCapture,
+  blobToDataUrl,
+  type PauseCaptureDebug,
+  type PresentedVideoFrame,
+} from "@/lib/video/exactPausedFrameCapture";
+import {
+  EMPTY_PAUSE_METRICS,
+  nearestAnalyzedFrame,
+  responseMatchesActiveSession,
+  type AnalysisIdentity,
+  type AnalyzedVideoFrame,
+  type PausePerformanceMetrics,
+} from "@/lib/video/pauseAnalysis";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -40,10 +55,17 @@ const ENABLE_VIDEO_URLS = process.env.NEXT_PUBLIC_ENABLE_VIDEO_URLS === "true";
 
 /** Auto-análisis al reproducir (por defecto activado). */
 const VIDEO_AUTO_ANALYSIS = process.env.NEXT_PUBLIC_VIDEO_AUTO_ANALYSIS !== "false";
+const VIDEO_PREANALYSIS_ENABLED =
+  process.env.NEXT_PUBLIC_VIDEO_PREANALYSIS_ENABLED !== "false";
+const VIDEO_PREANALYSIS_FPS = Math.max(
+  0.1,
+  Number(process.env.NEXT_PUBLIC_VIDEO_PREANALYSIS_FPS ?? "1")
+);
 
 /** Tick local del scheduler (rápido y barato; el análisis remoto lo decide el engine). */
 const FRAME_CHECK_INTERVAL_MS = Number(
-  process.env.NEXT_PUBLIC_VIDEO_FRAME_CHECK_INTERVAL_MS ?? "400"
+  process.env.NEXT_PUBLIC_VIDEO_FRAME_CHECK_INTERVAL_MS ??
+    String(Math.round(1000 / VIDEO_PREANALYSIS_FPS))
 );
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -63,7 +85,11 @@ export type VideoAnalysisStats = {
 };
 
 type Props = {
-  onRequestAnalysis: (dataUrl: string, meta: FrameMeta) => Promise<void> | void;
+  onRequestAnalysis: (
+    dataUrl: string,
+    meta: FrameMeta,
+    identity?: AnalysisIdentity | null
+  ) => Promise<void> | void;
   analyzing: boolean;
   overlayItems?: DetectedItem[];
   onOverlayItemClick?: (item: DetectedItem) => void;
@@ -74,6 +100,20 @@ type Props = {
   selectedKey?: string | null;
   /** Contadores en vivo para la línea de estado no bloqueante. */
   analysisStats?: VideoAnalysisStats;
+  analysisIdentity?: AnalysisIdentity | null;
+  preanalyzedFrames?: AnalyzedVideoFrame[];
+  onPauseStart?: () => void;
+  onPausedFrameChange?: (context: PausedFrameContext | null) => void;
+  onDetectionSelect?: (item: DetectedItem, context: PausedFrameContext) => void;
+  onMetricsChange?: (metrics: PausePerformanceMetrics) => void;
+  selectedItemDetails?: DetectedItem | null;
+};
+
+export type PausedFrameContext = {
+  dataUrl: string;
+  meta: FrameMeta;
+  identity: AnalysisIdentity;
+  pauseStartedAt: number;
 };
 
 // ─── Phase display helpers ────────────────────────────────────────────────────
@@ -114,6 +154,13 @@ export default function VideoProviderAnalyzer({
   onOverlayItemClick,
   selectedKey = null,
   analysisStats,
+  analysisIdentity = null,
+  preanalyzedFrames = [],
+  onPauseStart,
+  onPausedFrameChange,
+  onDetectionSelect,
+  onMetricsChange,
+  selectedItemDetails = null,
 }: Props) {
   const t = useTranslations("studio.videoAnalyzer");
   const format = useFormatter();
@@ -137,6 +184,15 @@ export default function VideoProviderAnalyzer({
   // Pause dedup ref for direct video
   const lastPausedTimestampRef = useRef<number | null>(null);
   const directVideoRef = useRef<HTMLVideoElement | null>(null);
+  const exactCaptureRef = useRef<ExactPausedFrameCapture | null>(null);
+  const pauseCaptureAbortRef = useRef<AbortController | null>(null);
+  const activePauseRef = useRef<PausedFrameContext | null>(null);
+  const lastPresentedFrameRef = useRef<PresentedVideoFrame | null>(null);
+  const [pausedFrame, setPausedFrame] = useState<PausedFrameContext | null>(null);
+  const [pausedDetections, setPausedDetections] = useState<DetectedItem[]>([]);
+  const [pauseMetrics, setPauseMetrics] = useState<PausePerformanceMetrics>(
+    EMPTY_PAUSE_METRICS
+  );
 
   // Direct-canvas engine logs (merged into the debug panel)
   const [directLogs, setDirectLogs] = useState<DebugEntry[]>([]);
@@ -157,7 +213,9 @@ export default function VideoProviderAnalyzer({
           videoKey,
           videoTitle: d.originalUrl,
           timestampSeconds,
-          cacheKey: withCache ? `${videoKey}:${timestampSeconds}` : `${videoKey}:${timestampSeconds}:${Date.now()}`,
+          cacheKey: withCache
+            ? `${videoKey}:${timestampSeconds.toFixed(3)}`
+            : `${videoKey}:${timestampSeconds.toFixed(3)}:${Date.now()}`,
           provider: "uploaded_video",
           normalizedUrl: uploadedFile?.src ?? d.normalizedUrl,
           canEmbed: false,
@@ -175,7 +233,7 @@ export default function VideoProviderAnalyzer({
         videoUrl: d.normalizedUrl,
         videoTitle: `${PROVIDER_LABELS[d.provider]} — ${d.normalizedUrl}`,
         timestampSeconds,
-        cacheKey: withCache ? `${videoKey}:${timestampSeconds}` : undefined,
+        cacheKey: withCache ? `${videoKey}:${timestampSeconds.toFixed(3)}` : undefined,
         provider: d.provider,
         normalizedUrl: d.normalizedUrl,
         embedUrl: d.embedUrl,
@@ -271,8 +329,24 @@ export default function VideoProviderAnalyzer({
   const onDirectCapture = useCallback(
     (dataUrl: string) => {
       if (!detection) return;
-      const ts = Math.round(directVideoRef.current?.currentTime ?? 0);
-      void onRequestAnalysis(dataUrl, buildMeta(ts, true));
+      const ts =
+        lastPresentedFrameRef.current?.mediaTime ??
+        directVideoRef.current?.currentTime ??
+        0;
+      const frameId = crypto.randomUUID();
+      const sessionId = `preanalysis:${crypto.randomUUID()}`;
+      const identity = { sessionId, frameId, mediaTime: ts };
+      void onRequestAnalysis(
+        dataUrl,
+        {
+          ...buildMeta(ts, true),
+          mediaTime: ts,
+          frameId,
+          analysisSessionId: sessionId,
+          analysisTrigger: "preanalysis",
+        },
+        identity
+      );
     },
     [detection, buildMeta, onRequestAnalysis]
   );
@@ -291,9 +365,19 @@ export default function VideoProviderAnalyzer({
   // el diff dibuja un thumbnail y no hace falta pagarlo 60 veces/s.
   const lastSchedulerTickRef = useRef(0);
   const frameLoop = useVideoFrameLoop({
-    enabled: autoCaptureMode && !!(detection?.canCaptureFrameDirectly),
+    enabled:
+      VIDEO_PREANALYSIS_ENABLED &&
+      autoCaptureMode &&
+      !!(detection?.canCaptureFrameDirectly),
     getVideoElement: getDirectVideoElement,
-    onFrame: () => {
+    onFrame: (frame) => {
+      lastPresentedFrameRef.current = {
+        mediaTime: frame.mediaTime,
+        presentedAt: frame.now,
+        presentedFrames: frame.presentedFrames,
+        width: frame.width,
+        height: frame.height,
+      };
       const now = performance.now();
       if (now - lastSchedulerTickRef.current < FRAME_CHECK_INTERVAL_MS) return;
       lastSchedulerTickRef.current = now;
@@ -301,11 +385,145 @@ export default function VideoProviderAnalyzer({
     },
   });
 
-  // Pause handler for direct video
-  const handleDirectPause = useCallback(() => {
+  const publishPauseMetrics = useCallback(
+    (next: PausePerformanceMetrics) => {
+      setPauseMetrics(next);
+      onMetricsChange?.(next);
+    },
+    [onMetricsChange]
+  );
+
+  const logPauseCapture = useCallback(
+    (debug: PauseCaptureDebug, identity: AnalysisIdentity) => {
+      const payload = { ...debug, analysisSessionId: identity.sessionId };
+      console.debug("[pause2shop:pause-frame]", payload);
+      addDirectLog({
+        id: 0,
+        ts: new Date().toLocaleTimeString("es-ES", { hour12: false }),
+        type: "success",
+        msg: `pause t=${debug.pauseEventCurrentTime.toFixed(3)} · presented=${debug.presentedFrameMediaTime?.toFixed(3) ?? "—"} · captured=${debug.capturedFrameTimestamp.toFixed(3)} · ${debug.captureStrategy}`,
+      });
+    },
+    [addDirectLog]
+  );
+
+  // Pause handler exacto: no pasa por el guard `analyzing` del preanálisis.
+  const handleDirectPause = useCallback(async () => {
     if (!autoAnalyze || !detection) return;
-    directEngine.captureNow();
-  }, [autoAnalyze, detection, directEngine]);
+    const video = directVideoRef.current;
+    if (!video) return;
+    const pauseStartedAt = performance.now();
+    const requestedTime = video.currentTime;
+    pauseCaptureAbortRef.current?.abort();
+    const abortController = new AbortController();
+    pauseCaptureAbortRef.current = abortController;
+    onPauseStart?.();
+    setPausedDetections([]);
+    setPauseHint(null);
+
+    try {
+      if (!exactCaptureRef.current) {
+        exactCaptureRef.current = new ExactPausedFrameCapture(video);
+        exactCaptureRef.current.start();
+      }
+      const sessionId = crypto.randomUUID();
+      const { frame, debug } = await exactCaptureRef.current.capture({
+        videoId: buildMeta(requestedTime).videoKey,
+        requestedTime,
+        pauseEventCurrentTime: requestedTime,
+        signal: abortController.signal,
+      });
+      if (abortController.signal.aborted) return;
+      const dataUrl = await blobToDataUrl(frame.blob);
+      const identity: AnalysisIdentity = {
+        sessionId,
+        frameId: frame.frameId,
+        mediaTime: frame.mediaTime,
+      };
+      const meta: FrameMeta = {
+        ...buildMeta(frame.mediaTime, true),
+        timestampSeconds: frame.mediaTime,
+        mediaTime: frame.mediaTime,
+        frameId: frame.frameId,
+        frameHash: frame.hash,
+        analysisSessionId: sessionId,
+        analysisTrigger: "pause",
+        cacheKey: `${frame.videoId}:${frame.hash}:${frame.mediaTime.toFixed(3)}`,
+      };
+      const context = { dataUrl, meta, identity, pauseStartedAt };
+      activePauseRef.current = context;
+      setPausedFrame(context);
+      onPausedFrameChange?.(context);
+
+      const nearest = nearestAnalyzedFrame(
+        preanalyzedFrames,
+        frame.videoId,
+        frame.mediaTime
+      );
+      const capturedAt = performance.now();
+      const metrics: PausePerformanceMetrics = {
+        ...EMPTY_PAUSE_METRICS,
+        pauseToCaptureMs: capturedAt - pauseStartedAt,
+        captureToDetectionMs: nearest ? capturedAt - pauseStartedAt : null,
+        detectionCacheHit: Boolean(nearest),
+      };
+      if (nearest) setPausedDetections(nearest.detections);
+      publishPauseMetrics(metrics);
+      logPauseCapture(debug, identity);
+
+      // Una caché cercana se pinta ya, pero el frame exacto se valida siempre
+      // que exceda la tolerancia estricta de captura (80 ms).
+      const exactCache = nearest && Math.abs(nearest.mediaTime - frame.mediaTime) <= 0.08;
+      if (!exactCache) {
+        await onRequestAnalysis(dataUrl, meta, identity);
+      }
+    } catch (error) {
+      if (error instanceof DOMException && error.name === "AbortError") return;
+      addDirectLog({
+        id: 0,
+        ts: new Date().toLocaleTimeString("es-ES", { hour12: false }),
+        type: "error",
+        msg: error instanceof Error ? error.message : "Error de captura exacta",
+      });
+    }
+  }, [
+    autoAnalyze,
+    detection,
+    buildMeta,
+    preanalyzedFrames,
+    onPauseStart,
+    onPausedFrameChange,
+    onRequestAnalysis,
+    publishPauseMetrics,
+    logPauseCapture,
+    addDirectLog,
+  ]);
+
+  useEffect(() => {
+    if (!selectedItemDetails) return;
+    const id = window.setTimeout(() => {
+      setPausedDetections((current) =>
+        current.map((item) =>
+          itemKey(item) === itemKey(selectedItemDetails) ? selectedItemDetails : item
+        )
+      );
+    }, 0);
+    return () => window.clearTimeout(id);
+  }, [selectedItemDetails]);
+
+  const handleDirectPlay = useCallback(() => {
+    pauseCaptureAbortRef.current?.abort();
+    activePauseRef.current = null;
+    setPausedFrame(null);
+    setPausedDetections([]);
+    onPausedFrameChange?.(null);
+  }, [onPausedFrameChange]);
+
+  const handleDirectLoadedMetadata = useCallback((video: HTMLVideoElement) => {
+    exactCaptureRef.current?.stop();
+    exactCaptureRef.current = new ExactPausedFrameCapture(video);
+    exactCaptureRef.current.start();
+  }, []);
 
   // SEEK: al avanzar/retroceder se analiza INMEDIATAMENTE la nueva posición
   // (sin esperar al intervalo) y se resetea solo el diff de escena — el
@@ -313,7 +531,11 @@ export default function VideoProviderAnalyzer({
   const handleDirectSeeked = useCallback(() => {
     if (!detection) return;
     directEngine.resetDiff();
-    if (autoCaptureMode || autoAnalyze) directEngine.captureNow();
+    const video = directVideoRef.current;
+    // Si el seek termina pausado, `handleDirectPause` hará la captura exacta.
+    if (video && !video.paused && (autoCaptureMode || autoAnalyze)) {
+      directEngine.captureNow();
+    }
   }, [detection, directEngine, autoCaptureMode, autoAnalyze]);
 
   // ── Reset on source change ─────────────────────────────────────────────────
@@ -321,11 +543,57 @@ export default function VideoProviderAnalyzer({
   useEffect(() => {
     lastPausedTimestampRef.current = null;
     directEngine.resetDiff();
+    pauseCaptureAbortRef.current?.abort();
+    exactCaptureRef.current?.stop();
+    exactCaptureRef.current = null;
+    activePauseRef.current = null;
     // Diferido para no encadenar un render síncrono dentro del efecto.
-    const id = setTimeout(() => setDirectLogs([]), 0);
+    const id = setTimeout(() => {
+      setPausedFrame(null);
+      setPausedDetections([]);
+      setDirectLogs([]);
+    }, 0);
     return () => clearTimeout(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [detection]);
+
+  // Solo una respuesta anclada a la sesión de pausa activa sustituye las
+  // cajas cacheadas. Las actualizaciones de matching se fusionan por clave.
+  useEffect(() => {
+    const active = activePauseRef.current;
+    if (!active) return;
+    const id = window.setTimeout(() => {
+      if (
+        analysisIdentity &&
+        responseMatchesActiveSession(analysisIdentity, active.identity) &&
+        (overlayItems.length > 0 || !analyzing)
+      ) {
+        setPausedDetections(overlayItems);
+        const next = {
+          ...pauseMetrics,
+          captureToDetectionMs:
+            pauseMetrics.captureToDetectionMs ?? performance.now() - active.pauseStartedAt,
+          totalMs: performance.now() - active.pauseStartedAt,
+        };
+        publishPauseMetrics(next);
+        return;
+      }
+      if (pausedDetections.length > 0 && overlayItems.length > 0) {
+        const updates = new Map(overlayItems.map((item) => [itemKey(item), item]));
+        setPausedDetections((current) =>
+          current.map((item) => updates.get(itemKey(item)) ?? item)
+        );
+      }
+    }, 0);
+    return () => window.clearTimeout(id);
+  }, [
+    analysisIdentity,
+    analyzing,
+    overlayItems,
+    pauseMetrics,
+    pausedDetections.length,
+    publishPauseMetrics,
+  ]);
 
   // Revoke objectURL on unmount / file change
   useEffect(() => {
@@ -572,9 +840,18 @@ export default function VideoProviderAnalyzer({
               analyzing={analyzing}
               videoRef={directVideoRef}
               onPause={handleDirectPause}
+              onPlay={handleDirectPlay}
               onSeeked={handleDirectSeeked}
-              overlayItems={overlayItems}
-              onOverlayItemClick={onOverlayItemClick}
+              onLoadedMetadata={handleDirectLoadedMetadata}
+              pausedFrame={pausedFrame}
+              pausedDetections={pausedDetections}
+              detectionCacheHit={pauseMetrics.detectionCacheHit}
+              onDetectionSelect={(item) => {
+                const context = activePauseRef.current;
+                if (!context) return;
+                onOverlayItemClick?.(item);
+                onDetectionSelect?.(item, context);
+              }}
               selectedKey={selectedKey}
             />
           )}
@@ -1133,46 +1410,59 @@ function DirectVideoPlayer({
   analyzing,
   videoRef,
   onPause,
+  onPlay,
   onSeeked,
-  overlayItems,
-  onOverlayItemClick,
+  onLoadedMetadata,
+  pausedFrame,
+  pausedDetections,
+  detectionCacheHit,
+  onDetectionSelect,
   selectedKey,
 }: {
   src: string;
   analyzing: boolean;
   videoRef: React.RefObject<HTMLVideoElement | null>;
   onPause: () => void;
+  onPlay: () => void;
   onSeeked?: () => void;
-  overlayItems: DetectedItem[];
-  onOverlayItemClick?: (item: DetectedItem) => void;
+  onLoadedMetadata: (video: HTMLVideoElement) => void;
+  pausedFrame: PausedFrameContext | null;
+  pausedDetections: DetectedItem[];
+  detectionCacheHit: boolean;
+  onDetectionSelect: (item: DetectedItem) => void;
   selectedKey?: string | null;
 }) {
   // Relación de aspecto REAL del vídeo (letterboxing correcto en el overlay).
   const [videoAspect, setVideoAspect] = useState<number | null>(null);
   return (
-    <div className="relative overflow-hidden rounded-2xl border border-line bg-black shadow-2xl shadow-black/50">
+    <PausedFrameExperience
+      frozenFrameUrl={pausedFrame?.dataUrl ?? null}
+      mediaTime={pausedFrame?.identity.mediaTime ?? null}
+      mediaAspect={videoAspect}
+      detections={pausedDetections}
+      detecting={analyzing}
+      cacheHit={detectionCacheHit}
+      selectedKey={selectedKey}
+      onSelect={onDetectionSelect}
+    >
       <video
         ref={videoRef}
         src={src}
         controls
         playsInline
         onPause={onPause}
+        onPlay={onPlay}
         onSeeked={onSeeked}
         onLoadedMetadata={(e) => {
           const v = e.currentTarget;
           if (v.videoWidth && v.videoHeight) setVideoAspect(v.videoWidth / v.videoHeight);
+          onLoadedMetadata(v);
         }}
         crossOrigin="anonymous"
         className="aspect-video w-full object-contain"
       />
-      <VideoOverlay
-        items={overlayItems}
-        onItemClick={onOverlayItemClick}
-        selectedKey={selectedKey}
-        videoAspect={videoAspect}
-      />
-      {analyzing && <AnalyzingOverlay />}
-    </div>
+      {analyzing && !pausedFrame ? <AnalyzingOverlay /> : null}
+    </PausedFrameExperience>
   );
 }
 

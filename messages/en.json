@@ -130,12 +130,12 @@
         "bag": {
           "label": "Handbag",
           "title": "Structured leather bag",
-          "alt": "Structured handbag in dusty pink"
+          "alt": "Structured handbag in brown leather"
         },
         "shoes": {
-          "label": "Formal shoes",
-          "title": "Leather Oxford shoes",
-          "alt": "Pair of brown leather Oxford shoes"
+          "label": "Leather boots",
+          "title": "Laced leather boots",
+          "alt": "Pair of brown laced leather boots"
         }
       },
       "sceneAlt": "Fashion composition with a coat, a bag and shoes on a dark background",

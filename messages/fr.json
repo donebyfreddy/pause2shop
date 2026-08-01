@@ -130,12 +130,12 @@
         "bag": {
           "label": "Sac à main",
           "title": "Sac structuré en cuir",
-          "alt": "Sac à main structuré rose poudré"
+          "alt": "Sac à main structuré en cuir marron"
         },
         "shoes": {
-          "label": "Chaussures de ville",
-          "title": "Chaussures Oxford en cuir",
-          "alt": "Paire de chaussures Oxford en cuir marron"
+          "label": "Bottes en cuir",
+          "title": "Bottes en cuir à lacets",
+          "alt": "Paire de bottes en cuir marron à lacets"
         }
       },
       "sceneAlt": "Composition mode avec manteau, sac et chaussures sur fond sombre",

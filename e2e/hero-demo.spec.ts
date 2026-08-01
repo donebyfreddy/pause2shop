@@ -35,15 +35,22 @@ test.describe("hero · demo de producto", () => {
     const demo = page.locator(".panel").first();
     await waitForFullSequence(page, "desktop");
 
-    // Las tres detecciones, con su etiqueta y su confianza.
-    for (const name of [/abrigo con capucha/i, /bolso de mano/i, /zapatos formales/i]) {
+    // Las tres detecciones. Se apunta por el prefijo "Seleccionar", que solo
+    // llevan las CAJAS: el nombre del producto a secas también casa con el
+    // botón de su tarjeta ("Ver la coincidencia de …") y el localizador se
+    // vuelve ambiguo.
+    for (const name of [
+      /seleccionar abrigo con capucha/i,
+      /seleccionar bolso de mano/i,
+      /seleccionar botas de piel/i,
+    ]) {
       await expect(demo.getByRole("button", { name })).toBeVisible();
     }
 
     const matches = page.getByTestId("hero-matches-desktop");
     await expect(matches.getByText(/abrigo técnico con capucha/i)).toBeVisible();
     await expect(matches.getByText(/bolso estructurado de piel/i)).toBeVisible();
-    await expect(matches.getByText(/zapatos oxford de piel/i)).toBeVisible();
+    await expect(matches.getByText(/botas de piel con cordones/i)).toBeVisible();
 
     // Dos publicadas con precio; la tercera retenida y SIN precio.
     await expect(matches.getByText("129,00 €")).toBeVisible();
@@ -69,7 +76,7 @@ test.describe("hero · demo de producto", () => {
     const pairs: Array<[RegExp, RegExp]> = [
       [/seleccionar abrigo con capucha/i, /abrigo negro con capucha/i],
       [/seleccionar bolso de mano/i, /bolso de mano estructurado/i],
-      [/seleccionar zapatos formales/i, /zapatos oxford de piel marrón/i],
+      [/seleccionar botas de piel/i, /botas de piel marrón con cordones/i],
     ];
 
     for (const [boxName, imgAlt] of pairs) {
@@ -147,7 +154,7 @@ test.describe("hero · demo de producto", () => {
     for (const alt of [
       /abrigo negro con capucha/i,
       /bolso de mano estructurado/i,
-      /zapatos oxford de piel marrón/i,
+      /botas de piel marrón con cordones/i,
     ]) {
       const img = await demo.getByRole("img", { name: alt }).first().boundingBox();
       expect(img, `imagen ${alt}`).toBeTruthy();
@@ -178,7 +185,7 @@ test.describe("hero · demo de producto", () => {
     const matches = page.getByTestId("hero-matches-desktop");
     // Sin esperar a ninguna secuencia: el estado completo tiene que estar ya.
     await expect(matches.getByText(/abrigo técnico con capucha/i)).toBeVisible();
-    await expect(matches.getByText(/zapatos oxford de piel/i)).toBeVisible();
+    await expect(matches.getByText(/botas de piel con cordones/i)).toBeVisible();
     await expect(matches.getByText(/bajo el umbral/i)).toBeVisible();
 
     // El control ofrece reproducir, no pausar: la demo no ha arrancado sola.

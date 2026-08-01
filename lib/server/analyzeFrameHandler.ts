@@ -121,6 +121,18 @@ async function parseBody(req: NextRequest): Promise<ParsedBody> {
       typeof body.videoTitle === "string" ? body.videoTitle : undefined;
     meta.timestampSeconds =
       typeof body.timestampSeconds === "number" ? body.timestampSeconds : 0;
+    meta.mediaTime = typeof body.mediaTime === "number" ? body.mediaTime : meta.timestampSeconds;
+    meta.frameId = typeof body.frameId === "string" ? body.frameId : undefined;
+    meta.frameHash = typeof body.frameHash === "string" ? body.frameHash : undefined;
+    meta.analysisSessionId =
+      typeof body.analysisSessionId === "string" ? body.analysisSessionId : undefined;
+    meta.analysisTrigger =
+      body.analysisTrigger === "preanalysis" ||
+      body.analysisTrigger === "pause" ||
+      body.analysisTrigger === "manual" ||
+      body.analysisTrigger === "image"
+        ? body.analysisTrigger
+        : undefined;
     return {
       imageDataUrl: typeof body.image === "string" ? body.image : null,
       meta,
@@ -136,6 +148,10 @@ async function parseBody(req: NextRequest): Promise<ParsedBody> {
     meta.videoUrl = (form.get("videoUrl") as string) || undefined;
     meta.videoTitle = (form.get("videoTitle") as string) || undefined;
     meta.timestampSeconds = Number(form.get("timestampSeconds")) || 0;
+    meta.mediaTime = Number(form.get("mediaTime")) || meta.timestampSeconds;
+    meta.frameId = (form.get("frameId") as string) || undefined;
+    meta.frameHash = (form.get("frameHash") as string) || undefined;
+    meta.analysisSessionId = (form.get("analysisSessionId") as string) || undefined;
     const formConfig = form.get("analysisConfig");
     const config = parseConfig(
       typeof formConfig === "string" ? safeJson(formConfig) : undefined
@@ -488,7 +504,15 @@ export async function handleAnalyzeFrameStream(
         const result = await persist(analysis, meta);
         timings.persistenceMs = Date.now() - tPersist;
         timings.totalMs = Date.now() - tStart;
-        send({ type: "complete", mock, ...result, timings });
+        send({
+          type: "complete",
+          mock,
+          ...result,
+          analysisSessionId: meta.analysisSessionId,
+          requestedFrameId: meta.frameId,
+          mediaTime: meta.mediaTime ?? meta.timestampSeconds,
+          timings,
+        });
       } catch (err) {
         timings.totalMs = Date.now() - tStart;
         send({
@@ -499,6 +523,9 @@ export async function handleAnalyzeFrameStream(
           videoId: null,
           frameId: null,
           items: [],
+          analysisSessionId: meta.analysisSessionId,
+          requestedFrameId: meta.frameId,
+          mediaTime: meta.mediaTime ?? meta.timestampSeconds,
           warning: `El análisis funcionó pero no se pudo guardar en el catálogo: ${err instanceof Error ? err.message : "error"}`,
           timings,
         });
@@ -582,7 +609,10 @@ export async function handleAnalyzeFrame(
   // análisis nunca se pierde entero por culpa de un proveedor.
   let frameImageUrl: string | null = null;
   let usage = emptyUsage();
-  if (!mock) {
+  // FAST PATH de vídeo: este endpoint devuelve SOLO detecciones. El matching
+  // se inicia después, al clicar un objeto, vía /api/vision/match-object.
+  // Imagen suelta conserva el flujo histórico de resolución completa.
+  if (!mock && meta.sourceType === "image_upload") {
     const tEnrich = Date.now();
     const resolved = await resolveProducts(imageDataUrl, analysis, config.matchingMode);
     analysis = resolved.analysis;
@@ -602,7 +632,16 @@ export async function handleAnalyzeFrame(
     const result = await persist(analysis, meta, frameImageUrl);
     timings.persistenceMs = Date.now() - tPersist;
     timings.totalMs = Date.now() - tStart;
-    return NextResponse.json({ ok: true, analysis, mock, ...result, timings });
+    return NextResponse.json({
+      ok: true,
+      analysis,
+      mock,
+      ...result,
+      analysisSessionId: meta.analysisSessionId,
+      requestedFrameId: meta.frameId,
+      mediaTime: meta.mediaTime ?? meta.timestampSeconds,
+      timings,
+    });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Error desconocido";
     // La visión funcionó; no rompemos la respuesta por un fallo de catálogo.
@@ -614,6 +653,9 @@ export async function handleAnalyzeFrame(
       persistence: "memory_fallback" as const,
       videoId: null,
       frameId: null,
+      analysisSessionId: meta.analysisSessionId,
+      requestedFrameId: meta.frameId,
+      mediaTime: meta.mediaTime ?? meta.timestampSeconds,
       items: [],
       warning: `El análisis funcionó pero no se pudo guardar en el catálogo: ${message}`,
     });

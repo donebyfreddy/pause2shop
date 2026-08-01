@@ -6,7 +6,9 @@ import { AnimatePresence, motion } from "motion/react";
 import {
   Activity, Boxes, ExternalLink, History, ImageIcon, Trash2, Users, Video,
 } from "lucide-react";
-import VideoProviderAnalyzer from "@/components/VideoProviderAnalyzer";
+import VideoProviderAnalyzer, {
+  type PausedFrameContext,
+} from "@/components/VideoProviderAnalyzer";
 import AnalysisConfigSelector from "@/components/AnalysisConfigSelector";
 import ImageAnalyzer from "@/components/ImageAnalyzer";
 import ProductResultsPanel from "@/components/ProductResultsPanel";
@@ -38,6 +40,14 @@ import type { FrameMeta } from "@/lib/api/types";
 import { IS_PRESENTATION } from "@/lib/presentation";
 import { formatTimestamp, itemKey } from "@/lib/utils";
 import { Badge, Button, Drawer, SectionLabel, Segmented } from "@/components/ui";
+import CommerceSidePanel from "@/components/click-to-shop/CommerceSidePanel";
+import {
+  EMPTY_PAUSE_METRICS,
+  pruneAnalyzedFrames,
+  type AnalysisIdentity,
+  type AnalyzedVideoFrame,
+  type PausePerformanceMetrics,
+} from "@/lib/video/pauseAnalysis";
 
 /**
  * Estudio de análisis: la herramienta real.
@@ -107,6 +117,11 @@ export default function StudioExperience({
   const [prefs, setPrefs] = useState<Preferences>({ categoryClicks: {}, styleClicks: {} });
   const [sessionItems, setSessionItems] = useState<DetectedItem[]>([]);
   const [selectedOverlayItem, setSelectedOverlayItem] = useState<DetectedItem | null>(null);
+  const [activePausedFrame, setActivePausedFrame] = useState<PausedFrameContext | null>(null);
+  const [preanalyzedFrames, setPreanalyzedFrames] = useState<AnalyzedVideoFrame[]>([]);
+  const [pauseMetrics, setPauseMetrics] = useState<PausePerformanceMetrics>(
+    EMPTY_PAUSE_METRICS
+  );
   // Sincroniza el hotspot de la imagen analizada con su card en el panel lateral.
   /**
    * Objeto resaltado, COMPARTIDO por imagen y vídeo.
@@ -166,9 +181,15 @@ export default function StudioExperience({
   }, []);
 
   const handleRequestAnalysis = useCallback(
-    async (dataUrl: string, meta: FrameMeta) => {
+    async (
+      dataUrl: string,
+      meta: FrameMeta,
+      identity: AnalysisIdentity | null = null
+    ) => {
       setLastFrame({ url: dataUrl, meta });
-      setSelectedItemKey(null);
+      if (meta.analysisTrigger === "pause" || meta.analysisTrigger === "image") {
+        setSelectedItemKey(null);
+      }
 
       // Cambio de fuente de vídeo: se reinicia la sesión de detección.
       if (currentVideoKeyRef.current !== meta.videoKey) {
@@ -177,10 +198,11 @@ export default function StudioExperience({
         matching.reset();
         trackerRef.current = createTrackerState();
         setTrackedObjects(0);
+        setPreanalyzedFrames([]);
       }
 
       const cfg = analysisConfigRef.current;
-      const result = await analyze(dataUrl, meta, cfg);
+      const result = await analyze(dataUrl, meta, cfg, identity);
       if (!result) return;
 
       // Defensa en cliente: aunque el backend ya filtra, no dejamos entrar un
@@ -199,18 +221,35 @@ export default function StudioExperience({
       for (const saved of result.savedItems) {
         itemIdByFingerprint.set(clientFingerprint(saved.item), saved.item.id);
       }
-      // Matching visual asíncrono (cola separada): la detección ya está pintada;
-      // las cards se actualizan cuando llegan los resultados.
-      matching.enqueue(result.analysis.items, dataUrl, {
-        videoKey: meta.videoKey,
-        itemIdByFingerprint,
-        // La fuente de coincidencias elegida decide qué resolvedor corre en el
-        // backend para CADA objeto, también en el frame pausado.
-        matchingMode: cfg.matchingMode,
-        // Ancla el resultado al instante del vídeo: así una coincidencia queda
-        // atribuida al frame en que se detectó y no se confunde con otro.
-        timestampSeconds: meta.timestampSeconds,
-      });
+      // En vídeo el matching es BAJO DEMANDA: detectar no inicia catálogo ni
+      // Internet. En imagen se conserva el flujo automático existente.
+      if (meta.sourceType === "image_upload") {
+        matching.enqueue(result.analysis.items, dataUrl, {
+          videoKey: meta.videoKey,
+          itemIdByFingerprint,
+          matchingMode: cfg.matchingMode,
+          timestampSeconds: meta.timestampSeconds,
+        });
+      } else {
+        setPreanalyzedFrames((previous) =>
+          pruneAnalyzedFrames(
+            [
+              ...previous,
+              {
+                videoId: meta.videoKey,
+                frameId: meta.frameId ?? identity?.frameId ?? crypto.randomUUID(),
+                mediaTime: meta.mediaTime ?? meta.timestampSeconds,
+                frameHash:
+                  meta.frameHash ?? meta.cacheKey ?? `${meta.videoKey}:${meta.timestampSeconds}`,
+                detections: result.analysis.items,
+                tracks: result.analysis.items.map(clientFingerprint),
+                analyzedAt: Date.now(),
+              },
+            ],
+            meta.mediaTime ?? meta.timestampSeconds
+          )
+        );
+      }
 
       setHistory(
         pushHistory({
@@ -320,9 +359,13 @@ export default function StudioExperience({
     trackerRef.current = createTrackerState();
     setTrackedObjects(0);
     setSelectedItemKey(null);
+    setSelectedOverlayItem(null);
+    setActivePausedFrame(null);
+    setPreanalyzedFrames([]);
+    setPauseMetrics(EMPTY_PAUSE_METRICS);
   };
 
-  const overlayItems = analysis?.items ?? [];
+  const overlayItems = personalizedItems;
   const personCount = new Set(
     overlayItems.map((it) => it.person_index).filter((p): p is number => typeof p === "number")
   ).size;
@@ -356,6 +399,53 @@ export default function StudioExperience({
     setSelectedItemKey(itemKey(item));
     setSelectedOverlayItem(item);
   }, []);
+
+  const handleVideoDetectionSelect = useCallback(
+    (item: DetectedItem, context: PausedFrameContext) => {
+      handleOverlayItemClick(item);
+      const itemIdByFingerprint = new Map<string, string>();
+      for (const saved of savedItems) {
+        itemIdByFingerprint.set(clientFingerprint(saved.item), saved.item.id);
+      }
+      matching.matchNow(item, context.dataUrl, {
+        videoKey: context.meta.videoKey,
+        frameId: context.identity.frameId,
+        frameHash: context.meta.frameHash,
+        mediaTime: context.identity.mediaTime,
+        sessionId: context.identity.sessionId,
+        itemIdByFingerprint,
+        matchingMode: analysisConfigRef.current.matchingMode,
+        timestampSeconds: context.identity.mediaTime,
+      });
+    },
+    [handleOverlayItemClick, matching, savedItems, analysisConfigRef]
+  );
+
+  const selectedCommerceItem = useMemo(
+    () => (selectedOverlayItem ? applyMatching([selectedOverlayItem])[0] : null),
+    [selectedOverlayItem, applyMatching]
+  );
+  const selectedMatchingEntry = selectedOverlayItem
+    ? matching.results.get(clientFingerprint(selectedOverlayItem))
+    : undefined;
+  const commerceMetrics = useMemo<PausePerformanceMetrics>(
+    () => ({
+      ...pauseMetrics,
+      cropMs: selectedMatchingEntry?.timings?.cropMs ?? pauseMetrics.cropMs,
+      embeddingMs:
+        selectedMatchingEntry?.timings?.embeddingMs ?? pauseMetrics.embeddingMs,
+      vectorSearchMs:
+        selectedMatchingEntry?.timings?.vectorSearchMs ?? pauseMetrics.vectorSearchMs,
+      rankingMs: selectedMatchingEntry?.timings?.rankingMs ?? pauseMetrics.rankingMs,
+      catalogFirstResultMs:
+        selectedMatchingEntry?.timings?.catalogFirstResultMs ??
+        pauseMetrics.catalogFirstResultMs,
+      externalSearchMs:
+        selectedMatchingEntry?.timings?.externalSearchMs ?? pauseMetrics.externalSearchMs,
+      totalMs: selectedMatchingEntry?.timings?.totalMs ?? pauseMetrics.totalMs,
+    }),
+    [pauseMetrics, selectedMatchingEntry]
+  );
 
   return (
     <div className="w-full">
@@ -431,6 +521,23 @@ export default function StudioExperience({
                       uniqueProducts: sessionItems.length,
                       matchedProducts: matchedCount,
                     }}
+                    analysisIdentity={analysisHook.identity}
+                    preanalyzedFrames={preanalyzedFrames}
+                    onPauseStart={() => {
+                      analysisHook.cancel(true);
+                      setSelectedItemKey(null);
+                      setSelectedOverlayItem(null);
+                    }}
+                    onPausedFrameChange={(context) => {
+                      setActivePausedFrame(context);
+                      if (!context) {
+                        setSelectedItemKey(null);
+                        setSelectedOverlayItem(null);
+                      }
+                    }}
+                    onDetectionSelect={handleVideoDetectionSelect}
+                    onMetricsChange={setPauseMetrics}
+                    selectedItemDetails={selectedCommerceItem}
                   />
                 </>
               ) : (
@@ -486,6 +593,20 @@ export default function StudioExperience({
               : "xl:sticky xl:top-20 xl:h-[calc(100vh-8rem)]"
           }
         >
+          {mode === "video" ? (
+            <CommerceSidePanel
+              selectedItem={selectedCommerceItem}
+              frameDataUrl={activePausedFrame?.dataUrl ?? null}
+              paused={Boolean(activePausedFrame)}
+              metrics={commerceMetrics}
+              debug={!IS_PRESENTATION}
+              onClose={() => {
+                setSelectedItemKey(null);
+                setSelectedOverlayItem(null);
+              }}
+              onSearchExternal={matching.requestExternal}
+            />
+          ) : (
           <ProductResultsPanel
             loading={loading}
             streaming={analysisHook.streaming}
@@ -508,12 +629,13 @@ export default function StudioExperience({
             onSelectItem={handleSelectItem}
             onSearchExternal={matching.requestExternal}
           />
+          )}
         </div>
       </div>
 
       {/* Detalle del objeto clicado en el overlay del reproductor. */}
       <Drawer
-        open={Boolean(selectedOverlayItem)}
+        open={mode === "image" && Boolean(selectedOverlayItem)}
         onClose={() => setSelectedOverlayItem(null)}
         title={selectedOverlayItem?.name ?? t("product.fallbackTitle")}
         subtitle={

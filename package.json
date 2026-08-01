@@ -13,6 +13,7 @@
     "typecheck": "tsc --noEmit",
     "env:check": "node --import tsx scripts/envCheck.ts",
     "demo:assets": "node --import tsx scripts/prepareDemoAssets.ts",
+    "demo:assets:search": "node --import tsx scripts/prepareDemoAssets.ts --unsplash",
     "matching:profile": "node --import tsx scripts/profileMatching.ts",
     "matching:bench": "node --import tsx scripts/benchmarkMatching.ts",
     "scraper:probe": "node --import tsx scripts/scraperProbe.ts",

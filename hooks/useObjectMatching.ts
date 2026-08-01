@@ -79,6 +79,15 @@ export type MatchingEntry = {
   phase?: "queued" | "cropping" | "searching";
   /** `Date.now()` del inicio del intento: la UI cronometra desde aquí. */
   startedAt?: number;
+  timings?: {
+    cropMs?: number;
+    embeddingMs?: number;
+    vectorSearchMs?: number;
+    rankingMs?: number;
+    catalogFirstResultMs?: number;
+    externalSearchMs?: number;
+    totalMs?: number;
+  };
 };
 
 /**
@@ -115,8 +124,12 @@ export function clientFingerprint(item: {
   ].join("|");
 }
 
-type EnqueueMeta = {
+export type EnqueueMeta = {
   videoKey?: string;
+  frameId?: string;
+  frameHash?: string;
+  mediaTime?: number;
+  sessionId?: string;
   itemIdByFingerprint?: Map<string, string>;
   /** Fuente de coincidencias elegida por el usuario para este análisis. */
   matchingMode?: ProductMatchingMode;
@@ -138,7 +151,7 @@ type MatchObjectPayload = {
   fallbackUsed?: boolean;
   cached?: boolean;
   detail?: string;
-  timings?: { totalMs?: number };
+  timings?: Record<string, number>;
   error?: string;
   matchingMode?: ProductMatchingMode;
   matching?: { externalFallbackUsed?: boolean };
@@ -228,6 +241,8 @@ export function useObjectMatching() {
   const lastRequest = useRef(new Map<string, LastRequest>());
   /** Fingerprints con búsqueda externa ya pedida: no se paga dos veces. */
   const externalRequested = useRef(new Set<string>());
+  /** Crop ya generado por frame+objeto: volver a clicar no repite canvas. */
+  const cropCache = useRef(new Map<string, Promise<string | null>>());
 
   const setEntry = useCallback((fp: string, entry: Partial<MatchingEntry>) => {
     setResults((prev) => {
@@ -310,15 +325,25 @@ export function useObjectMatching() {
       meta: EnqueueMeta,
       opts: { forceExternal?: boolean } = {}
     ): Promise<void> => {
+      const startedAt = performance.now();
       setEntry(fp, { phase: "cropping", startedAt: Date.now() });
       try {
-        const crop = await cropFromDataUrl(frameDataUrl, item.bounding_box!);
+        const cropStartedAt = performance.now();
+        const cropKey = `${meta.videoKey ?? "image"}:${meta.frameHash ?? meta.frameId ?? "frame"}:${fp}`;
+        let cropPromise = cropCache.current.get(cropKey);
+        if (!cropPromise) {
+          cropPromise = cropFromDataUrl(frameDataUrl, item.bounding_box!);
+          cropCache.current.set(cropKey, cropPromise);
+        }
+        const crop = await cropPromise;
+        const cropMs = performance.now() - cropStartedAt;
         if (!crop) {
           finishAttempt(fp, "no_match");
           setEntry(fp, {
             status: "no_match",
             externalLoading: false,
             detail: "No hay suficiente detalle visual para identificar el producto exacto.",
+            timings: { cropMs, totalMs: performance.now() - startedAt },
           });
           return;
         }
@@ -337,6 +362,10 @@ export function useObjectMatching() {
             // UI para casar tarjeta y bounding box entre frames.
             detectionId: fp,
             timestampSeconds: meta.timestampSeconds ?? null,
+            mediaTime: meta.mediaTime ?? meta.timestampSeconds ?? null,
+            frameId: meta.frameId,
+            frameHash: meta.frameHash,
+            analysisSessionId: meta.sessionId,
             forceExternal: opts.forceExternal === true,
           }),
         });
@@ -369,6 +398,15 @@ export function useObjectMatching() {
           detection: data.detection,
           externalLoading: false,
           phase: undefined,
+          timings: {
+            cropMs,
+            embeddingMs: data.timings?.embeddingMs,
+            vectorSearchMs: data.timings?.vectorSearchMs,
+            rankingMs: data.timings?.rankingMs,
+            catalogFirstResultMs: performance.now() - startedAt,
+            externalSearchMs: data.timings?.lensMs,
+            totalMs: performance.now() - startedAt,
+          },
         });
       } catch (err) {
         const timeout =
@@ -379,6 +417,7 @@ export function useObjectMatching() {
           status: "provider_error",
           externalLoading: false,
           detail: timeout ? "Timeout del matching" : "Error de red",
+          timings: { totalMs: performance.now() - startedAt },
         });
       }
     },
@@ -387,7 +426,14 @@ export function useObjectMatching() {
 
   /** Crea y encola la tarea real de matching para un objeto. */
   const pushTask = useCallback(
-    (fp: string, item: DetectedItem, frameDataUrl: string, meta: EnqueueMeta, quality: number) => {
+    (
+      fp: string,
+      item: DetectedItem,
+      frameDataUrl: string,
+      meta: EnqueueMeta,
+      quality: number,
+      priority = false
+    ) => {
       const prev = attempts.current.get(fp);
       attempts.current.set(fp, {
         attempts: (prev?.attempts ?? 0) + 1,
@@ -400,7 +446,9 @@ export function useObjectMatching() {
       // el usuario pide Internet más tarde, ya con el vídeo en otro punto.
       lastRequest.current.set(fp, { item, frameDataUrl, meta });
       setEntry(fp, { status: "searching" });
-      queue.current.push(() => runMatch(fp, item, frameDataUrl, meta));
+      const task = () => runMatch(fp, item, frameDataUrl, meta);
+      if (priority) queue.current.unshift(task);
+      else queue.current.push(task);
     },
     [setEntry, runMatch]
   );
@@ -493,6 +541,29 @@ export function useObjectMatching() {
     [pump, pushTask, setEntry]
   );
 
+  /**
+   * Matching bajo demanda: un clic salta la espera por crop mejor y coloca el
+   * objeto al principio de la cola. Un match resuelto o en vuelo no se repite.
+   */
+  const matchNow = useCallback(
+    (item: DetectedItem, frameDataUrl: string, meta: EnqueueMeta = {}) => {
+      if (!item.bounding_box) return;
+      const fp = clientFingerprint(item);
+      const attempt = attempts.current.get(fp);
+      lastRequest.current.set(fp, { item, frameDataUrl, meta });
+      if (attempt?.inFlight || attempt?.lastStatus === "matched") return;
+      const pending = pendingBetter.current.get(fp);
+      if (pending) {
+        clearTimeout(pending.timer);
+        pendingBetter.current.delete(fp);
+      }
+      const quality = cropQualityScore(item.bounding_box, item.confidence);
+      pushTask(fp, item, frameDataUrl, meta, quality, true);
+      pump();
+    },
+    [pump, pushTask]
+  );
+
   const reset = useCallback(() => {
     attempts.current.clear();
     queue.current = [];
@@ -500,6 +571,7 @@ export function useObjectMatching() {
     pendingBetter.current.clear();
     lastRequest.current.clear();
     externalRequested.current.clear();
+    cropCache.current.clear();
     setResults(new Map());
   }, []);
 
@@ -511,5 +583,5 @@ export function useObjectMatching() {
     };
   }, []);
 
-  return { results, enqueue, reset, requestExternal };
+  return { results, enqueue, matchNow, reset, requestExternal };
 }

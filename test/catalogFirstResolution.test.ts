@@ -260,6 +260,7 @@ test("catalog_first: sin match fiable en el catálogo SÍ cae al externo", async
   const { out, externalCalls } = await resolve("catalog_first", {
     catalog: CATALOG_WEAK,
     external: EXTERNAL_HIT,
+    envOver: { EXTERNAL_SEARCH_AUTOMATIC_FALLBACK: "true" },
   });
 
   assert.equal(externalCalls.n, 1);
@@ -403,6 +404,7 @@ test("un candidato externo nunca se marca como producto del catálogo", async ()
   const { out } = await resolve("catalog_first", {
     catalog: CATALOG_EMPTY,
     external: EXTERNAL_HIT,
+    envOver: { EXTERNAL_SEARCH_AUTOMATIC_FALLBACK: "true" },
   });
   const selected = out.detection.external.selected;
   assert.ok(selected);
@@ -431,6 +433,7 @@ test("un resultado cacheado cuenta como cache hit y no suma coste externo", asyn
   const { out } = await resolve("catalog_first", {
     catalog: CATALOG_EMPTY,
     external: { ...EXTERNAL_HIT, cached: true },
+    envOver: { EXTERNAL_SEARCH_AUTOMATIC_FALLBACK: "true" },
   });
   assert.equal(out.usage.externalCalls, 1);
   assert.equal(out.usage.cacheHits, 1);
@@ -451,6 +454,7 @@ test("catálogo caído: se marca error y el externo sigue dando resultados", asy
   const { out } = await resolve("catalog_first", {
     catalog: catalogDown,
     external: EXTERNAL_HIT,
+    envOver: { EXTERNAL_SEARCH_AUTOMATIC_FALLBACK: "true" },
   });
 
   assert.equal(out.detection.catalog.status, "error");
@@ -476,7 +480,7 @@ test("Internet caído: el match del catálogo se conserva intacto", async () => 
 /* ----------------------- decisión de gasto, aislada ---------------------- */
 
 test("shouldCallExternal: tabla de decisión completa", () => {
-  const config = getMatchingConfig(env());
+  const config = getMatchingConfig(env({ EXTERNAL_SEARCH_AUTOMATIC_FALLBACK: "true" }));
   const base = { config, hasExternalProvider: true, forceExternal: false };
 
   // catalog_only: nunca.
@@ -576,6 +580,7 @@ test("métricas: tasa de resolución del catálogo y coste externo evitado", asy
   const miss = await resolve("catalog_first", {
     catalog: CATALOG_EMPTY,
     external: EXTERNAL_HIT,
+    envOver: { EXTERNAL_SEARCH_AUTOMATIC_FALLBACK: "true" },
   });
   recordDetectionResolution({
     detection: miss.out.detection,

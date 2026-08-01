@@ -6,6 +6,7 @@ import type {
   RankedCandidate,
   VisualCandidate,
 } from "./types";
+import { isCommercialVisualCandidate } from "./commercialFilter";
 
 /**
  * Re-ranking de candidatos por coincidencia visual con el item detectado.
@@ -155,6 +156,7 @@ export function rankCandidates(
   item: DetectedItem
 ): RankedCandidate[] {
   return dedupeCandidates(candidates)
+    .filter(isCommercialVisualCandidate)
     .map((c) => scoreCandidate(c, item))
     .sort((a, b) => b.score - a.score);
 }

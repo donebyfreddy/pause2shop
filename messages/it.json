@@ -130,12 +130,12 @@
         "bag": {
           "label": "Borsa a mano",
           "title": "Borsa strutturata in pelle",
-          "alt": "Borsa a mano strutturata rosa cipria"
+          "alt": "Borsa a mano strutturata in pelle marrone"
         },
         "shoes": {
-          "label": "Scarpe eleganti",
-          "title": "Scarpe Oxford in pelle",
-          "alt": "Paio di scarpe Oxford in pelle marrone"
+          "label": "Stivali in pelle",
+          "title": "Stivali in pelle con lacci",
+          "alt": "Paio di stivali in pelle marrone con lacci"
         }
       },
       "sceneAlt": "Composizione moda con cappotto, borsa e scarpe su sfondo scuro",

@@ -16,7 +16,9 @@ import { useCallback, useEffect, useRef, useState } from "react";
  */
 
 type VideoWithRVFC = HTMLVideoElement & {
-  requestVideoFrameCallback?: (cb: () => void) => number;
+  requestVideoFrameCallback?: (
+    cb: (now: DOMHighResTimeStamp, metadata: VideoFrameCallbackMetadata) => void
+  ) => number;
   cancelVideoFrameCallback?: (handle: number) => void;
 };
 
@@ -33,7 +35,16 @@ type Options = {
   enabled: boolean;
   getVideoElement: () => HTMLVideoElement | null;
   /** Se ejecuta por cada frame presentado. Debe ser barato (<1ms típico). */
-  onFrame: () => void;
+  onFrame: (frame: PresentedFrameInfo) => void;
+};
+
+export type PresentedFrameInfo = {
+  now: number;
+  mediaTime: number;
+  currentTime: number;
+  presentedFrames: number;
+  width: number;
+  height: number;
 };
 
 export function useVideoFrameLoop({ enabled, getVideoElement, onFrame }: Options): FrameLoopStats {
@@ -74,7 +85,10 @@ export function useVideoFrameLoop({ enabled, getVideoElement, onFrame }: Options
       }
     };
 
-    const tick = () => {
+    const tick = (
+      now = performance.now(),
+      metadata?: VideoFrameCallbackMetadata
+    ) => {
       if (signal.stopped) return;
       const video = getVideoRef.current() as VideoWithRVFC | null;
       // PATRÓN OBLIGATORIO: el siguiente callback se registra SIEMPRE en
@@ -85,7 +99,14 @@ export function useVideoFrameLoop({ enabled, getVideoElement, onFrame }: Options
           frames++;
           windowFrames++;
           try {
-            onFrameRef.current();
+            onFrameRef.current({
+              now,
+              mediaTime: metadata?.mediaTime ?? video.currentTime,
+              currentTime: video.currentTime,
+              presentedFrames: metadata?.presentedFrames ?? frames,
+              width: metadata?.width ?? video.videoWidth,
+              height: metadata?.height ?? video.videoHeight,
+            });
           } catch {
             // El pipeline local nunca debe tumbar el bucle de frames.
           }

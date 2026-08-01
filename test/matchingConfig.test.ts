@@ -91,7 +91,7 @@ test("defaults numéricos y booleanos del catálogo", () => {
   assert.equal(cfg.catalogMatchMaxVisible, 4);
   assert.equal(cfg.catalogRequestTimeoutMs, 5000);
   assert.equal(cfg.externalSearchEnabled, true);
-  assert.equal(cfg.catalogExternalFallback, true);
+  assert.equal(cfg.catalogExternalFallback, false);
   assert.equal(cfg.catalogSaveExternalResults, true);
   assert.equal(cfg.catalogCacheEnabled, true);
   assert.equal(cfg.catalogCacheTtlSeconds, 86_400);

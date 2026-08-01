@@ -17,7 +17,8 @@ import { SecuritySection } from "@/components/landing/SecuritySection";
 import { FinalCTA } from "@/components/landing/FinalCTA";
 import { catalogService } from "@/lib/catalogService/server";
 import type { ConnectorsResponse, Overview } from "@/lib/catalogService/types";
-import { APP_NAME, absoluteUrl } from "@/lib/seo";
+import { requestMetadataBase, socialCardUrl } from "@/lib/requestMetadata";
+import { APP_NAME } from "@/lib/seo";
 
 /**
  * Landing pública.
@@ -40,18 +41,21 @@ import { APP_NAME, absoluteUrl } from "@/lib/seo";
  * pantalla real y completa.
  */
 
-const CANONICAL = absoluteUrl("/");
-
 export async function generateMetadata(): Promise<Metadata> {
-  const t = await getTranslations("landing.meta");
+  const [t, metadataBase] = await Promise.all([
+    getTranslations("landing.meta"),
+    requestMetadataBase(),
+  ]);
+  const canonical = new URL("/", metadataBase).toString();
   return {
     title: t("title"),
     description: t("description"),
-    alternates: { canonical: CANONICAL },
+    alternates: { canonical },
     openGraph: {
       title: t("title"),
       description: t("description"),
-      url: CANONICAL,
+      url: canonical,
+      images: [socialCardUrl(metadataBase)],
     },
   };
 }

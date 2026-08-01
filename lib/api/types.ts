@@ -23,6 +23,16 @@ export type FrameMeta = {
   videoUrl?: string;
   videoTitle?: string;
   timestampSeconds: number;
+  /** Tiempo de presentación exacto reportado por requestVideoFrameCallback. */
+  mediaTime?: number;
+  /** Identidad del frame capturado; no se redondea a segundos. */
+  frameId?: string;
+  /** SHA-256 del JPEG capturado, usado para caché/deduplicación. */
+  frameHash?: string;
+  /** Sesión cancelable creada por cada pausa. */
+  analysisSessionId?: string;
+  /** Origen del trabajo: preanálisis en reproducción o pausa interactiva. */
+  analysisTrigger?: "preanalysis" | "pause" | "manual" | "image";
   /** Clave de caché/throttle del cliente (videoKey + ":" + segundo). Omitir para saltarse la caché. */
   cacheKey?: string;
   /** Proveedor detectado (youtube, dailymotion, vimeo, direct_mp4, hls, …). */
@@ -57,6 +67,10 @@ export type AnalyzeFrameSuccess = {
   persistence?: PersistenceStatus;
   videoId: string | null;
   frameId: string | null;
+  /** Identidad de cliente que permite descartar respuestas antiguas. */
+  analysisSessionId?: string;
+  requestedFrameId?: string;
+  mediaTime?: number;
   items: SavedCatalogItem[];
   warning?: string;
   /** Duraciones por etapa (detectionMs, enrichMs, persistenceMs, totalMs). */

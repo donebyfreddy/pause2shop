@@ -98,6 +98,9 @@ function fakeClient(): CatalogClient & { saved: ExternalProductInput[] } {
 }
 
 const config = getMatchingConfig({} as unknown as NodeJS.ProcessEnv);
+const autoFallbackConfig = getMatchingConfig({
+  EXTERNAL_SEARCH_AUTOMATIC_FALLBACK: "true",
+} as unknown as NodeJS.ProcessEnv);
 
 function catalogHit(finalScore = 0.9, stage: NormalizedProductMatch["matchStage"] = "embedding"): ProductMatchingResult {
   return {
@@ -139,7 +142,12 @@ test("catalog-first: match del catálogo suficiente NO llama al pipeline externo
   const catalog = fakeProvider(catalogHit(0.9));
   const external = fakeProvider(externalHit());
   const client = fakeClient();
-  const provider = new CatalogFirstMatchingProvider({ catalog, external, client, config });
+  const provider = new CatalogFirstMatchingProvider({
+    catalog,
+    external,
+    client,
+    config: autoFallbackConfig,
+  });
 
   const result = await provider.search(INPUT);
   assert.equal(result.matchLabel, "CATALOG_MATCH");
@@ -152,7 +160,12 @@ test("catalog-first: sin match del catálogo SÍ llama al externo y GUARDA el re
   const catalog = fakeProvider(noMatchResult({ providerUsed: "catalog" }));
   const external = fakeProvider(externalHit(0.8));
   const client = fakeClient();
-  const provider = new CatalogFirstMatchingProvider({ catalog, external, client, config });
+  const provider = new CatalogFirstMatchingProvider({
+    catalog,
+    external,
+    client,
+    config: autoFallbackConfig,
+  });
 
   const result = await provider.search(INPUT);
   assert.equal(external.calls, 1);
@@ -170,7 +183,12 @@ test("catalog-first: resultado externo NO fiable (SIMILAR) no se guarda", async 
   const weakExternal: ProductMatchingResult = { ...externalHit(0.4), matchLabel: "SIMILAR" };
   const external = fakeProvider(weakExternal);
   const client = fakeClient();
-  const provider = new CatalogFirstMatchingProvider({ catalog, external, client, config });
+  const provider = new CatalogFirstMatchingProvider({
+    catalog,
+    external,
+    client,
+    config: autoFallbackConfig,
+  });
 
   const result = await provider.search(INPUT);
   assert.equal(result.matchLabel, "SIMILAR");
@@ -191,7 +209,10 @@ test("catalog-first: CATALOG_EXTERNAL_FALLBACK=false no consulta al externo", as
 });
 
 test("catalog-first: CATALOG_SAVE_EXTERNAL_RESULTS=false no ingiere aunque el externo sea fiable", async () => {
-  const noSaveConfig = getMatchingConfig({ CATALOG_SAVE_EXTERNAL_RESULTS: "false" } as unknown as NodeJS.ProcessEnv);
+  const noSaveConfig = getMatchingConfig({
+    CATALOG_SAVE_EXTERNAL_RESULTS: "false",
+    EXTERNAL_SEARCH_AUTOMATIC_FALLBACK: "true",
+  } as unknown as NodeJS.ProcessEnv);
   const client = fakeClient();
   const provider = new CatalogFirstMatchingProvider({
     catalog: fakeProvider(noMatchResult({})),
@@ -211,7 +232,10 @@ test("resiliencia: catálogo caído (NO_MATCH con warning) → fallback externo 
   );
   const external = fakeProvider(externalHit());
   const provider = new CatalogFirstMatchingProvider({
-    catalog: catalogDown, external, client: fakeClient(), config,
+    catalog: catalogDown,
+    external,
+    client: fakeClient(),
+    config: autoFallbackConfig,
   });
 
   const result = await provider.search(INPUT);
@@ -224,7 +248,10 @@ test("resiliencia: catálogo con SIMILAR y externo sin nada → se devuelven los
   const catalog = fakeProvider(catalogHit(0.6)); // SIMILAR
   const external = fakeProvider(noMatchResult({}));
   const provider = new CatalogFirstMatchingProvider({
-    catalog, external, client: fakeClient(), config,
+    catalog,
+    external,
+    client: fakeClient(),
+    config: autoFallbackConfig,
   });
   const result = await provider.search(INPUT);
   assert.equal(result.matchLabel, "SIMILAR");
@@ -237,7 +264,7 @@ test("resiliencia: ambos caminos fallan → NO_MATCH sin excepción", async () =
     catalog: fakeProvider(noMatchResult({ warnings: ["catálogo caído"] })),
     external: fakeProvider(noMatchResult({ warnings: ["externo caído"] })),
     client: fakeClient(),
-    config,
+    config: autoFallbackConfig,
   });
   const result = await provider.search(INPUT);
   assert.equal(result.matchLabel, "NO_MATCH");

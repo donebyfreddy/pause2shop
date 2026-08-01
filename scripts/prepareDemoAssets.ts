@@ -26,7 +26,12 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import sharp from "sharp";
 
-import { PROJECT_ROOT } from "./loadEnv";
+import { PROJECT_ROOT, loadEnv } from "./loadEnv";
+
+// Sin esto, `process.env` no tiene lo de `.env`: el script solo importaba
+// PROJECT_ROOT y nunca cargaba el entorno, así que UNSPLASH_ACCESS_KEY llegaba
+// vacía aunque estuviera configurada.
+loadEnv();
 
 type AssetSpec = {
   id: "coat" | "bag" | "shoes";
@@ -45,8 +50,32 @@ type AssetSpec = {
   license: string;
   /** El original trae fondo opaco y hay que recortarlo. */
   removeBackground: boolean;
+  /**
+   * Cómo se recorta.
+   *
+   *  - `border`: solo lo conectado al borde. Protege las zonas claras del
+   *    INTERIOR del producto (una etiqueta blanca sobre una prenda negra), a
+   *    costa de dejar el fondo que quede encerrado.
+   *  - `white`: todo lo casi blanco, esté donde esté. Es lo correcto para una
+   *    foto de estudio sobre blanco puro, donde el hueco entre las asas de un
+   *    bolso también es fondo — con `border` se quedaba como una mancha blanca.
+   */
+  backgroundMode?: "border" | "white";
+  /** Tolerancia del recorte, 0-255. Más alta se come sombras suaves. */
+  backgroundTolerance?: number;
   /** Lado mayor del WebP de salida. */
   targetSize: number;
+  /**
+   * Consulta de Unsplash con la que buscar un sustituto.
+   *
+   * Solo se usa con `--unsplash`, nunca en una ejecución normal: una búsqueda
+   * devuelve fotos distintas cada semana y los assets del hero no pueden
+   * cambiar solos. El flujo es elegir una vez, fijar su URL y volver a lo
+   * determinista.
+   */
+  unsplashQuery?: string;
+  /** Orientación que encaja con el hueco del producto en la escena. */
+  unsplashOrientation?: "portrait" | "landscape" | "squarish";
   /**
    * Realce de luminosidad (1 = sin cambio).
    *
@@ -66,26 +95,54 @@ const ASSETS: AssetSpec[] = [
     sourceName: "Miniatura de Google Images (titular original desconocido)",
     license: "SIN LICENCIA VERIFICADA — sustituir antes de uso comercial",
     removeBackground: true,
+    backgroundMode: "border",
     targetSize: 900,
     brightness: 1.45,
+    // Consulta CORTA a propósito: el buscador de Unsplash es semántico y
+    // añadirle "isolated plain background" devolvía cero resultados. Filtrar
+    // por fondo limpio es un juicio visual que se hace mirando, no en la query.
+    unsplashQuery: "wool coat",
+    unsplashOrientation: "portrait",
   },
   {
     id: "bag",
+    // Unsplash · personalgraphic.com · foto IFlg3kFbR0E
+    // https://unsplash.com/photos/a-brown-leather-handbag-on-a-white-background-IFlg3kFbR0E
     sourceUrl:
-      "https://png.pngtree.com/png-vector/20241230/ourmid/pngtree-stylish-women-purses-and-handbags-collection-png-image_14975125.png",
-    sourceName: "pngtree.com",
-    license: "Licencia gratuita de pngtree (exige atribución; uso comercial restringido)",
-    removeBackground: false,
+      "https://images.unsplash.com/photo-1691480150204-66dd1eb77391?fm=jpg&q=88&w=1600&fit=max",
+    sourceName: "Unsplash · personalgraphic.com",
+    license: "Unsplash License (uso comercial permitido, atribución no obligatoria)",
+    removeBackground: true,
+    // Estudio sobre blanco puro: se quita TODO lo casi blanco, también el hueco
+    // encerrado entre las asas.
+    backgroundMode: "white",
+    backgroundTolerance: 38,
     targetSize: 900,
+    unsplashQuery: "leather handbag",
+    unsplashOrientation: "squarish",
   },
   {
     id: "shoes",
+    // Unsplash · LoboStudio Hamburg · foto 4lf8mVuZESQ
+    // https://unsplash.com/photos/pair-of-brown-leather-lace-up-shoes-on-white-surface-4lf8mVuZESQ
     sourceUrl:
-      "https://png.pngtree.com/png-vector/20240729/ourmid/pngtree-men-formal-shoes-png-image_13287455.png",
-    sourceName: "pngtree.com",
-    license: "Licencia gratuita de pngtree (exige atribución; uso comercial restringido)",
-    removeBackground: false,
+      "https://images.unsplash.com/photo-1550998358-08b4f83dc345?fm=jpg&q=88&w=1600&fit=max",
+    sourceName: "Unsplash · LoboStudio Hamburg",
+    license: "Unsplash License (uso comercial permitido, atribución no obligatoria)",
+    removeBackground: true,
+    // `border` y no `white` como el bolso: este cuero es pálido y desaturado,
+    // así que la regla "neutro y claro = fondo" se comía trozos de la propia
+    // bota. Propagando desde el borde, las zonas claras del interior quedan
+    // protegidas y el fondo blanco se va igual.
+    backgroundMode: "border",
+    // 48 y no 34: la sombra bajo la suela es un degradado gris y con poca
+    // tolerancia la difusión se paraba a medio camino, dejando un halo claro
+    // alrededor del recorte sobre el fondo oscuro del hero. Al propagar solo
+    // desde el borde, subirla no puede comerse el interior de la bota.
+    backgroundTolerance: 48,
     targetSize: 900,
+    unsplashQuery: "leather dress shoes",
+    unsplashOrientation: "squarish",
   },
 ];
 
@@ -103,6 +160,35 @@ const ALLOWED_MIME = new Set(["image/png", "image/jpeg", "image/webp"]);
  * zonas claras de DENTRO del producto (costuras, etiquetas, reflejos). Al
  * propagar solo desde el borde, un píxel claro rodeado de producto no se toca.
  */
+/**
+ * Quita TODO píxel casi blanco, esté conectado al borde o no.
+ *
+ * El alfa se desvanece en una rampa en vez de cortar en seco: un corte binario
+ * deja el borde dentado y, sobre el fondo oscuro del hero, un filo claro de un
+ * píxel que se ve como un halo.
+ */
+function removeWhiteBackground(
+  data: Buffer,
+  width: number,
+  height: number,
+  tolerance: number
+): Buffer {
+  const hard = 255 - tolerance;
+  const soft = hard - 26; // por debajo de esto es producto seguro
+  for (let i = 0; i < width * height * 4; i += 4) {
+    const r = data[i], g = data[i + 1], b = data[i + 2];
+    const minC = Math.min(r, g, b);
+    const chroma = Math.max(r, g, b) - minC;
+    // Solo lo NEUTRO cuenta como fondo: un cuero claro tiene color y se queda.
+    if (chroma > 22) continue;
+    if (minC >= hard) data[i + 3] = 0;
+    else if (minC > soft) {
+      data[i + 3] = Math.round(255 * (1 - (minC - soft) / (hard - soft)));
+    }
+  }
+  return data;
+}
+
 function removeBorderBackground(
   data: Buffer,
   width: number,
@@ -219,7 +305,20 @@ async function prepareAsset(spec: AssetSpec) {
     const { data, info } = await pipeline
       .raw()
       .toBuffer({ resolveWithObject: true });
-    const cut = removeBorderBackground(data, info.width, info.height);
+    const cut =
+      spec.backgroundMode === "white"
+        ? removeWhiteBackground(
+            data,
+            info.width,
+            info.height,
+            spec.backgroundTolerance ?? 38
+          )
+        : removeBorderBackground(
+            data,
+            info.width,
+            info.height,
+            spec.backgroundTolerance ?? 26
+          );
     pipeline = sharp(cut, {
       raw: { width: info.width, height: info.height, channels: 4 },
     });
@@ -265,7 +364,7 @@ async function prepareAsset(spec: AssetSpec) {
     // metadata.json distinto aunque los assets fueran idénticos.
     note: [
       spec.removeBackground
-        ? "fondo recortado por difusión desde bordes"
+        ? `fondo recortado (${spec.backgroundMode ?? "border"})`
         : "original con transparencia",
       spec.brightness && spec.brightness !== 1
         ? `luminosidad ×${spec.brightness}`
@@ -276,7 +375,101 @@ async function prepareAsset(spec: AssetSpec) {
   };
 }
 
+/* ------------------------- buscador de sustitutos ------------------------- */
+
+type UnsplashHit = {
+  id: string;
+  width: number;
+  height: number;
+  description: string;
+  author: string;
+  authorUrl: string;
+  pageUrl: string;
+  downloadUrl: string;
+};
+
+/**
+ * Busca candidatos en Unsplash y los IMPRIME. No descarga ni sustituye nada.
+ *
+ * Es deliberado que solo liste: elegir la foto es un juicio visual y de
+ * licencia que no debe automatizarse. El script imprime la URL lista para
+ * pegar en `sourceUrl`, y a partir de ahí el asset vuelve a ser fijo y
+ * reproducible.
+ */
+async function searchUnsplash(spec: AssetSpec): Promise<UnsplashHit[]> {
+  const key = process.env.UNSPLASH_ACCESS_KEY?.trim();
+  if (!key) throw new Error("falta UNSPLASH_ACCESS_KEY");
+  if (!spec.unsplashQuery) return [];
+
+  const url = new URL("https://api.unsplash.com/search/photos");
+  url.searchParams.set("query", spec.unsplashQuery);
+  url.searchParams.set("per_page", "8");
+  url.searchParams.set("orientation", spec.unsplashOrientation ?? "portrait");
+  // `content_filter=high` evita resultados inapropiados en una landing pública.
+  url.searchParams.set("content_filter", "high");
+
+  const res = await fetch(url, {
+    headers: { Authorization: `Client-ID ${key}` },
+    signal: AbortSignal.timeout(30_000),
+  });
+  if (!res.ok) throw new Error(`Unsplash respondió ${res.status}`);
+  const data = (await res.json()) as {
+    results: Array<{
+      id: string;
+      width: number;
+      height: number;
+      alt_description?: string | null;
+      description?: string | null;
+      user?: { name?: string; links?: { html?: string } };
+      links?: { html?: string };
+      urls?: { raw?: string };
+    }>;
+  };
+
+  return data.results.map((r) => ({
+    id: r.id,
+    width: r.width,
+    height: r.height,
+    description: r.alt_description ?? r.description ?? "",
+    author: r.user?.name ?? "?",
+    authorUrl: r.user?.links?.html ?? "",
+    pageUrl: r.links?.html ?? "",
+    // `raw` + parámetros: se pide el tamaño que hace falta, no el original de
+    // 30 MP. `fm=jpg&q=85&w=1600` basta de sobra para un recorte de 900 px.
+    downloadUrl: `${r.urls?.raw}&fm=jpg&q=85&w=1600&fit=max`,
+  }));
+}
+
+async function runSearch() {
+  console.log("Candidatos de Unsplash (licencia: uso comercial, sin atribución obligatoria)\n");
+  for (const spec of ASSETS) {
+    if (!spec.unsplashQuery) continue;
+    console.log(`── ${spec.id} · "${spec.unsplashQuery}"`);
+    try {
+      const hits = await searchUnsplash(spec);
+      if (!hits.length) console.log("   sin resultados");
+      for (const h of hits) {
+        console.log(`   ${h.id}  ${h.width}×${h.height}  ${h.description.slice(0, 44)}`);
+        console.log(`      foto: ${h.pageUrl}  ·  autor: ${h.author}`);
+        console.log(`      usar: DEMO_ASSET_${spec.id.toUpperCase()}="${h.downloadUrl}" npm run demo:assets`);
+      }
+    } catch (err) {
+      console.error(`   ✗ ${err instanceof Error ? err.message : err}`);
+    }
+    console.log();
+  }
+  console.log(
+    "Abre las fichas, elige una, y lánzala con la línea `usar:` de arriba.\n" +
+      "Cuando te convenza, fija esa URL en ASSETS para que deje de depender de la búsqueda."
+  );
+}
+
 async function main() {
+  if (process.argv.includes("--unsplash")) {
+    await runSearch();
+    return;
+  }
+
   mkdirSync(OUT_DIR, { recursive: true });
   console.log("Preparando assets de la demo del hero\n");
 

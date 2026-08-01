@@ -4,6 +4,7 @@ import { ToastProvider } from "@/components/ui";
 import { LocaleProvider } from "@/components/i18n/LocaleProvider";
 import { loadMessages, resolveRequestLocale } from "@/i18n/request";
 import { isRtl } from "@/i18n/locales";
+import { requestMetadataBase, socialCardUrl } from "@/lib/requestMetadata";
 import { APP_NAME, SITE_URL } from "@/lib/seo";
 import "./globals.css";
 
@@ -32,14 +33,14 @@ const geistMono = Geist_Mono({
  * El copy ya no dice "en tiempo real" ni "búsqueda visual inversa" como núcleo:
  * el flujo real es VOD contra catálogo propio.
  */
-export const metadata: Metadata = {
+const rootMetadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
     default: `${APP_NAME} — Convierte cada escena en una oportunidad de compra`,
     template: `%s · ${APP_NAME}`,
   },
   description:
-    "Pause2Shop detecta los productos visibles en cada escena de tu contenido, los cruza con tu catálogo y devuelve coincidencias fiables por escena y timestamp.",
+    "Pausa el vídeo, selecciona un objeto sobre el frame exacto y encuentra primero su coincidencia comprable en el catálogo.",
   applicationName: APP_NAME,
   manifest: "/manifest.webmanifest",
   openGraph: {
@@ -58,6 +59,31 @@ export const metadata: Metadata = {
     follow: true,
   },
 };
+
+export async function generateMetadata(): Promise<Metadata> {
+  const metadataBase = await requestMetadataBase();
+  const socialImage = socialCardUrl(metadataBase);
+
+  return {
+    ...rootMetadata,
+    metadataBase,
+    openGraph: {
+      ...rootMetadata.openGraph,
+      images: [
+        {
+          url: socialImage,
+          width: 1730,
+          height: 909,
+          alt: "Pause2Shop: frame pausado con un producto clicable y su coincidencia de catálogo",
+        },
+      ],
+    },
+    twitter: {
+      ...rootMetadata.twitter,
+      images: [socialImage],
+    },
+  };
+}
 
 export const viewport: Viewport = {
   themeColor: "#06060a",

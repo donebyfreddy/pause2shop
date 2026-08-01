@@ -15,41 +15,41 @@
         "originalFormat": "jpeg",
         "originalSize": "413x484"
       },
-      "note": "fondo recortado por difusión desde bordes · luminosidad ×1.45"
+      "note": "fondo recortado (border) · luminosidad ×1.45"
     },
     {
       "id": "bag",
       "file": "public/demo/products/bag.webp",
       "width": 900,
-      "height": 886,
-      "bytes": 78162,
-      "sha256": "22fff01fd03d573559601a51ff3949aa242672fba09a68bcf549483a70625ad7",
+      "height": 869,
+      "bytes": 127572,
+      "sha256": "4955ff91011cd61bcf844e30d347168d1b174a25a826040551cff671737f9c01",
       "source": {
-        "url": "https://png.pngtree.com/png-vector/20241230/ourmid/pngtree-stylish-women-purses-and-handbags-collection-png-image_14975125.png",
-        "declaredUrl": "https://png.pngtree.com/png-vector/20241230/ourmid/pngtree-stylish-women-purses-and-handbags-collection-png-image_14975125.png",
-        "name": "pngtree.com",
-        "license": "Licencia gratuita de pngtree (exige atribución; uso comercial restringido)",
-        "originalFormat": "png",
-        "originalSize": "360x360"
+        "url": "https://images.unsplash.com/photo-1691480150204-66dd1eb77391?fm=jpg&q=88&w=1600&fit=max",
+        "declaredUrl": "https://images.unsplash.com/photo-1691480150204-66dd1eb77391?fm=jpg&q=88&w=1600&fit=max",
+        "name": "Unsplash · personalgraphic.com",
+        "license": "Unsplash License (uso comercial permitido, atribución no obligatoria)",
+        "originalFormat": "jpeg",
+        "originalSize": "1600x1600"
       },
-      "note": "original con transparencia"
+      "note": "fondo recortado (white)"
     },
     {
       "id": "shoes",
       "file": "public/demo/products/shoes.webp",
       "width": 900,
-      "height": 829,
-      "bytes": 76902,
-      "sha256": "6931a2ab8e1d544404283c29040cf47d250c28413d9db1c03f233987c44ed3c3",
+      "height": 868,
+      "bytes": 165560,
+      "sha256": "6eace49b9fba7263d4b466fd603f6f9fffde4b0f980af567c53ab73ac54d8398",
       "source": {
-        "url": "https://png.pngtree.com/png-vector/20240729/ourmid/pngtree-men-formal-shoes-png-image_13287455.png",
-        "declaredUrl": "https://png.pngtree.com/png-vector/20240729/ourmid/pngtree-men-formal-shoes-png-image_13287455.png",
-        "name": "pngtree.com",
-        "license": "Licencia gratuita de pngtree (exige atribución; uso comercial restringido)",
-        "originalFormat": "png",
-        "originalSize": "360x360"
+        "url": "https://images.unsplash.com/photo-1550998358-08b4f83dc345?fm=jpg&q=88&w=1600&fit=max",
+        "declaredUrl": "https://images.unsplash.com/photo-1550998358-08b4f83dc345?fm=jpg&q=88&w=1600&fit=max",
+        "name": "Unsplash · LoboStudio Hamburg",
+        "license": "Unsplash License (uso comercial permitido, atribución no obligatoria)",
+        "originalFormat": "jpeg",
+        "originalSize": "1600x1600"
       },
-      "note": "original con transparencia"
+      "note": "fondo recortado (border)"
     }
   ]
 }
