@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import { ToastProvider } from "@/components/ui";
 import { LocaleProvider } from "@/components/i18n/LocaleProvider";
 import { loadMessages, resolveRequestLocale } from "@/i18n/request";
@@ -129,6 +130,7 @@ export default async function RootLayout({
           {/* Un único ToastProvider para las tres superficies: landing, estudio y admin. */}
           <ToastProvider>{children}</ToastProvider>
         </LocaleProvider>
+        <SpeedInsights />
       </body>
     </html>
   );
