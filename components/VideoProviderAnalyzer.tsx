@@ -37,6 +37,7 @@ import {
   type AnalysisIdentity,
   type AnalyzedVideoFrame,
   type PausePerformanceMetrics,
+  type PlayerAnalysisState,
 } from "@/lib/video/pauseAnalysis";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -190,6 +191,7 @@ export default function VideoProviderAnalyzer({
   const lastPresentedFrameRef = useRef<PresentedVideoFrame | null>(null);
   const [pausedFrame, setPausedFrame] = useState<PausedFrameContext | null>(null);
   const [pausedDetections, setPausedDetections] = useState<DetectedItem[]>([]);
+  const [playerState, setPlayerState] = useState<PlayerAnalysisState>("playing");
   const [pauseMetrics, setPauseMetrics] = useState<PausePerformanceMetrics>(
     EMPTY_PAUSE_METRICS
   );
@@ -414,6 +416,7 @@ export default function VideoProviderAnalyzer({
     if (!video) return;
     const pauseStartedAt = performance.now();
     const requestedTime = video.currentTime;
+    setPlayerState("pausing");
     pauseCaptureAbortRef.current?.abort();
     const abortController = new AbortController();
     pauseCaptureAbortRef.current = abortController;
@@ -468,6 +471,7 @@ export default function VideoProviderAnalyzer({
         detectionCacheHit: Boolean(nearest),
       };
       if (nearest) setPausedDetections(nearest.detections);
+      setPlayerState(nearest ? "paused_ready" : "detecting");
       publishPauseMetrics(metrics);
       logPauseCapture(debug, identity);
 
@@ -516,8 +520,16 @@ export default function VideoProviderAnalyzer({
     activePauseRef.current = null;
     setPausedFrame(null);
     setPausedDetections([]);
+    setPlayerState("resumed");
     onPausedFrameChange?.(null);
+    window.setTimeout(() => setPlayerState("playing"), 0);
   }, [onPausedFrameChange]);
+
+  const resumeDirectVideo = useCallback(() => {
+    const video = directVideoRef.current;
+    if (!video) return;
+    void video.play();
+  }, []);
 
   const handleDirectLoadedMetadata = useCallback((video: HTMLVideoElement) => {
     exactCaptureRef.current?.stop();
@@ -551,6 +563,7 @@ export default function VideoProviderAnalyzer({
     const id = setTimeout(() => {
       setPausedFrame(null);
       setPausedDetections([]);
+      setPlayerState("playing");
       setDirectLogs([]);
     }, 0);
     return () => clearTimeout(id);
@@ -569,6 +582,7 @@ export default function VideoProviderAnalyzer({
         (overlayItems.length > 0 || !analyzing)
       ) {
         setPausedDetections(overlayItems);
+        setPlayerState("paused_ready");
         const next = {
           ...pauseMetrics,
           captureToDetectionMs:
@@ -843,12 +857,15 @@ export default function VideoProviderAnalyzer({
               onPlay={handleDirectPlay}
               onSeeked={handleDirectSeeked}
               onLoadedMetadata={handleDirectLoadedMetadata}
+              onResume={resumeDirectVideo}
+              playerState={playerState}
               pausedFrame={pausedFrame}
               pausedDetections={pausedDetections}
               detectionCacheHit={pauseMetrics.detectionCacheHit}
               onDetectionSelect={(item) => {
                 const context = activePauseRef.current;
                 if (!context) return;
+                setPlayerState("matching");
                 onOverlayItemClick?.(item);
                 onDetectionSelect?.(item, context);
               }}
@@ -1413,6 +1430,8 @@ function DirectVideoPlayer({
   onPlay,
   onSeeked,
   onLoadedMetadata,
+  onResume,
+  playerState,
   pausedFrame,
   pausedDetections,
   detectionCacheHit,
@@ -1426,6 +1445,8 @@ function DirectVideoPlayer({
   onPlay: () => void;
   onSeeked?: () => void;
   onLoadedMetadata: (video: HTMLVideoElement) => void;
+  onResume: () => void;
+  playerState: PlayerAnalysisState;
   pausedFrame: PausedFrameContext | null;
   pausedDetections: DetectedItem[];
   detectionCacheHit: boolean;
@@ -1434,6 +1455,28 @@ function DirectVideoPlayer({
 }) {
   // Relación de aspecto REAL del vídeo (letterboxing correcto en el overlay).
   const [videoAspect, setVideoAspect] = useState<number | null>(null);
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.code !== "Space" && event.key.toLowerCase() !== "k") return;
+      const target = event.target;
+      if (
+        target instanceof HTMLInputElement ||
+        target instanceof HTMLTextAreaElement ||
+        target instanceof HTMLSelectElement ||
+        (target instanceof HTMLElement && target.isContentEditable)
+      ) {
+        return;
+      }
+      event.preventDefault();
+      const video = videoRef.current;
+      if (!video) return;
+      if (video.paused) onResume();
+      else video.pause();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [onResume, videoRef]);
+
   return (
     <PausedFrameExperience
       frozenFrameUrl={pausedFrame?.dataUrl ?? null}
@@ -1444,6 +1487,7 @@ function DirectVideoPlayer({
       cacheHit={detectionCacheHit}
       selectedKey={selectedKey}
       onSelect={onDetectionSelect}
+      onResume={onResume}
     >
       <video
         ref={videoRef}
@@ -1462,6 +1506,9 @@ function DirectVideoPlayer({
         className="aspect-video w-full object-contain"
       />
       {analyzing && !pausedFrame ? <AnalyzingOverlay /> : null}
+      <span className="sr-only" data-testid="player-analysis-state" data-state={playerState}>
+        {playerState}
+      </span>
     </PausedFrameExperience>
   );
 }

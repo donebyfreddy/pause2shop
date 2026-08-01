@@ -66,26 +66,14 @@ export default function ExternalSearchSection({
       {isLoading ? <MatchingProgress stage="external" /> : null}
 
       {!isLoading && block.status === "not_requested" ? (
-        <>
-          <p className="mb-2 text-[11px] text-ink-faint">{t("notRequested")}</p>
-          {onSearch ? (
-            <button
-              type="button"
-              onClick={onSearch}
-              className={cn(
-                "inline-flex items-center gap-1.5 rounded-lg border border-accent/40 bg-accent/12 px-3 py-1.5",
-                "text-[11px] font-semibold text-accent transition-colors hover:bg-accent/22"
-              )}
-            >
-              <Search className="size-3" aria-hidden />
-              {t("search")}
-            </button>
-          ) : null}
-        </>
+        <p className="text-[11px] text-ink-faint">{t("notRequested")}</p>
       ) : null}
 
       {!isLoading && selected ? (
         <>
+          <p className="mb-2 text-[11px] font-medium text-accent">
+            {block.candidates.length} candidatos externos encontrados
+          </p>
           <ExternalCandidateCard
             candidate={selected}
             variant="primary"
@@ -102,11 +90,26 @@ export default function ExternalSearchSection({
       {!isLoading &&
       (block.status === "unresolved" || block.status === "error") &&
       !selected ? (
-        <p className="text-[11px] text-ink-muted">
-          {block.status === "error"
-            ? block.unresolvedReason ?? t("error")
-            : block.unresolvedReason ?? t("unresolved")}
-        </p>
+        <div>
+          <p className="text-[11px] text-ink-muted">
+            {block.status === "error"
+              ? block.unresolvedReason ?? t("error")
+              : block.unresolvedReason ?? "No se encontraron resultados comerciales fiables."}
+          </p>
+          {onSearch ? (
+            <button
+              type="button"
+              onClick={onSearch}
+              className={cn(
+                "mt-2 inline-flex items-center gap-1.5 rounded-lg border border-accent/40 bg-accent/12 px-3 py-1.5",
+                "text-[11px] font-semibold text-accent transition-colors hover:bg-accent/22"
+              )}
+            >
+              <Search className="size-3" aria-hidden />
+              Reintentar búsqueda externa
+            </button>
+          ) : null}
+        </div>
       ) : null}
 
       {!isLoading && others.length > 0 ? (

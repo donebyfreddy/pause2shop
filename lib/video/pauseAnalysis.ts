@@ -1,5 +1,13 @@
 import type { DetectedItem } from "@/lib/types";
 
+export type PlayerAnalysisState =
+  | "playing"
+  | "pausing"
+  | "paused_ready"
+  | "detecting"
+  | "matching"
+  | "resumed";
+
 export const PAUSED_FRAME_TIME_TOLERANCE_MS = Number(
   process.env.NEXT_PUBLIC_PAUSED_FRAME_TIME_TOLERANCE_MS ?? "80"
 );

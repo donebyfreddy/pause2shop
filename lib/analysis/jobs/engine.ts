@@ -11,6 +11,7 @@ import {
 } from "@/lib/video/tracker";
 import type { ObjectDetector } from "@/lib/detection/types";
 import type { DetectedItem } from "@/lib/types";
+import { isSha256 } from "@/lib/videoProcessing/hash";
 import {
   getVideoAnalysisJobConfig,
   type VideoAnalysisJobConfig,
@@ -58,6 +59,9 @@ import type {
 
 /** Firma del matcher por producto único: el route inyecta la real. */
 export type MatchProductFn = (args: {
+  jobId: string;
+  mediaContentId: string;
+  globalProductId: string;
   item: DetectedItem;
   cropDataUrl: string | null;
   frameDataUrl: string | null;
@@ -121,6 +125,9 @@ export function validateCreateJobInput(
       error: `El archivo supera el tamaño máximo (${Math.round(config.maxVideoSizeBytes / 1024 / 1024)} MB).`,
     };
   }
+  if (input.videoHash != null && !isSha256(input.videoHash)) {
+    return { ok: false, status: 400, error: "videoHash debe ser un SHA-256 válido." };
+  }
   return { ok: true };
 }
 
@@ -141,7 +148,7 @@ export async function createAnalysisJob(
   input: CreateAnalysisJobInput,
   deps: JobEngineDeps
 ): Promise<
-  | { ok: true; job: AnalysisJobRecord }
+  | { ok: true; job: AnalysisJobRecord; reused: boolean }
   | { ok: false; error: string; status: number }
 > {
   const config = deps.config ?? getVideoAnalysisJobConfig(deps.env);
@@ -153,6 +160,18 @@ export async function createAnalysisJob(
     normalizeMatchingMode(input.matchingMode) ??
     getMatchingConfig(deps.env ?? process.env).mode;
 
+  const env = deps.env ?? process.env;
+  const catalogVersion = env.CATALOG_VERSION?.trim() || "catalog:v1";
+  const analysisVersion = env.VIDEO_ANALYSIS_VERSION?.trim() || "video-pipeline:v2";
+  if (input.videoHash && !input.forceReprocess) {
+    const reusable = await deps.store.findReusableJob(
+      input.videoHash,
+      catalogVersion,
+      analysisVersion
+    );
+    if (reusable) return { ok: true, job: reusable, reused: true };
+  }
+
   const now = Date.now();
   const job: AnalysisJobRecord = {
     id: randomUUID(),
@@ -163,6 +182,10 @@ export async function createAnalysisJob(
       mimeType: input.mimeType!,
       sizeBytes: input.sizeBytes!,
       durationSeconds: input.durationSeconds!,
+      fileHash: input.videoHash ?? null,
+      catalogVersion,
+      analysisVersion,
+      processedAt: null,
       createdAt: now,
     },
     matchingMode: mode,
@@ -197,7 +220,7 @@ export async function createAnalysisJob(
   };
 
   await deps.store.createJob(job, emptyRuntimeState());
-  return { ok: true, job };
+  return { ok: true, job, reused: false };
 }
 
 // ---------------------------------------------------------------------------
@@ -662,6 +685,9 @@ export async function finalizeAnalysisJob(
         : job.matchingMode;
     try {
       const result = await deps.matchProduct({
+        jobId,
+        mediaContentId: job.media.id,
+        globalProductId: product.productId,
         item: product.item,
         cropDataUrl: product.bestCrop.cropDataUrl,
         frameDataUrl: product.bestCrop.frameDataUrl,
@@ -690,6 +716,7 @@ export async function finalizeAnalysisJob(
         : "completed";
   }
   job.finishedAt = Date.now();
+  job.media.processedAt = job.finishedAt;
   job.timings.totalMs = job.finishedAt - (job.startedAt ?? job.createdAt);
 
   await deps.store.saveProducts(jobId, products);

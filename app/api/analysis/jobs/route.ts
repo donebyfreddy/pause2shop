@@ -10,6 +10,14 @@ import { buildJobEngineDeps } from "@/lib/analysis/jobs/serverDeps";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+export async function GET(req: NextRequest): Promise<NextResponse> {
+  const deps = buildJobEngineDeps(req.nextUrl.origin);
+  const jobs = await deps.store.listJobs(
+    Math.min(Number(req.nextUrl.searchParams.get("limit") ?? 100), 500)
+  );
+  return NextResponse.json({ ok: true, jobs, store: deps.store.kind });
+}
+
 /**
  * POST /api/analysis/jobs — crea un job de análisis asíncrono de vídeo.
  *
@@ -41,6 +49,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       ok: true,
       jobId: created.job.id,
       job: created.job,
+      reused: created.reused,
       // Config efectiva para el extractor de frames del cliente.
       config: {
         detectionFps: config.detectionFps,
@@ -51,6 +60,6 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       },
       store: deps.store.kind,
     },
-    { status: 201 }
+    { status: created.reused ? 200 : 201 }
   );
 }

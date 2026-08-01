@@ -73,9 +73,16 @@ type Props = {
   onChange: (config: VideoAnalysisConfig) => void;
   /** true cuando el análisis ya está en curso (bloquea cambios). */
   locked?: boolean;
+  /** El pipeline fija catálogo primero, pero categorías/intensidad siguen editables. */
+  matchingModeLocked?: boolean;
 };
 
-export default function AnalysisConfigSelector({ config, onChange, locked }: Props) {
+export default function AnalysisConfigSelector({
+  config,
+  onChange,
+  locked,
+  matchingModeLocked,
+}: Props) {
   const t = useTranslations("studio.configSelector");
   const capabilities = useMatchingCapabilities();
   const selected = useMemo(() => new Set(config.categories), [config.categories]);
@@ -234,7 +241,7 @@ export default function AnalysisConfigSelector({ config, onChange, locked }: Pro
       <MatchingSourceSelector
         value={config.matchingMode}
         onChange={setMatchingMode}
-        locked={locked}
+        locked={locked || matchingModeLocked}
         capabilities={capabilities}
       />
 

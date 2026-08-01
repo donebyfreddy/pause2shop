@@ -36,8 +36,9 @@ export default function CommerceSidePanel({
       detection={selectedItem.detection_result ?? null}
       frameUrl={frameDataUrl}
       loading={
-        selectedItem.matchingStatus === "searching" ||
-        selectedItem.matchingStatus === "pending"
+        !selectedItem.detection_result &&
+        (selectedItem.matchingStatus === "searching" ||
+          selectedItem.matchingStatus === "pending")
       }
       externalLoading={selectedItem.external_loading}
       failureDetail={selectedItem.matching_debug?.detail}
@@ -82,7 +83,9 @@ export default function CommerceSidePanel({
           <h2 className="mt-1 text-sm font-semibold text-ink">
             {selectedItem?.name ?? "Productos del frame"}
           </h2>
-          <p className="mt-0.5 text-xs text-ink-subtle">Catálogo primero · Internet opcional</p>
+          <p className="mt-0.5 text-xs text-ink-subtle">
+            Catálogo primero · fallback externo automático
+          </p>
         </div>
         {selectedItem ? (
           <button

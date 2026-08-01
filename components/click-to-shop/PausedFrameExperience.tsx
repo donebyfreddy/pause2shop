@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { Check, MousePointer2, ScanLine } from "lucide-react";
 import type { DetectedItem } from "@/lib/types";
 import ClickableDetectionOverlay from "./ClickableDetectionOverlay";
+import PausedFrameToolbar from "./PausedFrameToolbar";
 
 function preciseTimestamp(seconds: number): string {
   const minutes = Math.floor(seconds / 60);
@@ -21,6 +22,7 @@ export default function PausedFrameExperience({
   cacheHit,
   selectedKey,
   onSelect,
+  onResume,
 }: {
   children: ReactNode;
   frozenFrameUrl: string | null;
@@ -31,6 +33,7 @@ export default function PausedFrameExperience({
   cacheHit: boolean;
   selectedKey?: string | null;
   onSelect: (item: DetectedItem) => void;
+  onResume: () => void;
 }) {
   return (
     <div className="relative overflow-hidden rounded-2xl border border-line bg-black shadow-2xl shadow-black/50">
@@ -53,6 +56,10 @@ export default function PausedFrameExperience({
           selectedKey={selectedKey}
           onSelect={onSelect}
         />
+      ) : null}
+
+      {frozenFrameUrl ? (
+        <PausedFrameToolbar mediaTime={mediaTime ?? 0} onResume={onResume} />
       ) : null}
 
       {frozenFrameUrl ? (

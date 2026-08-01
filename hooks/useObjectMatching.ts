@@ -32,6 +32,12 @@ const MIN_CROP_CONFIDENCE = Number(process.env.NEXT_PUBLIC_MIN_CROP_CONFIDENCE ?
 // navegador cancelaba peticiones que el servidor terminaba bien y la tarjeta
 // se quedaba cargando para siempre.
 const MATCH_TIMEOUT_MS = Number(process.env.NEXT_PUBLIC_VIDEO_MATCHING_TIMEOUT_MS ?? "60000");
+const AUTOMATIC_EXTERNAL_FALLBACK =
+  process.env.NEXT_PUBLIC_EXTERNAL_SEARCH_AUTOMATIC_FALLBACK !== "false";
+const EXTERNAL_SEARCH_DELAY_MS = Math.max(
+  0,
+  Number(process.env.NEXT_PUBLIC_EXTERNAL_SEARCH_DELAY_MS ?? "0")
+);
 /** Calidad mínima (área×confianza, 0-1) para buscar sin esperar mejor frame. */
 const MIN_CROP_SEARCH_QUALITY = Number(
   process.env.NEXT_PUBLIC_MIN_CROP_SEARCH_QUALITY ?? "0.35"
@@ -158,6 +164,20 @@ type MatchObjectPayload = {
   detection?: DetectionMatchResult;
 };
 
+/** Une dos respuestas deliberadamente separadas sin mezclar procedencias. */
+export function mergeProgressiveDetection(
+  catalog: DetectionMatchResult | undefined,
+  external: DetectionMatchResult | undefined
+): DetectionMatchResult | undefined {
+  if (!catalog) return external;
+  if (!external) return catalog;
+  return {
+    ...catalog,
+    external: external.external,
+    matchingMode: "catalog_first",
+  };
+}
+
 type PendingBetterCrop = {
   item: DetectedItem;
   frameDataUrl: string;
@@ -226,6 +246,7 @@ type LastRequest = {
 
 export function useObjectMatching() {
   const [results, setResults] = useState<Map<string, MatchingEntry>>(new Map());
+  const resultsRef = useRef(new Map<string, MatchingEntry>());
   const attempts = useRef(new Map<string, MatchingAttemptState>());
   const active = useRef(0);
   const queue = useRef<Array<() => Promise<void>>>([]);
@@ -241,6 +262,7 @@ export function useObjectMatching() {
   const lastRequest = useRef(new Map<string, LastRequest>());
   /** Fingerprints con búsqueda externa ya pedida: no se paga dos veces. */
   const externalRequested = useRef(new Set<string>());
+  const externalInFlight = useRef(new Set<string>());
   /** Crop ya generado por frame+objeto: volver a clicar no repite canvas. */
   const cropCache = useRef(new Map<string, Promise<string | null>>());
 
@@ -257,6 +279,7 @@ export function useObjectMatching() {
           cached: false,
         };
       next.set(fp, { ...current, ...entry });
+      resultsRef.current = next;
       return next;
     });
   }, []);
@@ -348,28 +371,41 @@ export function useObjectMatching() {
           return;
         }
         setEntry(fp, { phase: "searching" });
-        const res = await fetch("/api/vision/match-object", {
-          method: "POST",
-          signal: AbortSignal.timeout(MATCH_TIMEOUT_MS),
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            crop,
-            item,
-            videoKey: meta.videoKey,
-            itemId: meta.itemIdByFingerprint?.get(fp),
-            matchingMode: meta.matchingMode,
-            // El fingerprint ES el detectionId: la misma identidad que usa la
-            // UI para casar tarjeta y bounding box entre frames.
-            detectionId: fp,
-            timestampSeconds: meta.timestampSeconds ?? null,
-            mediaTime: meta.mediaTime ?? meta.timestampSeconds ?? null,
-            frameId: meta.frameId,
-            frameHash: meta.frameHash,
-            analysisSessionId: meta.sessionId,
-            forceExternal: opts.forceExternal === true,
-          }),
-        });
-        const data = (await res.json()) as MatchObjectPayload;
+        const postMatch = async (
+          matchingMode: ProductMatchingMode,
+          forceExternal = false
+        ): Promise<MatchObjectPayload> => {
+          const res = await fetch("/api/vision/match-object", {
+            method: "POST",
+            signal: AbortSignal.timeout(MATCH_TIMEOUT_MS),
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              crop,
+              item,
+              videoKey: meta.videoKey,
+              itemId: meta.itemIdByFingerprint?.get(fp),
+              matchingMode,
+              // La misma identidad casa tarjeta, caja y timestamp.
+              detectionId: fp,
+              timestampSeconds: meta.timestampSeconds ?? null,
+              mediaTime: meta.mediaTime ?? meta.timestampSeconds ?? null,
+              frameId: meta.frameId,
+              frameHash: meta.frameHash,
+              analysisSessionId: meta.sessionId,
+              forceExternal,
+            }),
+          });
+          return (await res.json()) as MatchObjectPayload;
+        };
+
+        const requestedMode = meta.matchingMode ?? "catalog_first";
+        const progressive = requestedMode === "catalog_first" && !opts.forceExternal;
+        const initialMode: ProductMatchingMode = opts.forceExternal
+          ? "external_only"
+          : progressive
+            ? "catalog_only"
+            : requestedMode;
+        const data = await postMatch(initialMode, opts.forceExternal === true);
         if (!data.ok) {
           finishAttempt(fp, "provider_error");
           setEntry(fp, {
@@ -379,11 +415,112 @@ export function useObjectMatching() {
           });
           return;
         }
+        const catalogFirstResultMs = performance.now() - startedAt;
+        const catalogResolved = data.detection?.catalog.status === "matched";
+        const shouldSearchExternal =
+          progressive &&
+          AUTOMATIC_EXTERNAL_FALLBACK &&
+          !catalogResolved &&
+          data.detection?.catalog.status !== "error";
+
+        // Publica el resultado interno inmediatamente. Internet empieza
+        // después y actualiza únicamente su bloque; la tarjeta ya es usable.
+        if (shouldSearchExternal) {
+          externalRequested.current.add(fp);
+          externalInFlight.current.add(fp);
+          setEntry(fp, {
+            status: "searching",
+            match: data.match ?? null,
+            similarCandidates: data.similarCandidates ?? [],
+            providerUsed: data.providerUsed ?? "catalog",
+            fallbackUsed: false,
+            cached: Boolean(data.cached),
+            detail: data.detail,
+            matchingMode: "catalog_first",
+            detection: data.detection,
+            externalLoading: true,
+            phase: undefined,
+            timings: {
+              cropMs,
+              embeddingMs: data.timings?.embeddingMs,
+              vectorSearchMs: data.timings?.vectorSearchMs,
+              rankingMs: data.timings?.rankingMs,
+              catalogFirstResultMs,
+            },
+          });
+
+          if (EXTERNAL_SEARCH_DELAY_MS > 0) {
+            await new Promise((resolve) =>
+              window.setTimeout(resolve, EXTERNAL_SEARCH_DELAY_MS)
+            );
+          }
+          const externalStartedAt = performance.now();
+          const externalData = await postMatch("external_only", true);
+          externalInFlight.current.delete(fp);
+          if (!externalData.ok) {
+            finishAttempt(fp, "provider_error");
+            setEntry(fp, {
+              status: "provider_error",
+              externalLoading: false,
+              detail: externalData.error,
+              timings: {
+                cropMs,
+                catalogFirstResultMs,
+                externalSearchMs: performance.now() - externalStartedAt,
+                totalMs: performance.now() - startedAt,
+              },
+            });
+            return;
+          }
+
+          const mergedDetection = mergeProgressiveDetection(
+            data.detection,
+            externalData.detection
+          );
+          const finalStatus: MatchingEntry["status"] =
+            externalData.status === "storage_unavailable"
+              ? "provider_error"
+              : externalData.status === "matched"
+                ? "matched"
+                : data.status === "similar_only" ||
+                    externalData.status === "similar_only"
+                  ? "similar_only"
+                  : (externalData.status ?? "no_match");
+          finishAttempt(fp, finalStatus);
+          setEntry(fp, {
+            status: finalStatus,
+            match: externalData.match ?? data.match ?? null,
+            similarCandidates: externalData.similarCandidates?.length
+              ? externalData.similarCandidates
+              : (data.similarCandidates ?? []),
+            providerUsed: externalData.providerUsed ?? data.providerUsed ?? null,
+            fallbackUsed: Boolean(externalData.fallbackUsed),
+            cached: Boolean(data.cached || externalData.cached),
+            detail: externalData.detail ?? data.detail,
+            matchingMode: "catalog_first",
+            externalFallbackUsed: true,
+            detection: mergedDetection,
+            externalLoading: false,
+            phase: undefined,
+            timings: {
+              cropMs,
+              embeddingMs: data.timings?.embeddingMs,
+              vectorSearchMs: data.timings?.vectorSearchMs,
+              rankingMs: data.timings?.rankingMs,
+              catalogFirstResultMs,
+              externalSearchMs: performance.now() - externalStartedAt,
+              totalMs: performance.now() - startedAt,
+            },
+          });
+          return;
+        }
+
         const status: MatchingEntry["status"] =
           data.status === "storage_unavailable"
             ? "provider_error"
             : (data.status ?? "no_match");
         finishAttempt(fp, status);
+        const previousDetection = resultsRef.current.get(fp)?.detection;
         setEntry(fp, {
           status,
           match: data.match ?? null,
@@ -393,9 +530,11 @@ export function useObjectMatching() {
           cached: Boolean(data.cached),
           detail: data.detail,
           totalMs: data.timings?.totalMs,
-          matchingMode: data.matchingMode,
+          matchingMode: opts.forceExternal ? "catalog_first" : data.matchingMode,
           externalFallbackUsed: Boolean(data.matching?.externalFallbackUsed),
-          detection: data.detection,
+          detection: opts.forceExternal
+            ? mergeProgressiveDetection(previousDetection, data.detection)
+            : data.detection,
           externalLoading: false,
           phase: undefined,
           timings: {
@@ -403,12 +542,13 @@ export function useObjectMatching() {
             embeddingMs: data.timings?.embeddingMs,
             vectorSearchMs: data.timings?.vectorSearchMs,
             rankingMs: data.timings?.rankingMs,
-            catalogFirstResultMs: performance.now() - startedAt,
+            catalogFirstResultMs,
             externalSearchMs: data.timings?.lensMs,
             totalMs: performance.now() - startedAt,
           },
         });
       } catch (err) {
+        externalInFlight.current.delete(fp);
         const timeout =
           err instanceof Error &&
           (err.name === "TimeoutError" || err.name === "AbortError");
@@ -464,11 +604,14 @@ export function useObjectMatching() {
     (fp: string): void => {
       const req = lastRequest.current.get(fp);
       if (!req) return;
-      if (externalRequested.current.has(fp)) return;
+      if (externalInFlight.current.has(fp)) return;
       externalRequested.current.add(fp);
+      externalInFlight.current.add(fp);
       setEntry(fp, { externalLoading: true });
       queue.current.push(() =>
-        runMatch(fp, req.item, req.frameDataUrl, req.meta, { forceExternal: true })
+        runMatch(fp, req.item, req.frameDataUrl, req.meta, { forceExternal: true }).finally(
+          () => externalInFlight.current.delete(fp)
+        )
       );
       pump();
     },
@@ -571,7 +714,9 @@ export function useObjectMatching() {
     pendingBetter.current.clear();
     lastRequest.current.clear();
     externalRequested.current.clear();
+    externalInFlight.current.clear();
     cropCache.current.clear();
+    resultsRef.current = new Map();
     setResults(new Map());
   }, []);
 

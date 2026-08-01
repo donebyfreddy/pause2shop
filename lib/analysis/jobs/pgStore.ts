@@ -25,8 +25,10 @@ export class PostgresAnalysisJobStore implements AnalysisJobStore {
   async createJob(job: AnalysisJobRecord, state: JobRuntimeState): Promise<void> {
     await withTransaction(async (client) => {
       await client.query(
-        `insert into media_contents (id, file_name, mime_type, size_bytes, duration_seconds, created_at)
-         values ($1, $2, $3, $4, $5, to_timestamp($6 / 1000.0))
+        `insert into media_contents
+           (id, file_name, mime_type, size_bytes, duration_seconds, file_hash,
+            catalog_version, analysis_version, processed_at, created_at)
+         values ($1, $2, $3, $4, $5, $6, $7, $8, null, to_timestamp($9 / 1000.0))
          on conflict (id) do nothing`,
         [
           job.media.id,
@@ -34,6 +36,9 @@ export class PostgresAnalysisJobStore implements AnalysisJobStore {
           job.media.mimeType,
           job.media.sizeBytes,
           job.media.durationSeconds,
+          job.media.fileHash,
+          job.media.catalogVersion,
+          job.media.analysisVersion,
           job.media.createdAt,
         ]
       );
@@ -59,6 +64,22 @@ export class PostgresAnalysisJobStore implements AnalysisJobStore {
           job.createdAt,
         ]
       );
+      const jobTypes = [
+        "video_preprocess",
+        "catalog_match",
+        "external_product_search",
+        "catalog_candidate_review",
+        "catalog_product_enrichment",
+      ];
+      for (const jobType of jobTypes) {
+        await client.query(
+          `insert into video_processing_jobs
+             (analysis_job_id, job_type, idempotency_key, checkpoint)
+           values ($1, $2, $3, '{}'::jsonb)
+           on conflict (idempotency_key) do nothing`,
+          [job.id, jobType, `${job.id}:${jobType}`]
+        );
+      }
     });
   }
 
@@ -82,9 +103,15 @@ export class PostgresAnalysisJobStore implements AnalysisJobStore {
       size_bytes: string | number;
       duration_seconds: number;
       media_created_at: Date;
+      file_hash: string | null;
+      catalog_version: string;
+      analysis_version: string;
+      processed_at: Date | null;
     }>(
       `select j.*, m.id as media_id, m.file_name, m.mime_type, m.size_bytes,
-              m.duration_seconds, m.created_at as media_created_at
+              m.duration_seconds, m.file_hash, m.catalog_version,
+              m.analysis_version, m.processed_at,
+              m.created_at as media_created_at
          from analysis_jobs j
          join media_contents m on m.id = j.media_content_id
         where j.id = $1`,
@@ -111,13 +138,18 @@ export class PostgresAnalysisJobStore implements AnalysisJobStore {
         mimeType: r.mime_type,
         sizeBytes: Number(r.size_bytes),
         durationSeconds: r.duration_seconds,
+        fileHash: r.file_hash,
+        catalogVersion: r.catalog_version,
+        analysisVersion: r.analysis_version,
+        processedAt: r.processed_at ? r.processed_at.getTime() : null,
         createdAt: r.media_created_at.getTime(),
       },
     };
   }
 
   async updateJob(job: AnalysisJobRecord): Promise<void> {
-    await query(
+    await withTransaction(async (client) => {
+      await client.query(
       `update analysis_jobs
           set status = $2, checkpoint = $3, counters = $4, timings = $5,
               warnings = $6, error = $7,
@@ -135,7 +167,29 @@ export class PostgresAnalysisJobStore implements AnalysisJobStore {
         job.startedAt,
         job.finishedAt,
       ]
-    );
+      );
+      await client.query(
+        `update media_contents
+            set processed_at = case when $2::bigint is null then null
+                                    else to_timestamp($2::bigint / 1000.0) end
+          where id = $1`,
+        [job.media.id, job.media.processedAt]
+      );
+      await client.query(
+        `update video_processing_jobs
+            set status = case
+              when $2 in ('completed','partially_completed') then 'completed'
+              when $2 = 'cancelled' then 'cancelled'
+              when $2 = 'failed' then 'failed'
+              when $2 = 'running' then 'running'
+              else status end,
+              started_at = case when $2 = 'running' then coalesce(started_at, now()) else started_at end,
+              finished_at = case when $2 in ('completed','partially_completed','cancelled','failed') then now() else finished_at end,
+              checkpoint = $3, updated_at = now()
+          where analysis_job_id = $1 and job_type = 'video_preprocess'`,
+        [job.id, job.status, JSON.stringify(job.checkpoint)]
+      );
+    });
   }
 
   async getRuntimeState(id: string): Promise<JobRuntimeState | null> {
@@ -175,6 +229,8 @@ export class PostgresAnalysisJobStore implements AnalysisJobStore {
       // Reemplazo idempotente: finalize puede reintentarse tras un fallo.
       await client.query("delete from product_matches where job_id = $1", [id]);
       await client.query("delete from external_search_results where job_id = $1", [id]);
+      await client.query("delete from video_product_occurrences where analysis_job_id = $1", [id]);
+      await client.query("delete from unresolved_video_products where analysis_job_id = $1", [id]);
       await client.query("delete from media_scenes where job_id = $1", [id]);
       await client.query("delete from item_appearances where job_id = $1", [id]);
       await client.query("delete from item_tracks where job_id = $1", [id]);
@@ -249,7 +305,97 @@ export class PostgresAnalysisJobStore implements AnalysisJobStore {
             [id, p.productId, match.provider, JSON.stringify(match)]
           );
         }
+
+        const appearances = (state?.appearances ?? []).filter((appearance) =>
+          p.trackIds.includes(appearance.trackId)
+        );
+        const timestamps = [...new Set(appearances.map((appearance) => appearance.timestampSeconds))]
+          .sort((a, b) => a - b);
+        const sceneIds = [...new Set(appearances.map((appearance) => appearance.sceneId))]
+          .sort((a, b) => a - b);
+        const catalogProductId =
+          p.matching?.matches.find((match) => match.source === "catalog")?.productId ?? null;
+        await client.query(
+          `insert into video_product_occurrences
+             (media_content_id, analysis_job_id, global_product_id, first_seen_at,
+              last_seen_at, timestamps, scene_ids, best_frame_id, best_crop_id,
+              catalog_product_id, external_candidate_id, confidence)
+           select j.media_content_id, $1, $2, $3, $4, $5, $6, $7, $8, $9,
+                  (select c.id from external_product_candidates c
+                    where c.analysis_job_id = $1 and c.global_product_id = $2
+                    order by c.final_score desc limit 1),
+                  $10
+             from analysis_jobs j where j.id = $1`,
+          [
+            id,
+            p.productId,
+            timestamps[0] ?? p.segments[0]?.startSeconds ?? p.bestCrop.timestampSeconds,
+            timestamps.at(-1) ?? p.segments.at(-1)?.endSeconds ?? p.bestCrop.timestampSeconds,
+            JSON.stringify(timestamps),
+            JSON.stringify(sceneIds.map(String)),
+            `${p.bestCrop.timestampSeconds.toFixed(3)}`,
+            p.bestCrop.signatureHash ?? `${p.productId}:crop`,
+            catalogProductId,
+            p.item.confidence,
+          ]
+        );
+
+        if (!catalogProductId) {
+          const externalCandidates = (p.matching?.matches ?? [])
+            .filter((match) => match.source === "external")
+            .map((match) => ({
+              title: match.title,
+              imageUrl: match.imageUrl,
+              productUrl: match.productUrl,
+              provider: match.provider,
+              finalScore: match.scores.finalScore,
+            }));
+          await client.query(
+            `insert into unresolved_video_products
+               (media_content_id, analysis_job_id, global_product_id,
+                canonical_label, category, attributes, best_crop_url,
+                external_candidates, status)
+             select j.media_content_id, $1, $2, $3, $4, $5, $6, $7, $8
+               from analysis_jobs j where j.id = $1`,
+            [
+              id,
+              p.productId,
+              p.item.name,
+              p.item.category,
+              JSON.stringify({
+                color: p.item.color ?? null,
+                style: p.item.style ?? null,
+                subcategory: p.item.subcategory ?? null,
+                visibleBrand: p.item.visible_brand ?? null,
+              }),
+              p.bestCrop.cropDataUrl,
+              JSON.stringify(externalCandidates),
+              externalCandidates.length > 0 ? "review_required" : "unresolved",
+            ]
+          );
+        }
       }
+      const hasExternal = products.some((product) => product.externalSearchesUsed > 0);
+      const hasCandidates = products.some((product) =>
+        product.matching?.matches.some((match) => match.source === "external")
+      );
+      await client.query(
+        `update video_processing_jobs
+            set status = case
+              when job_type = 'catalog_match' then 'completed'
+              when job_type = 'external_product_search' and $2 then 'completed'
+              when job_type = 'external_product_search' then 'cancelled'
+              when job_type = 'catalog_candidate_review' and $3 then 'queued'
+              when job_type = 'catalog_candidate_review' then 'cancelled'
+              when job_type = 'catalog_product_enrichment' then 'queued'
+              else status end,
+              finished_at = case
+                when job_type in ('catalog_match','external_product_search') then now()
+                else finished_at end,
+              updated_at = now()
+          where analysis_job_id = $1 and job_type <> 'video_preprocess'`,
+        [id, hasExternal, hasCandidates]
+      );
     });
   }
 
@@ -279,5 +425,31 @@ export class PostgresAnalysisJobStore implements AnalysisJobStore {
       externalSearchesUsed: r.external_searches_used,
       matchingSkippedReason: r.skipped_reason,
     }));
+  }
+
+  async findReusableJob(
+    fileHash: string,
+    catalogVersion: string,
+    analysisVersion: string
+  ): Promise<AnalysisJobRecord | null> {
+    const result = await query<{ id: string }>(
+      `select j.id
+         from analysis_jobs j
+         join media_contents m on m.id = j.media_content_id
+        where m.file_hash = $1 and m.catalog_version = $2 and m.analysis_version = $3
+          and j.status in ('completed', 'partially_completed')
+        order by j.finished_at desc nulls last limit 1`,
+      [fileHash, catalogVersion, analysisVersion]
+    );
+    return result.rows[0] ? this.getJob(result.rows[0].id) : null;
+  }
+
+  async listJobs(limit = 100): Promise<AnalysisJobRecord[]> {
+    const result = await query<{ id: string }>(
+      "select id from analysis_jobs order by created_at desc limit $1",
+      [Math.min(limit, 500)]
+    );
+    const jobs = await Promise.all(result.rows.map((row) => this.getJob(row.id)));
+    return jobs.filter((job): job is AnalysisJobRecord => job != null);
   }
 }

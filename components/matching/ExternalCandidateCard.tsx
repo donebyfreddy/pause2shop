@@ -121,6 +121,9 @@ export default function ExternalCandidateCard({
         {/* Ver comentario equivalente en CatalogCandidateCard: la procedencia
             viaja con el resultado, nunca solo con la sección. */}
         <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+          <span className="rounded-full border border-accent/35 bg-accent/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-accent">
+            Candidato externo
+          </span>
           <MatchSourceBadge source="external" />
           <MatchTypeBadge matchType={candidate.matchType} source="external" />
           <MatchScoreBadge score={candidate.score} source="external" />

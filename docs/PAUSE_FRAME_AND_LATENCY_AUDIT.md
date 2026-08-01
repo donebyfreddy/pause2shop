@@ -1,6 +1,6 @@
 # Pause2Shop — auditoría de frame pausado y latencia
 
-Fecha: 2026-08-01
+Fecha: 2026-08-02
 
 ## Alcance inspeccionado
 
@@ -111,11 +111,46 @@ El clic prioriza un único objeto al principio de la cola y reutiliza el crop po
 
 ### Fallback path
 
-`sin match -> acción del usuario -> búsqueda externa -> filtro comercial`
+`sin match -> búsqueda externa automática en background -> candidato revisable`
 
-El fallback automático queda desactivado por defecto. Las noticias, redes,
-personas, piezas editoriales y resultados sin señal comercial se eliminan antes
-del ranking. Un resultado externo nunca se mezcla con el bloque del catálogo.
+El navegador hace una primera petición `catalog_only` y publica ese bloque en
+cuanto llega. Solo si queda `empty/unresolved` lanza una segunda petición
+`external_only`; por eso Internet no puede retrasar ni borrar el resultado del
+catálogo. Las noticias, redes, personas, piezas editoriales y resultados sin
+señal comercial se eliminan antes del ranking. El botón manual queda reservado
+a `Reintentar búsqueda externa` tras un error o resultado no resuelto.
+
+Los resultados fiables ya no llaman a `/products/external` desde el matching.
+Se guardan en `external_product_candidates` con URL, imagen original, merchant,
+proveedor, scores, evidencia, crop y fecha. Solo la acción de aprobación del
+admin cambia `review_required -> approved`, crea/indexa el producto y termina
+en `published`.
+
+## Reanudación y dos modos
+
+La pausa directa usa un `PlayerAnalysisState` explícito: `playing`, `pausing`,
+`paused_ready`, `detecting`, `matching` y `resumed`. El frame congelado incluye
+`PausedFrameToolbar` y `ResumeVideoButton`; botón, controles nativos, Espacio y
+K llaman a `video.play()` sobre el mismo elemento y timestamp. `onPlay` invalida
+la sesión visual, oculta cajas y panel, pero conserva los cachés.
+
+Antes de cargar contenido se elige entre:
+
+- **En directo**: captura exacta, detecciones anticipadas y matching al clic.
+- **Vídeo preprocesado**: recorrido completo, escenas, tracking, dedup global,
+  mejor crop, catálogo primero y candidatos externos.
+
+El modo preprocesado calcula SHA-256 sobre los bytes del archivo. Un job
+`completed/partially_completed` con el mismo hash, `CATALOG_VERSION` y
+`VIDEO_ANALYSIS_VERSION` se devuelve sin extraer frames. La reproducción puede
+consultar `/api/analysis/videos/:hash?time=` para recuperar los productos del
+rango temporal.
+
+La migración `20260802000012_video_processing_candidates.sql` añade identidad
+versionada, ocurrencias por timestamp, productos no resueltos, candidatos y
+subjobs persistentes/idempotentes de tipos `video_preprocess`, `catalog_match`,
+`external_product_search`, `catalog_candidate_review` y
+`catalog_product_enrichment`.
 
 ## Medición
 
@@ -142,7 +177,9 @@ visión/matching simulados en E2E para aislar la UI, y catálogo real aparte):
 | consulta HNSW dentro de Postgres (1.000 productos) | p50 0,7 ms |
 | consulta HNSW vista desde este equipo (RTT remoto ~306 ms) | p50 177,8 ms |
 | `matchProducts` real con 1.048 productos indexados | p50 204,3 ms |
-| clic -> resultado catálogo en E2E progresivo | 226 ms |
+| clic -> resultado catálogo en E2E progresivo actual | 85–96 ms |
+| catálogo -> fallback externo simulado (background) | 214–228 ms adicionales |
+| flujo completo de fallback simulado | 310–324 ms, sin bloquear cajas |
 
 El objetivo de `<100 ms` para la consulta vectorial se cumple dentro de la base
 de datos. Desde desarrollo remoto domina la red; en producción la función y
@@ -165,5 +202,6 @@ interacción. Las capturas verificadas están en
 - panel lateral desktop, bottom sheet móvil y `prefers-reduced-motion`.
 
 Resultado final: suite unitaria completa con código de salida 0, build y
-typecheck correctos, lint sin errores y 8/8 escenarios E2E aprobados en los
-proyectos Chromium desktop y móvil.
+typecheck correctos, lint sin errores y 12/12 escenarios E2E aprobados en los
+proyectos Chromium desktop y móvil. Las capturas verificadas incluyen modo
+preprocesado y fallback automático en `test-results/pause-click-to-shop/`.

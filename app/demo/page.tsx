@@ -16,9 +16,9 @@ import type {
   FrameBatchResult,
 } from "@/lib/analysis/jobs/types";
 import type { RawThumb } from "@/lib/analysis/jobs/perceptualHash";
-import type { MatchingMode } from "@/lib/matching/types";
-import type { BoundingBox, DetectedItem, VideoAnalysisConfig } from "@/lib/types";
+import type { BoundingBox, DetectedItem } from "@/lib/types";
 import { formatTimestamp } from "@/lib/utils";
+import { sha256File } from "@/lib/videoProcessing/hash";
 
 /**
  * DEMO de vídeo subido (≤ 2 min) con job de análisis asíncrono.
@@ -126,14 +126,18 @@ async function cropFromFrame(
 // Página
 // ---------------------------------------------------------------------------
 
-export default function DemoPage() {
+export function PreprocessedVideoExperience({ embedded = false }: { embedded?: boolean }) {
   const t = useTranslations("demo");
   const format = useFormatter();
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const cancelRef = useRef(false);
+  const selectedFileRef = useRef<File | null>(null);
 
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [fileInfo, setFileInfo] = useState<{ name: string; size: number; type: string } | null>(null);
+  const [videoHash, setVideoHash] = useState<string | null>(null);
+  const [hashing, setHashing] = useState(false);
+  const [reused, setReused] = useState(false);
   const [duration, setDuration] = useState(0);
   const [videoAspect, setVideoAspect] = useState<number | null>(null);
   const [validationError, setValidationError] = useState<string | null>(null);
@@ -174,13 +178,16 @@ export default function DemoPage() {
     return () => clearInterval(interval);
   }, [jobId, running]);
 
-  const handleFile = useCallback((file: File | null) => {
+  const handleFile = useCallback(async (file: File | null) => {
     setValidationError(null);
     setJob(null);
     setJobId(null);
     setPhase("idle");
     setError(null);
     setLiveItems([]);
+    setVideoHash(null);
+    setReused(false);
+    selectedFileRef.current = file;
     if (!file) return;
     if (!file.type.startsWith("video/")) {
       setValidationError(t("upload.notVideoError"));
@@ -191,6 +198,13 @@ export default function DemoPage() {
       if (prev) URL.revokeObjectURL(prev);
       return URL.createObjectURL(file);
     });
+    setHashing(true);
+    try {
+      const hash = await sha256File(file);
+      if (selectedFileRef.current === file) setVideoHash(hash);
+    } finally {
+      if (selectedFileRef.current === file) setHashing(false);
+    }
   }, [t]);
 
   const onLoadedMetadata = useCallback(() => {
@@ -238,9 +252,9 @@ export default function DemoPage() {
     []
   );
 
-  const startAnalysis = useCallback(async () => {
+  const startAnalysis = useCallback(async (forceReprocess = false) => {
     const video = videoRef.current;
-    if (!video || !fileInfo || validationError || !duration) return;
+    if (!video || !fileInfo || !videoHash || validationError || !duration) return;
     cancelRef.current = false;
     setError(null);
     setJob(null);
@@ -258,8 +272,14 @@ export default function DemoPage() {
           mimeType: fileInfo.type,
           sizeBytes: fileInfo.size,
           durationSeconds: duration,
-          matchingMode: analysisConfig.matchingMode,
-          analysisConfig: serializeConfig(analysisConfig),
+          matchingMode: "catalog_first",
+          analysisConfig: serializeConfig({
+            ...analysisConfig,
+            matchingMode: "catalog_first",
+            reverseImageSearch: true,
+          }),
+          videoHash,
+          forceReprocess,
         }),
       });
       const created = await createRes.json();
@@ -268,6 +288,18 @@ export default function DemoPage() {
       const fps: number = created.config?.detectionFps ?? 5;
       const maxBatch: number = Math.min(created.config?.maxFramesPerBatch ?? 25, 8);
       setJobId(id);
+
+      if (created.reused) {
+        const statusRes = await fetch(`/api/analysis/jobs/${id}`);
+        const statusBody = await statusRes.json();
+        if (!statusBody.ok) throw new Error(statusBody.error ?? t("errors.createJobFailed"));
+        setJob(statusBody.job);
+        setReused(true);
+        setScanProgress(1);
+        setPhase("done");
+        return;
+      }
+      setReused(false);
 
       // 2) Recorrer el vídeo extrayendo frames a `fps` y enviarlos por lotes.
       setPhase("scanning");
@@ -331,7 +363,7 @@ export default function DemoPage() {
       setError(err instanceof Error ? err.message : t("errors.unknown"));
       setPhase("error");
     }
-  }, [analysisConfig, duration, fileInfo, fulfillCropRequests, validationError, t]);
+  }, [analysisConfig, duration, fileInfo, fulfillCropRequests, validationError, videoHash, t]);
 
   const cancelAnalysis = useCallback(async () => {
     cancelRef.current = true;
@@ -353,21 +385,33 @@ export default function DemoPage() {
 
   return (
     <>
-      <PublicHeader />
-      <main className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+      {!embedded ? <PublicHeader /> : null}
+      <main
+        className={
+          embedded
+            ? "w-full"
+            : "mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8"
+        }
+      >
       <header className="mb-6 flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="display text-3xl text-ink sm:text-4xl">{t("page.title")}</h1>
+          {embedded ? (
+            <h2 className="display text-2xl text-ink sm:text-3xl">Vídeo preprocesado</h2>
+          ) : (
+            <h1 className="display text-3xl text-ink sm:text-4xl">{t("page.title")}</h1>
+          )}
           <p className="mt-2 max-w-2xl text-sm leading-relaxed text-ink-muted">
-            {t("page.description")}
+            {embedded
+              ? "Analiza el vídeo completo previamente para generar un catálogo reutilizable por escena y timestamp."
+              : t("page.description")}
           </p>
         </div>
-        <Link
+        {!embedded ? <Link
           href="/studio"
           className="text-xs font-medium text-ink-subtle transition-colors hover:text-brand-bright"
         >
           {t("page.goToStudio")}
-        </Link>
+        </Link> : null}
       </header>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_380px]">
@@ -385,7 +429,7 @@ export default function DemoPage() {
               type="file"
               accept="video/*"
               disabled={running}
-              onChange={(e) => handleFile(e.target.files?.[0] ?? null)}
+              onChange={(e) => void handleFile(e.target.files?.[0] ?? null)}
               className="mt-3 block w-full text-xs text-ink-muted file:mr-3 file:rounded-lg file:border-0 file:bg-brand/20 file:px-3 file:py-1.5 file:text-xs file:font-medium file:text-brand-bright hover:file:bg-brand/30"
             />
             {validationError && (
@@ -393,6 +437,15 @@ export default function DemoPage() {
                 {validationError}
               </p>
             )}
+            {fileInfo && !validationError ? (
+              <p className="mt-2 text-[11px] text-ink-subtle">
+                {hashing
+                  ? "Calculando SHA-256 del contenido…"
+                  : videoHash
+                    ? `Identidad del vídeo · ${videoHash.slice(0, 12)}…`
+                    : "No se pudo calcular la identidad del vídeo."}
+              </p>
+            ) : null}
           </div>
 
           {videoUrl && (
@@ -423,16 +476,20 @@ export default function DemoPage() {
           {/* La "Fuente de coincidencias" ya no se pinta aquí: vive dentro de
               AnalysisConfigSelector, el MISMO componente que usa el estudio. */}
           <AnalysisConfigSelector
-            config={analysisConfig}
+            config={{ ...analysisConfig, matchingMode: "catalog_first" }}
             onChange={setAnalysisConfig}
             locked={running}
+            matchingModeLocked
           />
+          <p className="rounded-xl border border-brand/20 bg-brand/[0.06] px-4 py-3 text-xs text-ink-muted">
+            Pipeline VOD fijo: catálogo primero; si no resuelve, búsqueda externa automática y candidato pendiente de revisión.
+          </p>
 
           <div className="flex items-center gap-3">
             <button
               type="button"
-              onClick={startAnalysis}
-              disabled={!videoUrl || Boolean(validationError) || running || !duration}
+              onClick={() => void startAnalysis(false)}
+              disabled={!videoUrl || !videoHash || hashing || Boolean(validationError) || running || !duration}
               className="rounded-xl bg-brand px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-brand-bright disabled:cursor-not-allowed disabled:opacity-40"
             >
               {running ? t("actions.analyzing") : t("actions.analyze")}
@@ -446,6 +503,15 @@ export default function DemoPage() {
                 {t("actions.cancel")}
               </button>
             )}
+            {phase === "done" && job ? (
+              <button
+                type="button"
+                onClick={() => void startAnalysis(true)}
+                className="rounded-xl border border-line bg-white/5 px-4 py-2.5 text-sm font-medium text-ink-muted transition hover:bg-white/10 hover:text-ink"
+              >
+                Reprocesar con la versión actual
+              </button>
+            ) : null}
             <label className="ml-auto flex items-center gap-2 text-xs text-ink-muted">
               <input
                 type="checkbox"
@@ -461,6 +527,11 @@ export default function DemoPage() {
               {error}
             </p>
           )}
+          {reused ? (
+            <p className="rounded-xl border border-success/30 bg-success/10 px-4 py-3 text-xs text-success">
+              Vídeo ya procesado · resultados reutilizados por hash en menos de una petición.
+            </p>
+          ) : null}
         </section>
 
         {/* Columna derecha: progreso del job */}
@@ -636,9 +707,13 @@ export default function DemoPage() {
         </p>
       )}
       </main>
-      <PublicFooter />
+      {!embedded ? <PublicFooter /> : null}
     </>
   );
+}
+
+export default function DemoPage() {
+  return <PreprocessedVideoExperience />;
 }
 
 function Stat({ label, value }: Readonly<{ label: string; value: number | string }>) {

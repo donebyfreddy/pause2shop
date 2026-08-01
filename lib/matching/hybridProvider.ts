@@ -1,8 +1,5 @@
 import type { DetectedItem } from "@/lib/types";
-import {
-  CatalogClient,
-  type ExternalProductInput,
-} from "./catalogClient";
+import { CatalogClient } from "./catalogClient";
 import type { MatchingConfig } from "./config";
 import type {
   MatchLabel,
@@ -21,7 +18,7 @@ import { noMatchResult } from "./types";
  */
 
 /** Providers del contrato externo aceptados por POST /products/external. */
-const SAVABLE_PROVIDERS = new Set<ExternalProductInput["provider"]>([
+const SAVABLE_PROVIDERS = new Set([
   "serpapi_google_lens",
   "searchapi_google_lens",
   "serpapi_google_shopping",
@@ -50,33 +47,48 @@ function isReliableExternal(result: ProductMatchingResult): boolean {
  * si hay evidencia (brandEvidenceScore) — nunca porque el título la contenga.
  */
 export async function saveExternalResult(
-  client: CatalogClient,
+  _client: CatalogClient,
   result: ProductMatchingResult,
   item: DetectedItem
 ): Promise<string | null> {
   const best = result.matches[0];
   if (!best) return "Sin match externo que guardar.";
-  const provider = best.provider as ExternalProductInput["provider"];
+  const provider = best.provider;
   if (!SAVABLE_PROVIDERS.has(provider)) {
     return `Proveedor externo no ingerible: ${best.provider}`;
   }
-  const res = await client.saveExternalProduct({
-    provider,
+  if (!best.imageUrl || !best.productUrl) {
+    return "El resultado externo no tiene imagen y URL comercial verificables.";
+  }
+  const { getExternalCandidateStore } = await import(
+    "@/lib/videoProcessing/candidateStore"
+  );
+  await getExternalCandidateStore().save({
+    id: best.productId ?? best.productUrl,
     title: best.title,
-    brand: best.scores.brandEvidenceScore != null ? best.brand : null,
-    price: best.price,
-    currency: best.currency,
-    productUrl: best.productUrl,
+    ...(best.scores.brandEvidenceScore != null && best.brand
+      ? { brand: best.brand }
+      : {}),
     imageUrl: best.imageUrl,
-    merchant: best.merchant,
-    category: item.category ?? null,
-    color: item.color ?? null,
-    score: best.scores.finalScore,
-    evidence: best.evidence,
+    ...(best.merchant ? { merchant: best.merchant } : {}),
+    ...(best.price != null ? { price: best.price } : {}),
+    ...(best.currency ? { currency: best.currency } : {}),
+    productUrl: best.productUrl,
+    category: best.category ?? item.category,
+    visualScore: best.scores.visualScore ?? best.scores.finalScore,
+    commercialScore: [best.merchant, best.price != null, best.imageUrl].filter(Boolean)
+      .length / 3,
+    finalScore: best.scores.finalScore,
+    provider,
+    sourcePage: best.productUrl,
+    originalImageUrl: best.imageUrl,
+    evidence: [
+      ...best.evidence,
+      "Candidato externo pendiente de revisión; no publicado.",
+    ],
+    attributes: { color: item.color ?? null, category: item.category },
   });
-  return res.ok
-    ? null
-    : `No se pudo guardar el resultado externo (${res.error.code}).`;
+  return null;
 }
 
 /**

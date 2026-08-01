@@ -117,6 +117,12 @@ export type ExternalProductInput = {
   score: number;
   evidence?: string[];
   rawResult?: object;
+  /** Solo la acción de revisión puede convertir el candidato en catálogo. */
+  approved?: boolean;
+  candidateId?: string;
+  reviewedBy?: string;
+  sourcePage?: string;
+  originalImageUrl?: string;
 };
 
 export type ExternalProductResponse = {

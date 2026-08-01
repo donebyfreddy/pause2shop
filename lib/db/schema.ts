@@ -192,6 +192,10 @@ export const mediaContents = pgTable("media_contents", {
   mimeType: text("mime_type").notNull().default(""),
   sizeBytes: bigint("size_bytes", { mode: "number" }).notNull().default(0),
   durationSeconds: doublePrecision("duration_seconds").notNull().default(0),
+  fileHash: text("file_hash"),
+  catalogVersion: text("catalog_version").notNull().default("catalog:v1"),
+  analysisVersion: text("analysis_version").notNull().default("video-pipeline:v2"),
+  processedAt: timestamp("processed_at", { withTimezone: true }),
   createdAt: createdAt(),
 });
 
@@ -202,6 +206,8 @@ export const analysisJobs = pgTable("analysis_jobs", {
     .references(() => mediaContents.id, { onDelete: "cascade" }),
   /** queued | running | partially_completed | completed | failed | cancelled */
   status: text("status").notNull().default("queued"),
+  jobType: text("job_type").notNull().default("video_preprocess"),
+  retryCount: integer("retry_count").notNull().default(0),
   matchingMode: text("matching_mode").notNull().default("external-only"),
   analysisConfig: jsonb("analysis_config").notNull().default({}),
   checkpoint: jsonb("checkpoint").notNull().default({}),
@@ -539,6 +545,135 @@ export const catalogMigrations = pgTable("_catalog_migrations", {
     .notNull()
     .defaultNow(),
 });
+
+// ---------------------------------------------------------------------------
+// VOD reutilizable y candidatos externos revisables (20260802000012)
+// ---------------------------------------------------------------------------
+
+export const videoProcessingJobs = pgTable("video_processing_jobs", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  analysisJobId: uuid("analysis_job_id").references(() => analysisJobs.id, {
+    onDelete: "cascade",
+  }),
+  jobType: text("job_type").notNull(),
+  status: text("status").notNull().default("queued"),
+  idempotencyKey: text("idempotency_key").notNull().unique(),
+  checkpoint: jsonb("checkpoint").notNull().default({}),
+  logs: jsonb("logs").notNull().default([]),
+  retryCount: integer("retry_count").notNull().default(0),
+  maxRetries: integer("max_retries").notNull().default(3),
+  error: text("error"),
+  createdAt: createdAt(),
+  startedAt: timestamp("started_at", { withTimezone: true }),
+  finishedAt: timestamp("finished_at", { withTimezone: true }),
+  updatedAt: updatedAt(),
+});
+
+export const externalProductCandidates = pgTable("external_product_candidates", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  candidateKey: text("candidate_key").notNull().unique(),
+  analysisJobId: uuid("analysis_job_id").references(() => analysisJobs.id, {
+    onDelete: "set null",
+  }),
+  mediaContentId: uuid("media_content_id").references(() => mediaContents.id, {
+    onDelete: "set null",
+  }),
+  detectedItemId: uuid("detected_item_id").references(() => detectedItems.id, {
+    onDelete: "set null",
+  }),
+  globalProductId: text("global_product_id"),
+  title: text("title").notNull(),
+  brand: text("brand"),
+  imageUrl: text("image_url").notNull(),
+  merchant: text("merchant"),
+  price: doublePrecision("price"),
+  currency: text("currency"),
+  productUrl: text("product_url").notNull(),
+  category: text("category"),
+  visualScore: doublePrecision("visual_score").notNull().default(0),
+  commercialScore: doublePrecision("commercial_score").notNull().default(0),
+  finalScore: doublePrecision("final_score").notNull().default(0),
+  provider: text("provider").notNull(),
+  status: text("status").notNull().default("external_candidate"),
+  sourcePage: text("source_page"),
+  originalImageUrl: text("original_image_url"),
+  originCropUrl: text("origin_crop_url"),
+  evidence: jsonb("evidence").notNull().default([]),
+  attributes: jsonb("attributes").notNull().default({}),
+  rawResult: jsonb("raw_result").notNull().default({}),
+  queriedAt: timestamp("queried_at", { withTimezone: true }).notNull().defaultNow(),
+  reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
+  reviewedBy: text("reviewed_by"),
+  catalogProductId: uuid("catalog_product_id").references(() => catalogProducts.id, {
+    onDelete: "set null",
+  }),
+  createdAt: createdAt(),
+  updatedAt: updatedAt(),
+});
+
+export const videoProductOccurrences = pgTable(
+  "video_product_occurrences",
+  {
+    id: bigserial("id", { mode: "number" }).primaryKey(),
+    mediaContentId: uuid("media_content_id")
+      .notNull()
+      .references(() => mediaContents.id, { onDelete: "cascade" }),
+    analysisJobId: uuid("analysis_job_id")
+      .notNull()
+      .references(() => analysisJobs.id, { onDelete: "cascade" }),
+    globalProductId: text("global_product_id").notNull(),
+    firstSeenAt: doublePrecision("first_seen_at").notNull(),
+    lastSeenAt: doublePrecision("last_seen_at").notNull(),
+    timestamps: jsonb("timestamps").notNull().default([]),
+    sceneIds: jsonb("scene_ids").notNull().default([]),
+    bestFrameId: text("best_frame_id"),
+    bestCropId: text("best_crop_id"),
+    catalogProductId: uuid("catalog_product_id").references(() => catalogProducts.id, {
+      onDelete: "set null",
+    }),
+    externalCandidateId: uuid("external_candidate_id").references(
+      () => externalProductCandidates.id,
+      { onDelete: "set null" }
+    ),
+    confidence: doublePrecision("confidence").notNull().default(0),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    uniqueIndex("video_product_occurrences_job_product_key").on(
+      t.analysisJobId,
+      t.globalProductId
+    ),
+  ]
+);
+
+export const unresolvedVideoProducts = pgTable(
+  "unresolved_video_products",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    mediaContentId: uuid("media_content_id")
+      .notNull()
+      .references(() => mediaContents.id, { onDelete: "cascade" }),
+    analysisJobId: uuid("analysis_job_id")
+      .notNull()
+      .references(() => analysisJobs.id, { onDelete: "cascade" }),
+    globalProductId: text("global_product_id").notNull(),
+    canonicalLabel: text("canonical_label").notNull(),
+    category: text("category").notNull(),
+    attributes: jsonb("attributes").notNull().default({}),
+    bestCropUrl: text("best_crop_url"),
+    embedding: jsonb("embedding"),
+    externalCandidates: jsonb("external_candidates").notNull().default([]),
+    status: text("status").notNull().default("unresolved"),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    uniqueIndex("unresolved_video_products_job_product_key").on(
+      t.analysisJobId,
+      t.globalProductId
+    ),
+  ]
+);
 
 // Tipos de fila inferidos, para los repositorios.
 export type VideoSource = typeof videoSources.$inferSelect;

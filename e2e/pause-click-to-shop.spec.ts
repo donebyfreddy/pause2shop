@@ -109,7 +109,7 @@ function fulfillDetection(route: Route, body: RequestBody, delayMs = 40) {
   });
 }
 
-function matchPayload(body: RequestBody) {
+function matchPayload(body: RequestBody, catalogMiss = false) {
   const external = body.forceExternal === true;
   const item = body.item as ReturnType<typeof detectedItem>;
   const catalogProduct = {
@@ -143,7 +143,7 @@ function matchPayload(body: RequestBody) {
   };
   return {
     ok: true,
-    status: "matched",
+    status: external || !catalogMiss ? "matched" : "no_match",
     cached: false,
     match: null,
     similarCandidates: [],
@@ -156,7 +156,7 @@ function matchPayload(body: RequestBody) {
       lensMs: external ? 420 : 0,
       totalMs: external ? 470 : 84,
     },
-    matchingMode: "catalog_first",
+    matchingMode: String(body.matchingMode ?? "catalog_first"),
     matching: { externalFallbackUsed: false },
     detection: {
       detectionId: String(body.detectionId),
@@ -164,12 +164,15 @@ function matchPayload(body: RequestBody) {
       confidence: item.confidence,
       boundingBox: item.bounding_box,
       timestampSeconds: body.timestampSeconds,
-      matchingMode: "catalog_first",
+      matchingMode: String(body.matchingMode ?? "catalog_first"),
       catalog: {
-        status: "matched",
-        selected: catalogProduct,
-        candidates: [catalogProduct],
+        status: catalogMiss || external ? (external ? "not_requested" : "unresolved") : "matched",
+        ...(catalogMiss || external ? {} : { selected: catalogProduct }),
+        candidates: catalogMiss || external ? [] : [catalogProduct],
         threshold: 0.8,
+        ...(catalogMiss && !external
+          ? { unresolvedReason: "No existe una coincidencia suficientemente fiable en el catálogo." }
+          : {}),
       },
       external: external
         ? {
@@ -184,7 +187,7 @@ function matchPayload(body: RequestBody) {
   };
 }
 
-async function installApiMocks(page: Page, analysisDelays: number[] = []) {
+async function installApiMocks(page: Page, analysisDelays: number[] = [], catalogMiss = false) {
   const matchingBodies: RequestBody[] = [];
   let analysisIndex = 0;
   await page.route("**/api/vision/analyze-frame-stream", async (route) => {
@@ -196,7 +199,7 @@ async function installApiMocks(page: Page, analysisDelays: number[] = []) {
     const body = route.request().postDataJSON() as RequestBody;
     matchingBodies.push(body);
     await new Promise((resolve) => setTimeout(resolve, body.forceExternal ? 220 : 70));
-    await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(matchPayload(body)) });
+    await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(matchPayload(body, catalogMiss)) });
   });
   return matchingBodies;
 }
@@ -254,7 +257,24 @@ test.describe("/studio · pausa exacta y click-to-shop", () => {
     mkdirSync(SHOTS_DIR, { recursive: true });
   });
 
-  test("pausa, cajas, catálogo bajo demanda, fallback y reanudación", async ({ page }, testInfo) => {
+  test("separa En directo de Vídeo preprocesado antes de cargar contenido", async ({ page }, testInfo) => {
+    await page.goto("/studio");
+    const live = page.getByTestId("workflow-mode-interactive");
+    const preprocessed = page.getByTestId("workflow-mode-preprocessed");
+    await expect(live).toContainText("En directo");
+    await expect(preprocessed).toContainText("Vídeo preprocesado");
+    await preprocessed.click();
+    await expect(page.getByRole("heading", { name: "Vídeo preprocesado" })).toBeVisible();
+    await expect(page.locator('input[type="file"][accept*="video"]')).toBeVisible();
+    await page.screenshot({
+      path: join(SHOTS_DIR, `preprocessed-mode-${testInfo.project.name}.png`),
+      fullPage: false,
+    });
+    await live.click();
+    await expect(page.getByRole("heading", { name: "Vídeo preprocesado" })).toHaveCount(0);
+  });
+
+  test("pausa, cajas, catálogo bajo demanda y reanudación visible", async ({ page }, testInfo) => {
     test.setTimeout(90_000);
     const calls = await installApiMocks(page);
     await uploadVideo(page);
@@ -270,29 +290,47 @@ test.describe("/studio · pausa exacta y click-to-shop", () => {
     await expect(page.getByTestId("commerce-side-panel")).toContainText("Polo Essential negro");
     await expect.poll(() => calls.length).toBe(1);
     expect(calls[0].forceExternal).not.toBe(true);
+    expect(calls[0].matchingMode).toBe("catalog_only");
 
     // Volver a clicar el mismo track reutiliza el resultado ya resuelto.
     await polo.click();
     await page.waitForTimeout(100);
     expect(calls).toHaveLength(1);
 
-    const internet = page.getByRole("button", { name: /buscar también en internet/i });
-    await expect(internet).toBeVisible();
-    await internet.click();
-    // La consulta externa no tapa ni elimina el producto del catálogo.
-    await expect(page.getByTestId("commerce-side-panel")).toContainText("Polo Essential negro");
-    await expect.poll(() => calls.length).toBe(2);
-    expect(calls[1].forceExternal).toBe(true);
-    await expect(page.getByTestId("commerce-side-panel")).toContainText(/alternativa/i);
+    await expect(page.getByRole("button", { name: /buscar también en internet/i })).toHaveCount(0);
 
     await page.screenshot({
       path: join(SHOTS_DIR, `click-to-shop-${testInfo.project.name}.png`),
       fullPage: false,
     });
 
-    await page.locator("video").first().evaluate((video) => (video as HTMLVideoElement).play());
+    const pausedAt = await page.locator("video").first().evaluate((video) => (video as HTMLVideoElement).currentTime);
+    await page.getByTestId("resume-video-button").click();
     await expect(page.getByTestId("paused-frame-image")).toHaveCount(0);
     await expect(page.getByTestId("clickable-detection-overlay")).toHaveCount(0);
+    await expect.poll(() => page.locator("video").first().evaluate((video) => (video as HTMLVideoElement).currentTime)).toBeGreaterThan(pausedAt);
+  });
+
+  test("sin match de catálogo, Internet arranca automáticamente sin bloquear las cajas", async ({ page }, testInfo) => {
+    test.setTimeout(90_000);
+    const calls = await installApiMocks(page, [], true);
+    await uploadVideo(page);
+    await playUntil(page, 2.1);
+    const polo = page.getByRole("button", { name: /seleccionar Polo oscuro/i });
+    await polo.click();
+    await expect.poll(() => calls.length).toBeGreaterThanOrEqual(1);
+    await expect(page.getByTestId("clickable-detection-overlay")).toBeVisible();
+    await expect(page.getByTestId("commerce-side-panel")).toContainText(/Consultando Internet/i);
+    await expect.poll(() => calls.length).toBe(2);
+    expect(calls[0].matchingMode).toBe("catalog_only");
+    expect(calls[1].matchingMode).toBe("external_only");
+    expect(calls[1].forceExternal).toBe(true);
+    await expect(page.getByTestId("commerce-side-panel")).toContainText(/alternativa/i);
+    await expect(page.getByTestId("commerce-side-panel")).toContainText(/Candidato externo/i);
+    await page.screenshot({
+      path: join(SHOTS_DIR, `automatic-fallback-${testInfo.project.name}.png`),
+      fullPage: false,
+    });
   });
 
   test("una respuesta antigua no sustituye la pausa nueva", async ({ page }) => {

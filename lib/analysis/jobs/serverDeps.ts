@@ -20,7 +20,7 @@ import type { JobEngineDeps, MatchProductFn } from "./engine";
 const MATCH_TIMEOUT_MS = Number(process.env.VIDEO_MATCHING_TIMEOUT_MS) || 60_000;
 
 function buildMatchProduct(origin: string): MatchProductFn {
-  return async ({ item, cropDataUrl, frameDataUrl, mode }) => {
+  return async ({ jobId, mediaContentId, globalProductId, item, cropDataUrl, frameDataUrl, mode }) => {
     // Sin crop del cliente se degrada al mejor FRAME completo (el pipeline
     // externo sigue funcionando, con menos precisión). Sin ninguno: NO_MATCH.
     const crop = cropDataUrl ?? frameDataUrl;
@@ -38,6 +38,9 @@ function buildMatchProduct(origin: string): MatchProductFn {
         item,
         matchingMode: mode,
         videoKey: "analysis-job",
+        analysisJobId: jobId,
+        mediaContentId,
+        globalProductId,
       }),
     });
     if (!res.ok) {

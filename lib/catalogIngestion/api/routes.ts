@@ -973,8 +973,14 @@ export function buildRouter(store: CatalogStore): Router {
     if (!body?.title || !body?.productUrl || typeof body?.score !== "number") {
       throw new ApiError(400, "invalid_body", "title, productUrl y score son obligatorios");
     }
+    if (body.approved !== true || !body.candidateId) {
+      throw new ApiError(
+        409,
+        "review_required",
+        "Un resultado externo debe guardarse como candidato y aprobarse antes de publicarlo."
+      );
+    }
     recordProviderUsage(body.provider, true);
-    const config = getConfig();
     const now = new Date().toISOString();
 
     // Imagen del resultado externo: descarga best-effort (si falla, la ficha
@@ -1035,6 +1041,11 @@ export function buildRouter(store: CatalogStore): Router {
       gtin: null,
       sourceMetadata: {
         provider: body.provider,
+        candidateId: body.candidateId,
+        reviewedBy: body.reviewedBy ?? "admin",
+        sourcePage: body.sourcePage ?? body.productUrl,
+        originalImageUrl: body.originalImageUrl ?? body.imageUrl ?? null,
+        approvedAt: now,
         evidence: Array.isArray(body.evidence) ? body.evidence : [],
         rawResult: body.rawResult ?? null,
       },
@@ -1055,11 +1066,12 @@ export function buildRouter(store: CatalogStore): Router {
       origin: "externally_discovered",
     };
 
-    // Nunca se publica automáticamente si el score no llega al umbral
+    // Este endpoint solo se alcanza tras aprobación explícita. El score sigue
+    // registrado como evidencia, pero no sustituye a la decisión de revisión.
     const result = await ingestProduct(store, normalized, {
       origin: "externally_discovered",
       externalScore: body.score,
-      active: body.score >= config.minImageScore,
+      active: true,
     });
     // Para el caller, "deduplicated" significa "no se creó ficha nueva":
     // cubre tanto el dedup cross-source como el reenvío del mismo resultado.

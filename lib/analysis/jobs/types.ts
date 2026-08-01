@@ -30,6 +30,10 @@ export type CreateAnalysisJobInput = {
   durationSeconds?: number;
   matchingMode?: string;
   analysisConfig?: unknown;
+  /** SHA-256 del contenido real, calculado antes de crear el job. */
+  videoHash?: string;
+  /** Omite la reutilización aunque hash+versiones coincidan. */
+  forceReprocess?: boolean;
 };
 
 export type MediaContentRecord = {
@@ -38,6 +42,10 @@ export type MediaContentRecord = {
   mimeType: string;
   sizeBytes: number;
   durationSeconds: number;
+  fileHash: string | null;
+  catalogVersion: string;
+  analysisVersion: string;
+  processedAt: number | null;
   createdAt: number;
 };
 

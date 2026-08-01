@@ -8,6 +8,8 @@ import {
   ChevronsLeft,
   ChevronsRight,
   Database,
+  BadgeCheck,
+  Film,
   LayoutDashboard,
   ListChecks,
   Menu,
@@ -16,7 +18,7 @@ import {
   Settings,
   X,
 } from "lucide-react";
-import { useEffect, useState, useSyncExternalStore, type ReactNode } from "react";
+import { useState, useSyncExternalStore, type ReactNode } from "react";
 import { useTranslations } from "next-intl";
 import { cn } from "@/lib/ui/cn";
 import { LogoMark } from "@/components/shell/Logo";
@@ -49,7 +51,8 @@ const SIDEBAR_COLLAPSED_KEY = "p2s.admin.sidebarCollapsed";
 
 type NavItem = {
   href: string;
-  labelKey: "overview" | "connectors" | "jobs" | "catalog" | "logs" | "settings";
+  labelKey?: "overview" | "connectors" | "jobs" | "catalog" | "logs" | "settings";
+  label?: string;
   icon: typeof LayoutDashboard;
   /** `/admin` solo está activo en coincidencia exacta: si no, lo estaría siempre. */
   exact?: boolean;
@@ -59,6 +62,8 @@ const NAV: NavItem[] = [
   { href: "/admin", labelKey: "overview", icon: LayoutDashboard, exact: true },
   { href: "/admin/connectors", labelKey: "connectors", icon: Plug },
   { href: "/admin/jobs", labelKey: "jobs", icon: ListChecks },
+  { href: "/admin/videos", label: "Vídeos procesados", icon: Film },
+  { href: "/admin/candidates", label: "Candidatos externos", icon: BadgeCheck },
   { href: "/admin/catalog", labelKey: "catalog", icon: Database },
   { href: "/admin/logs", labelKey: "logs", icon: ScrollText },
   { href: "/admin/settings", labelKey: "settings", icon: Settings },
@@ -167,7 +172,7 @@ export function AdminShell({
         <nav className="flex-1 space-y-0.5 overflow-y-auto p-3" aria-label={t("sectionsNav")}>
           {NAV.map((item) => {
             const active = isActive(item);
-            const label = t(`nav.${item.labelKey}`);
+            const label = item.label ?? t(`nav.${item.labelKey!}`);
             return (
               <Link
                 key={item.href}

@@ -36,6 +36,7 @@ const EXPECTED_TABLES = [
   "catalog_sync_jobs",
   "detected_items",
   "external_search_results",
+  "external_product_candidates",
   "item_appearances",
   "item_feedback",
   "item_tracks",
@@ -46,6 +47,9 @@ const EXPECTED_TABLES = [
   "product_recommendations",
   "provider_usage",
   "video_sources",
+  "video_processing_jobs",
+  "video_product_occurrences",
+  "unresolved_video_products",
   "visual_search_cache",
 ];
 

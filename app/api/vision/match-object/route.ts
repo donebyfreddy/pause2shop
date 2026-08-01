@@ -47,6 +47,7 @@ import {
   type ProductMatchingResult,
 } from "@/lib/matching";
 import { recordDetectionResolution } from "@/lib/server/matchingMetrics";
+import { getExternalCandidateStore } from "@/lib/videoProcessing/candidateStore";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -136,6 +137,13 @@ type MatchObjectBody = {
    * una llamada externa cuando el catálogo ya había resuelto.
    */
   forceExternal?: boolean;
+  analysisJobId?: string;
+  mediaContentId?: string;
+  globalProductId?: string;
+  frameId?: string;
+  frameHash?: string;
+  analysisSessionId?: string;
+  mediaTime?: number | null;
 };
 
 /** Candidato similar ligero para la UI (siempre se devuelven los mejores). */
@@ -632,12 +640,25 @@ const INGEST_EXTERNAL_MIN_SCORE = 0.6;
 async function ingestExternalCandidate(
   externalResult: ProductMatchingResult | null,
   item: DetectedItem,
-  config: ReturnType<typeof getMatchingConfig>
+  config: ReturnType<typeof getMatchingConfig>,
+  context: {
+    analysisJobId?: string;
+    mediaContentId?: string;
+    detectedItemId?: string;
+    globalProductId?: string;
+    originCropUrl?: string;
+  }
 ): Promise<string | null> {
   if (!config.catalogSaveExternalResults) return null;
   if (!externalResult || externalResult.matchLabel !== "EXTERNAL_MATCH") return null;
-  const best = externalResult.matches.find((m) => m.source === "external");
-  if (!best || best.scores.finalScore < INGEST_EXTERNAL_MIN_SCORE) return null;
+  const candidates = externalResult.matches.filter(
+    (match) =>
+      match.source === "external" &&
+      match.scores.finalScore >= INGEST_EXTERNAL_MIN_SCORE &&
+      Boolean(match.imageUrl) &&
+      Boolean(match.productUrl)
+  );
+  if (!candidates.length) return null;
 
   const savable = new Set([
     "serpapi_google_lens",
@@ -645,35 +666,56 @@ async function ingestExternalCandidate(
     "serpapi_google_shopping",
     "dataforseo_google_shopping",
   ]);
-  if (!savable.has(best.provider)) return null;
-
   try {
-    const { getCatalogClient } = await import("@/lib/matching/catalogClient");
-    const res = await getCatalogClient().saveExternalProduct({
-      provider: best.provider as
-        | "serpapi_google_lens"
-        | "searchapi_google_lens"
-        | "serpapi_google_shopping"
-        | "dataforseo_google_shopping",
-      title: best.title,
-      // La marca solo viaja con evidencia: un título que la contiene no basta.
-      brand: best.scores.brandEvidenceScore != null ? best.brand : null,
-      price: best.price,
-      currency: best.currency,
-      productUrl: best.productUrl,
-      imageUrl: best.imageUrl,
-      merchant: best.merchant,
-      category: item.category ?? null,
-      color: item.color ?? null,
-      score: best.scores.finalScore,
-      evidence: [
-        ...best.evidence,
-        "· Candidato externo pendiente de revisión (no publicado)",
-      ],
-    });
-    return res.ok
-      ? null
-      : `No se pudo guardar el candidato externo (${res.error.code}).`;
+    const store = getExternalCandidateStore();
+    let saved = 0;
+    for (const candidate of candidates) {
+      if (!savable.has(candidate.provider)) continue;
+      const commercialSignals = [
+        candidate.merchant,
+        candidate.price != null,
+        candidate.productUrl.startsWith("http"),
+        candidate.imageUrl,
+      ].filter(Boolean).length;
+      await store.save({
+        id: candidate.productId ?? candidate.productUrl,
+        title: candidate.title,
+        ...(candidate.scores.brandEvidenceScore != null && candidate.brand
+          ? { brand: candidate.brand }
+          : {}),
+        imageUrl: candidate.imageUrl!,
+        ...(candidate.merchant ? { merchant: candidate.merchant } : {}),
+        ...(candidate.price != null ? { price: candidate.price } : {}),
+        ...(candidate.currency ? { currency: candidate.currency } : {}),
+        productUrl: candidate.productUrl,
+        category: candidate.category ?? item.category,
+        visualScore: candidate.scores.visualScore ?? candidate.scores.finalScore,
+        commercialScore: commercialSignals / 4,
+        finalScore: candidate.scores.finalScore,
+        provider: candidate.provider,
+        ...context,
+        sourcePage: candidate.productUrl,
+        originalImageUrl: candidate.imageUrl!,
+        evidence: [
+          ...candidate.evidence,
+          "Candidato externo pendiente de revisión; no es producto de catálogo.",
+        ],
+        attributes: {
+          color: item.color ?? null,
+          style: item.style ?? null,
+          category: item.category,
+          visibleBrand: item.visible_brand ?? null,
+        },
+        rawResult: candidate as unknown as Record<string, unknown>,
+      });
+      saved++;
+    }
+    if (saved > 0 && context.detectedItemId) {
+      await getCatalogRepository()
+        .updateItem(context.detectedItemId, { status: "review_required" })
+        .catch(() => null);
+    }
+    return null;
   } catch {
     return "No se pudo guardar el candidato externo.";
   }
@@ -750,13 +792,25 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   if (!externalRan) {
     await persistDetectedCrop(itemId, null, crop, decoded.buffer.byteLength);
   }
+  if (itemId && detection.catalog.status === "matched") {
+    await getCatalogRepository()
+      .updateItem(itemId, { status: "catalog_matched" })
+      .catch(() => null);
+  }
 
   // Un resultado externo fiable se INGIERE COMO CANDIDATO a revisión, no como
   // producto validado del catálogo. Ver `ingestExternalCandidate`.
   const ingestWarning = await ingestExternalCandidate(
     externalResult,
     detected,
-    matchingConfig
+    matchingConfig,
+    {
+      analysisJobId: body.analysisJobId,
+      mediaContentId: body.mediaContentId,
+      detectedItemId: itemId,
+      globalProductId: body.globalProductId,
+      originCropUrl: crop,
+    }
   );
 
   recordDetectionResolution({

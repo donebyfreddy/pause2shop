@@ -43,6 +43,12 @@ export interface AnalysisJobStore {
   recordFrames(id: string, rows: FrameMetaRow[]): Promise<void>;
   saveProducts(id: string, products: UniqueProductRecord[]): Promise<void>;
   getProducts(id: string): Promise<UniqueProductRecord[]>;
+  findReusableJob(
+    fileHash: string,
+    catalogVersion: string,
+    analysisVersion: string
+  ): Promise<AnalysisJobRecord | null>;
+  listJobs(limit?: number): Promise<AnalysisJobRecord[]>;
 }
 
 type MemoryJobEntry = {
@@ -108,6 +114,32 @@ export class InMemoryAnalysisJobStore implements AnalysisJobStore {
   async getProducts(id: string): Promise<UniqueProductRecord[]> {
     const e = this.entry(id);
     return e ? structuredClone(e.products) : [];
+  }
+
+  async findReusableJob(
+    fileHash: string,
+    catalogVersion: string,
+    analysisVersion: string
+  ): Promise<AnalysisJobRecord | null> {
+    const found = [...this.jobs.values()]
+      .map((entry) => entry.job)
+      .filter(
+        (job) =>
+          job.media.fileHash === fileHash &&
+          job.media.catalogVersion === catalogVersion &&
+          job.media.analysisVersion === analysisVersion &&
+          (job.status === "completed" || job.status === "partially_completed")
+      )
+      .sort((a, b) => (b.finishedAt ?? 0) - (a.finishedAt ?? 0))[0];
+    return found ? structuredClone(found) : null;
+  }
+
+  async listJobs(limit = 100): Promise<AnalysisJobRecord[]> {
+    return [...this.jobs.values()]
+      .map((entry) => entry.job)
+      .sort((a, b) => b.createdAt - a.createdAt)
+      .slice(0, limit)
+      .map((job) => structuredClone(job));
   }
 }
 

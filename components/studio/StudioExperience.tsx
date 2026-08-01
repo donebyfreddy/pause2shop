@@ -4,7 +4,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useFormatter, useTranslations } from "next-intl";
 import { AnimatePresence, motion } from "motion/react";
 import {
-  Activity, Boxes, ExternalLink, History, ImageIcon, Trash2, Users, Video,
+  Activity, Boxes, ExternalLink, History, ImageIcon, PlayCircle, ScanSearch,
+  Trash2, Users, Video,
 } from "lucide-react";
 import VideoProviderAnalyzer, {
   type PausedFrameContext,
@@ -48,6 +49,7 @@ import {
   type AnalyzedVideoFrame,
   type PausePerformanceMetrics,
 } from "@/lib/video/pauseAnalysis";
+import { PreprocessedVideoExperience } from "@/app/demo/page";
 
 /**
  * Estudio de análisis: la herramienta real.
@@ -60,6 +62,7 @@ import {
 const IS_DEMO = process.env.NEXT_PUBLIC_DEMO_MODE === "true";
 
 type Mode = "video" | "image";
+type WorkflowMode = "interactive" | "preprocessed";
 
 type CostData = {
   openaiVisionCalls: number;
@@ -113,6 +116,7 @@ export default function StudioExperience({
 }) {
   const t = useTranslations("studio");
   const [mode, setMode] = useState<Mode>("video");
+  const [workflowMode, setWorkflowMode] = useState<WorkflowMode>("interactive");
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [prefs, setPrefs] = useState<Preferences>({ categoryClicks: {}, styleClicks: {} });
   const [sessionItems, setSessionItems] = useState<DetectedItem[]>([]);
@@ -449,6 +453,13 @@ export default function StudioExperience({
 
   return (
     <div className="w-full">
+      <WorkflowModeSelector value={workflowMode} onChange={setWorkflowMode} />
+      {workflowMode === "preprocessed" ? (
+        <div className="mt-6">
+          <PreprocessedVideoExperience embedded />
+        </div>
+      ) : (
+      <>
       {/* ---------------- barra de estado del estudio ---------------- */}
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div className="flex flex-wrap items-center gap-3">
@@ -652,6 +663,67 @@ export default function StudioExperience({
           <OverlayItemDetail item={selectedOverlayItem} onLinkClick={handleLinkClick} />
         )}
       </Drawer>
+      </>
+      )}
+    </div>
+  );
+}
+
+function WorkflowModeSelector({
+  value,
+  onChange,
+}: {
+  value: WorkflowMode;
+  onChange: (value: WorkflowMode) => void;
+}) {
+  const options = [
+    {
+      value: "interactive" as const,
+      title: "En directo",
+      description:
+        "Reproduce el contenido, pausa en cualquier momento y selecciona los productos visibles en ese frame.",
+      icon: PlayCircle,
+    },
+    {
+      value: "preprocessed" as const,
+      title: "Vídeo preprocesado",
+      description:
+        "Analiza el vídeo completo previamente para generar un catálogo reutilizable por escena y timestamp.",
+      icon: ScanSearch,
+    },
+  ];
+  return (
+    <div className="grid gap-3 sm:grid-cols-2" role="radiogroup" aria-label="Modo de análisis">
+      {options.map((option) => {
+        const active = value === option.value;
+        const Icon = option.icon;
+        return (
+          <button
+            key={option.value}
+            type="button"
+            role="radio"
+            aria-checked={active}
+            data-testid={`workflow-mode-${option.value}`}
+            onClick={() => onChange(option.value)}
+            className={
+              "flex items-start gap-3 rounded-2xl border p-4 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-bright " +
+              (active
+                ? "border-brand-bright/60 bg-brand/10 shadow-[0_0_0_1px_rgba(139,127,255,.15)]"
+                : "border-line bg-white/[0.025] hover:border-line-strong hover:bg-white/[0.045]")
+            }
+          >
+            <span className={active ? "rounded-xl bg-brand/20 p-2 text-brand-bright" : "rounded-xl bg-white/5 p-2 text-ink-muted"}>
+              <Icon className="size-5" aria-hidden />
+            </span>
+            <span>
+              <span className="block text-sm font-bold text-ink">{option.title}</span>
+              <span className="mt-1 block text-xs leading-relaxed text-ink-subtle">
+                {option.description}
+              </span>
+            </span>
+          </button>
+        );
+      })}
     </div>
   );
 }

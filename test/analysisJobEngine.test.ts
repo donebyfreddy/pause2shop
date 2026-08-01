@@ -194,6 +194,37 @@ test("finalize es idempotente: no repite matching ni duplica productos", async (
   assert.equal(second.products.length, 2);
 });
 
+test("subir el mismo hash reutiliza el job y forceReprocess crea uno nuevo", async () => {
+  const calls: MatchCall[] = [];
+  const { deps } = e2eDeps(calls);
+  const videoHash = "a".repeat(64);
+  const first = await createAnalysisJob({ ...JOB_INPUT, videoHash }, deps);
+  assert.equal(first.ok, true);
+  if (!first.ok) return;
+  assert.equal(first.reused, false);
+  const completed = await deps.store.getJob(first.job.id);
+  assert.ok(completed);
+  completed!.status = "completed";
+  completed!.finishedAt = Date.now();
+  completed!.media.processedAt = completed!.finishedAt;
+  await deps.store.updateJob(completed!);
+
+  const second = await createAnalysisJob({ ...JOB_INPUT, videoHash }, deps);
+  assert.equal(second.ok, true);
+  if (!second.ok) return;
+  assert.equal(second.reused, true);
+  assert.equal(second.job.id, first.job.id);
+
+  const forced = await createAnalysisJob(
+    { ...JOB_INPUT, videoHash, forceReprocess: true },
+    deps
+  );
+  assert.equal(forced.ok, true);
+  if (!forced.ok) return;
+  assert.equal(forced.reused, false);
+  assert.notEqual(forced.job.id, first.job.id);
+});
+
 test("frames casi idénticos se descartan por hash perceptual (y la escena nueva no)", async () => {
   const calls: MatchCall[] = [];
   const detector = new ScriptedDetector({
