@@ -18,6 +18,10 @@ import type {
   ProductMatchingResult,
 } from "../lib/matching/types";
 import { noMatchResult } from "../lib/matching/types";
+import {
+  InMemoryExternalCandidateStore,
+  type ExternalCandidateStore,
+} from "../lib/videoProcessing/candidateStore";
 import type { RankedCandidate, VisualMatch } from "../lib/visualSearch/types";
 import type { DetectedItem } from "../lib/types";
 
@@ -85,7 +89,28 @@ function fakeProvider(result: ProductMatchingResult): ProductMatchingProvider & 
   return p;
 }
 
-/** Cliente fake: solo registra los guardados externos. */
+/**
+ * Almacén de candidatos externos aislado por test.
+ *
+ * `saveExternalResult` NO escribe en el catálogo: deja el resultado externo en
+ * el almacén de candidatos con estado `review_required`, y solo el PATCH de
+ * aprobación (`/api/catalog/candidates/[id]`) lo ingiere. Es la pieza que
+ * implementa "un resultado externo nunca se publica solo", así que es aquí
+ * donde hay que comprobar el guardado, no en el cliente del catálogo.
+ *
+ * Se pisa el singleton global porque `getExternalCandidateStore()` elegiría el
+ * de Postgres si el entorno trae `DATABASE_URL` — y este test no debe tocar la
+ * red ni depender de qué haya en `.env.local`.
+ */
+function isolatedCandidateStore(): InMemoryExternalCandidateStore {
+  const store = new InMemoryExternalCandidateStore();
+  (globalThis as unknown as {
+    __pauseExternalCandidateStore?: ExternalCandidateStore;
+  }).__pauseExternalCandidateStore = store;
+  return store;
+}
+
+/** Cliente fake del catálogo: solo entra en juego al APROBAR un candidato. */
 function fakeClient(): CatalogClient & { saved: ExternalProductInput[] } {
   const saved: ExternalProductInput[] = [];
   return {
@@ -125,6 +150,9 @@ function externalHit(finalScore = 0.8): ProductMatchingResult {
         // URL distinta a la del catálogo: son productos DISTINTOS. Si
         // compartieran URL, el dedup de hybrid los fusionaría (y con razón).
         productUrl: "https://otra-tienda.example/x9",
+        // Imagen obligatoria: `saveExternalResult` descarta lo que no tenga
+        // imagen Y URL comercial verificables.
+        imageUrl: "https://otra-tienda.example/x9.jpg",
         scores: { ...match({}).scores, finalScore },
       }),
     ],
@@ -160,6 +188,7 @@ test("catalog-first: sin match del catálogo SÍ llama al externo y GUARDA el re
   const catalog = fakeProvider(noMatchResult({ providerUsed: "catalog" }));
   const external = fakeProvider(externalHit(0.8));
   const client = fakeClient();
+  const candidateStore = isolatedCandidateStore();
   const provider = new CatalogFirstMatchingProvider({
     catalog,
     external,
@@ -171,11 +200,17 @@ test("catalog-first: sin match del catálogo SÍ llama al externo y GUARDA el re
   assert.equal(external.calls, 1);
   assert.equal(result.matchLabel, "EXTERNAL_MATCH");
   assert.equal(result.fallbackUsed, true);
-  assert.equal(client.saved.length, 1);
-  assert.equal(client.saved[0].provider, "searchapi_google_lens");
-  assert.equal(client.saved[0].title, "Producto externo");
+
+  // Queda como CANDIDATO pendiente de revisión, no publicado en el catálogo.
+  const candidates = await candidateStore.list();
+  assert.equal(candidates.length, 1);
+  assert.equal(candidates[0].provider, "searchapi_google_lens");
+  assert.equal(candidates[0].title, "Producto externo");
+  assert.equal(candidates[0].status, "review_required");
   // Sin evidencia de marca → la marca NO viaja al catálogo.
-  assert.equal(client.saved[0].brand, null);
+  assert.equal(candidates[0].brand ?? null, null);
+  // Y el catálogo no ha recibido nada por su cuenta.
+  assert.equal(client.saved.length, 0);
 });
 
 test("catalog-first: resultado externo NO fiable (SIMILAR) no se guarda", async () => {
@@ -183,6 +218,7 @@ test("catalog-first: resultado externo NO fiable (SIMILAR) no se guarda", async 
   const weakExternal: ProductMatchingResult = { ...externalHit(0.4), matchLabel: "SIMILAR" };
   const external = fakeProvider(weakExternal);
   const client = fakeClient();
+  const candidateStore = isolatedCandidateStore();
   const provider = new CatalogFirstMatchingProvider({
     catalog,
     external,
@@ -192,6 +228,7 @@ test("catalog-first: resultado externo NO fiable (SIMILAR) no se guarda", async 
 
   const result = await provider.search(INPUT);
   assert.equal(result.matchLabel, "SIMILAR");
+  assert.equal((await candidateStore.list()).length, 0);
   assert.equal(client.saved.length, 0);
 });
 
@@ -214,6 +251,7 @@ test("catalog-first: CATALOG_SAVE_EXTERNAL_RESULTS=false no ingiere aunque el ex
     EXTERNAL_SEARCH_AUTOMATIC_FALLBACK: "true",
   } as unknown as NodeJS.ProcessEnv);
   const client = fakeClient();
+  const candidateStore = isolatedCandidateStore();
   const provider = new CatalogFirstMatchingProvider({
     catalog: fakeProvider(noMatchResult({})),
     external: fakeProvider(externalHit(0.9)),
@@ -221,6 +259,7 @@ test("catalog-first: CATALOG_SAVE_EXTERNAL_RESULTS=false no ingiere aunque el ex
     config: noSaveConfig,
   });
   await provider.search(INPUT);
+  assert.equal((await candidateStore.list()).length, 0);
   assert.equal(client.saved.length, 0);
 });
 

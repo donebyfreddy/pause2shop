@@ -145,7 +145,7 @@ export const HERO_DEMO_PRODUCTS: readonly HeroDemoProduct[] = [
   {
     id: "shoes",
     src: "/demo/products/shoes.webp",
-    intrinsic: { width: 900, height: 880 },
+    intrinsic: { width: 900, height: 868 },
     placement: { x: 66, y: 50, width: 24 },
     accent: "green",
     confidence: 0.87,

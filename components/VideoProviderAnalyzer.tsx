@@ -108,6 +108,15 @@ type Props = {
   onDetectionSelect?: (item: DetectedItem, context: PausedFrameContext) => void;
   onMetricsChange?: (metrics: PausePerformanceMetrics) => void;
   selectedItemDetails?: DetectedItem | null;
+  /** Identidad del binario para recuperar un VOD preprocesado por SHA-256. */
+  onUploadedVideoFile?: (file: File | null) => void;
+  /** `undefined` = no existe índice VOD; `[]` = índice válido sin objetos. */
+  getPreprocessedDetections?: (
+    timestampSeconds: number,
+    signal: AbortSignal
+  ) => Promise<DetectedItem[] | undefined>;
+  /** Desactiva visión anticipada cuando el VOD ya está completamente indexado. */
+  hasPreprocessedCatalog?: boolean;
 };
 
 export type PausedFrameContext = {
@@ -162,6 +171,9 @@ export default function VideoProviderAnalyzer({
   onDetectionSelect,
   onMetricsChange,
   selectedItemDetails = null,
+  onUploadedVideoFile,
+  getPreprocessedDetections,
+  hasPreprocessedCatalog = false,
 }: Props) {
   const t = useTranslations("studio.videoAnalyzer");
   const format = useFormatter();
@@ -330,7 +342,9 @@ export default function VideoProviderAnalyzer({
 
   const onDirectCapture = useCallback(
     (dataUrl: string) => {
-      if (!detection) return;
+      // Un vídeo preprocesado ya trae detecciones y matching persistidos por
+      // timestamp: no repetimos visión mientras se reproduce.
+      if (!detection || hasPreprocessedCatalog) return;
       const ts =
         lastPresentedFrameRef.current?.mediaTime ??
         directVideoRef.current?.currentTime ??
@@ -350,7 +364,7 @@ export default function VideoProviderAnalyzer({
         identity
       );
     },
-    [detection, buildMeta, onRequestAnalysis]
+    [detection, buildMeta, onRequestAnalysis, hasPreprocessedCatalog]
   );
 
   const directEngine = useVideoCaptureEngine({
@@ -370,6 +384,7 @@ export default function VideoProviderAnalyzer({
     enabled:
       VIDEO_PREANALYSIS_ENABLED &&
       autoCaptureMode &&
+      !hasPreprocessedCatalog &&
       !!(detection?.canCaptureFrameDirectly),
     getVideoElement: getDirectVideoElement,
     onFrame: (frame) => {
@@ -475,6 +490,25 @@ export default function VideoProviderAnalyzer({
       publishPauseMetrics(metrics);
       logPauseCapture(debug, identity);
 
+      // El índice persistente del VOD tiene prioridad. La cancelación se
+      // revisa después del await para que una pausa posterior nunca reciba
+      // cajas ni resultados del timestamp anterior.
+      if (getPreprocessedDetections) {
+        const persisted = await getPreprocessedDetections(frame.mediaTime, abortController.signal);
+        if (abortController.signal.aborted) return;
+        if (persisted !== undefined) {
+          setPausedDetections(persisted);
+          setPlayerState("paused_ready");
+          publishPauseMetrics({
+            ...metrics,
+            captureToDetectionMs: performance.now() - pauseStartedAt,
+            detectionCacheHit: true,
+            totalMs: performance.now() - pauseStartedAt,
+          });
+          return;
+        }
+      }
+
       // Una caché cercana se pinta ya, pero el frame exacto se valida siempre
       // que exceda la tolerancia estricta de captura (80 ms).
       const exactCache = nearest && Math.abs(nearest.mediaTime - frame.mediaTime) <= 0.08;
@@ -495,6 +529,7 @@ export default function VideoProviderAnalyzer({
     detection,
     buildMeta,
     preanalyzedFrames,
+    getPreprocessedDetections,
     onPauseStart,
     onPausedFrameChange,
     onRequestAnalysis,
@@ -633,6 +668,7 @@ export default function VideoProviderAnalyzer({
     const src = URL.createObjectURL(file);
     const uploaded: UploadedFile = { src, name: file.name };
     setUploadedFile(uploaded);
+    onUploadedVideoFile?.(file);
     setDetection(createUploadedVideoDetection(file.name));
     // Vídeo subido: el análisis arranca solo al pulsar play.
     setAutoCaptureMode(VIDEO_AUTO_ANALYSIS);
@@ -662,6 +698,7 @@ export default function VideoProviderAnalyzer({
       URL.revokeObjectURL(uploadedFile.src);
       setUploadedFile(null);
     }
+    onUploadedVideoFile?.(null);
   }
 
   // ── Derived values ─────────────────────────────────────────────────────────
@@ -735,6 +772,11 @@ export default function VideoProviderAnalyzer({
                 <span className="ml-2 text-xs text-success">
                   {t("uploadedReadyNote")}
                 </span>
+                {hasPreprocessedCatalog && (
+                  <span className="ml-2 rounded-full border border-success/30 bg-success/10 px-2 py-0.5 text-[11px] font-semibold text-success">
+                    Catálogo VOD listo · resultados instantáneos
+                  </span>
+                )}
               </span>
             ) : (
               <>
@@ -754,6 +796,7 @@ export default function VideoProviderAnalyzer({
                 setRawUrl("");
                 setAutoCaptureMode(VIDEO_AUTO_ANALYSIS);
                 if (uploadedFile) { URL.revokeObjectURL(uploadedFile.src); setUploadedFile(null); }
+                onUploadedVideoFile?.(null);
               }}
               className="ml-auto text-xs text-ink-subtle hover:text-ink"
             >

@@ -24,20 +24,33 @@ locales. La descarga es un paso de desarrollo.
 | Asset | Acción | Motivo |
 |---|---|---|
 | `coat.webp` | **Sustituir (obligatorio)** | El original es una miniatura de Google Images: el titular de los derechos es desconocido y no hay licencia que podamos invocar. |
-| `bag.webp` | **Revisar** | pngtree: la descarga gratuita exige atribución y restringe el uso comercial. |
-| `shoes.webp` | **Revisar** | Igual que `bag.webp`. |
+| `bag.webp` | Nada | Unsplash License: uso comercial permitido, atribución no obligatoria. |
+| `shoes.webp` | Nada | Igual. |
 
 Ninguno de los tres tiene marca de agua visible, y los tres se sirven ya desde
 nuestro propio dominio, así que **no hay hotlink ni dependencia de Google en
-producción**. El problema que queda es de licencia, no técnico.
+producción**. Lo único que queda pendiente es la licencia del abrigo.
 
-### Qué se descartó y por qué
+### Por qué el abrigo sigue sin resolver
 
-- **Unsplash / Pexels.** Legalmente lo más limpio (uso comercial sin
-  atribución), pero sus API exigen clave y el acceso directo está bloqueado
-  (Unsplash responde `Authorization required`; Pexels, 403 de Cloudflare). Es la
-  vía recomendada en cuanto haya una clave: basta cambiar la URL en `ASSETS`
-  dentro de `scripts/prepareDemoAssets.ts` y volver a lanzar el script.
+Con `UNSPLASH_ACCESS_KEY` en el entorno, el script puede buscar en Unsplash:
+
+```bash
+npm run demo:assets -- --unsplash coat "wool coat product white background"
+```
+
+Bolso y botas se resolvieron así. El abrigo no: Unsplash es un banco de
+fotografía editorial, no de fichas de producto, y no hay ningún abrigo
+fotografiado sobre fondo liso recortable. El mejor candidato (`ibTHy8t7JvM`, un
+abrigo amarillo de lana) está sobre madera, y **la madera está más saturada que
+la prenda** — medido: 0,577 frente a 0,456. La segmentación por color, que es lo
+que hace `removeWhiteBackground`, recorta la prenda antes que el fondo. Haría
+falta un modelo de segmentación (rembg / U²-Net) o un recorte a mano.
+
+### Qué más se descartó y por qué
+
+- **Pexels.** Legalmente equivalente a Unsplash, pero el acceso está bloqueado
+  por Cloudflare (403) y su API también exige clave.
 - **Openverse** (agregador de Creative Commons, API pública sin clave). Sí
   funciona y permite filtrar por uso comercial, pero lo que devuelve para
   "abrigo", "bolso" o "zapatos" son fotografías de aficionado con fondo real, no
@@ -116,23 +129,35 @@ casi negro del hero llegaba sin costuras ni cremallera, como una silueta plana.
 
 | | |
 |---|---|
-| Origen | `https://png.pngtree.com/png-vector/20241230/ourmid/pngtree-stylish-women-purses-and-handbags-collection-png-image_14975125.png` |
-| Publicado por | pngtree.com |
-| Licencia | Gratuita de pngtree — **exige atribución, uso comercial restringido** |
-| Original | PNG 360×360 con transparencia |
-| Procesado | Sin recorte (ya venía con alfa) |
-| Resultado | WebP 900×886, ~78 KB |
+| Origen | `https://images.unsplash.com/photo-1691480150204-66dd1eb77391` (`IFlg3kFbR0E`) |
+| Publicado por | Unsplash · personalgraphic.com |
+| Licencia | **Unsplash License** — uso comercial permitido, atribución no obligatoria |
+| Original | JPEG 1600×1600, fondo blanco opaco |
+| Procesado | Fondo recortado por difusión desde bordes, tolerancia 38 |
+| Resultado | WebP 900×869, ~125 KB |
+
+Bolso estructurado de piel marrón, en tres cuartos. El fondo es blanco de
+estudio pero no uniforme (tiene la sombra del bolso), de ahí el modo `white`:
+difunde desde los cuatro bordes en vez de tratar cada píxel claro por separado,
+así que los reflejos claros de la piel no se agujerean.
 
 ### `public/demo/products/shoes.webp`
 
 | | |
 |---|---|
-| Origen | `https://png.pngtree.com/png-vector/20240729/ourmid/pngtree-men-formal-shoes-png-image_13287455.png` |
-| Publicado por | pngtree.com |
-| Licencia | Gratuita de pngtree — **exige atribución, uso comercial restringido** |
-| Original | PNG 360×360 con transparencia |
-| Procesado | Sin recorte (ya venía con alfa) |
-| Resultado | WebP 900×829, ~77 KB |
+| Origen | `https://images.unsplash.com/photo-1550998358-08b4f83dc345` (`4lf8mVuZESQ`) |
+| Publicado por | Unsplash · LoboStudio Hamburg |
+| Licencia | **Unsplash License** — uso comercial permitido, atribución no obligatoria |
+| Original | JPEG 1600×1600 |
+| Procesado | Fondo recortado por difusión desde bordes, tolerancia 48 |
+| Resultado | WebP 900×868, ~162 KB |
+
+Botas de piel con cordones, desgastadas. Tolerancia 48 y no 34: la sombra bajo
+la suela es un degradado y con poca tolerancia la difusión se paraba a mitad,
+dejando un halo claro alrededor del recorte sobre el fondo oscuro del hero. Al
+propagar solo desde el borde, subirla no puede comerse el interior de la bota.
+
+El texto de la demo dice «Botas de piel», no «zapatos»: describe lo que se ve.
 
 ---
 

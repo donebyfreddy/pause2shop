@@ -49,6 +49,7 @@ import {
   type AnalyzedVideoFrame,
   type PausePerformanceMetrics,
 } from "@/lib/video/pauseAnalysis";
+import { sha256File } from "@/lib/videoProcessing/hash";
 import { PreprocessedVideoExperience } from "@/app/demo/page";
 
 /**
@@ -126,6 +127,10 @@ export default function StudioExperience({
   const [pauseMetrics, setPauseMetrics] = useState<PausePerformanceMetrics>(
     EMPTY_PAUSE_METRICS
   );
+  // El hash identifica el binario, no su Object URL ni su nombre. Con él el
+  // modo En directo reutiliza el catálogo temporal creado en preprocesado.
+  const [uploadedVideoHash, setUploadedVideoHash] = useState<string | null>(null);
+  const [hasPreprocessedCatalog, setHasPreprocessedCatalog] = useState(false);
   // Sincroniza el hotspot de la imagen analizada con su card en el panel lateral.
   /**
    * Objeto resaltado, COMPARTIDO por imagen y vídeo.
@@ -156,6 +161,39 @@ export default function StudioExperience({
     videoId: analyzedVideoId, savedItems, persisted, persistence,
   } = analysisHook;
   const [lastFrame, setLastFrame] = useState<{ url: string; meta: FrameMeta } | null>(null);
+
+  const handleUploadedVideoFile = useCallback(async (file: File | null) => {
+    setUploadedVideoHash(null);
+    setHasPreprocessedCatalog(false);
+    if (!file) return;
+    try {
+      const hash = await sha256File(file);
+      setUploadedVideoHash(hash);
+      const response = await fetch(`/api/analysis/videos/${hash}`, { cache: "no-store" });
+      if (response.ok) setHasPreprocessedCatalog(true);
+    } catch {
+      // Una lectura de caché fallida no bloquea el modo interactivo normal.
+    }
+  }, []);
+
+  const getPreprocessedDetections = useCallback(
+    async (timestampSeconds: number, signal: AbortSignal): Promise<DetectedItem[] | undefined> => {
+      if (!uploadedVideoHash || !hasPreprocessedCatalog) return undefined;
+      try {
+        const response = await fetch(
+          `/api/analysis/videos/${uploadedVideoHash}?time=${encodeURIComponent(timestampSeconds)}`,
+          { signal, cache: "no-store" }
+        );
+        if (!response.ok) return undefined;
+        const body = (await response.json()) as { ok?: boolean; detections?: DetectedItem[] };
+        return body.ok && Array.isArray(body.detections) ? body.detections : undefined;
+      } catch (error) {
+        if (error instanceof DOMException && error.name === "AbortError") throw error;
+        return undefined;
+      }
+    },
+    [uploadedVideoHash, hasPreprocessedCatalog]
+  );
 
   useEffect(() => {
     // Diferido a un macrotask para no encadenar renders síncronos dentro del
@@ -549,6 +587,9 @@ export default function StudioExperience({
                     onDetectionSelect={handleVideoDetectionSelect}
                     onMetricsChange={setPauseMetrics}
                     selectedItemDetails={selectedCommerceItem}
+                    onUploadedVideoFile={handleUploadedVideoFile}
+                    getPreprocessedDetections={getPreprocessedDetections}
+                    hasPreprocessedCatalog={hasPreprocessedCatalog}
                   />
                 </>
               ) : (
