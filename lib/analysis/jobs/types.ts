@@ -67,11 +67,56 @@ export type FramePayload = {
   thumb?: RawThumb;
 };
 
+export type SceneStatus =
+  | "pending"
+  | "extracting"
+  | "detecting"
+  | "tracking"
+  | "completed"
+  | "failed";
+
 export type SceneRecord = {
   sceneId: number;
   startSeconds: number;
   endSeconds: number;
+  /** Frames recibidos que caen en esta escena (analizados + descartados). */
   frameCount: number;
+  /** Frames que SÍ pasaron al detector — la métrica que importa para cobertura. */
+  analyzedFrameCount: number;
+  status: SceneStatus;
+  lastAnalyzedSeconds: number | null;
+  /** Motivo si `status === "failed"`. Un fallo aquí no aborta las demás escenas. */
+  failureReason: string | null;
+};
+
+/** Motivo por el que un frame se conserva o se descarta (logging/auditoría). */
+export type FrameSamplingReason =
+  | "kept:hash_disabled"
+  | "kept:scene_first"
+  | "kept:scene_last"
+  | "kept:visual_change"
+  | "kept:local_change"
+  | "kept:min_frames_quota"
+  | "kept:max_gap"
+  | "discarded:near_duplicate"
+  | "discarded:max_frames_cap"
+  | "discarded:checkpoint";
+
+/** Rango de la línea temporal del vídeo sin cobertura de análisis. */
+export type UncoveredRange = {
+  startMs: number;
+  endMs: number;
+  reason: "gap_between_scenes" | "before_first_scene" | "after_last_scene" | "scene_zero_frames";
+};
+
+/** Cobertura temporal real del vídeo — no confundir con "frames analizados". */
+export type TemporalCoverage = {
+  videoDurationMs: number;
+  coveredDurationMs: number;
+  coveragePercent: number;
+  uncoveredRanges: UncoveredRange[];
+  sceneCount: number;
+  scenesWithZeroAnalyzedFrames: number[];
 };
 
 /** Mejor encuadre visto de un track (para pagar matching UNA vez y bien). */
@@ -178,6 +223,27 @@ export const RETRYABLE_MATCH_STATUSES: ReadonlySet<ProductMatchStatus> = new Set
   "matching_error",
 ]);
 
+/**
+ * Progreso EN VIVO del matching de un producto único, mientras `matchStatus`
+ * (arriba) sigue siendo el resultado FINAL. Antes de esto, un producto
+ * mostraba "not_searched" durante los ~100 s en que sí se estaba buscando —
+ * el tiempo de matching registrado no coincidía con lo que veía la pantalla.
+ * Se escribe en cada transición real del resolver (`lib/matching/resolveDetection`),
+ * no son estados adivinados por temporización.
+ */
+export type MatchProgressState =
+  | "not_started"
+  | "embedding"
+  | "catalog_search"
+  | "catalog_matched"
+  | "catalog_unresolved"
+  | "catalog_timeout"
+  | "external_queued"
+  | "external_searching"
+  | "external_candidate"
+  | "review_required"
+  | "completed";
+
 /** Producto ÚNICO tras la deduplicación global entre tracks. */
 export type UniqueProductRecord = {
   productId: string;
@@ -207,6 +273,8 @@ export type UniqueProductRecord = {
   possibleDuplicateOf: string | null;
   /** Identidad canónica y apariciones. Ver `VideoProductIdentity`. */
   identity: VideoProductIdentity;
+  /** Progreso en vivo del matching — ver `MatchProgressState`. */
+  matchProgress: MatchProgressState;
 };
 
 /**
@@ -281,6 +349,24 @@ export type JobCheckpoint = {
   lastBatchAt: number | null;
 };
 
+/**
+ * Violación de una invariante que un job `completed`/`partially_completed`
+ * nunca debería tener — ver `validateProcessedVideoResult` en `validation.ts`.
+ */
+export type IntegrityErrorCode =
+  | "scene_missing_terminal_status"
+  | "coverage_below_threshold"
+  | "product_seen_count_zero_with_crop"
+  | "matching_ran_but_no_outcomes"
+  | "external_fallback_unused"
+  | "partially_completed_without_reason";
+
+export type IntegrityError = {
+  code: IntegrityErrorCode;
+  message: string;
+  context?: Record<string, unknown>;
+};
+
 export type AnalysisJobRecord = {
   id: string;
   status: AnalysisJobStatus;
@@ -295,6 +381,10 @@ export type AnalysisJobRecord = {
   createdAt: number;
   startedAt: number | null;
   finishedAt: number | null;
+  /** Cobertura temporal real — null hasta que el job finaliza. */
+  coverage: TemporalCoverage | null;
+  /** Poblado solo cuando `validateProcessedVideoResult` encuentra algo. */
+  integrityErrors: IntegrityError[];
 };
 
 /**
@@ -302,11 +392,27 @@ export type AnalysisJobRecord = {
  * Vive en el store — NUNCA en memoria del route — para que otro worker (u
  * otra instancia tras un deploy) pueda continuar el job desde el checkpoint.
  */
+/** Último frame descartado: candidato a "rescate" al cerrar la escena. */
+export type PendingFlushFrame = {
+  timestampSeconds: number;
+  dataUrl: string;
+  thumb: RawThumb | null;
+};
+
 export type JobRuntimeState = {
   /** Thumb del último frame RECIBIDO (diff de escena del siguiente). */
   lastThumb: RawThumb | null;
   /** aHash del último frame ANALIZADO (dedup de casi idénticos). */
   lastAnalyzedHash: string | null;
+  /** Píxeles del último frame ANALIZADO (para hash LOCAL por región). */
+  lastAnalyzedThumb: RawThumb | null;
+  /** Segundo de vídeo del último frame ANALIZADO (gap máximo entre muestras). */
+  lastAnalyzedAtSeconds: number | null;
+  /**
+   * Frame descartado más reciente desde el último frame conservado: si la
+   * escena se cierra sin llegar al mínimo, este es el que se "rescata".
+   */
+  pendingFlushFrame: PendingFlushFrame | null;
   currentSceneId: number;
   scenes: SceneRecord[];
   /** Tracker serializado (lib/video/tracker usa Map en memoria). */

@@ -46,6 +46,7 @@ function buildMatchProduct(origin: string): MatchProductFn {
     cropDataUrl,
     frameDataUrl,
     mode,
+    onStage,
   }) => {
     // Sin crop del cliente se degrada al mejor FRAME completo (el pipeline
     // sigue funcionando, con menos precisión). Sin ninguno: NO_MATCH.
@@ -69,6 +70,7 @@ function buildMatchProduct(origin: string): MatchProductFn {
       mediaContentId,
       globalProductId,
       detectionId: globalProductId,
+      onStage,
     });
 
     // El resultado que se guarda es el de la fuente que resolvió; si ninguna

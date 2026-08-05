@@ -36,7 +36,7 @@ import { recordDetectionResolution } from "@/lib/server/matchingMetrics";
 import { CatalogMatchingProvider } from "./catalogProvider";
 import { getMatchingConfig } from "./config";
 import { ExternalVisualSearchProvider } from "./externalProvider";
-import { resolveDetectionMatch } from "./resolveDetection";
+import { resolveDetectionMatch, type ResolveDetectionStage } from "./resolveDetection";
 import type { DetectionMatchResult } from "./types";
 import { normalizeMatchingMode } from "./types";
 import type { MatchingMode, ProductMatchingResult } from "./types";
@@ -680,6 +680,8 @@ export type ResolveDetectionRequestArgs = {
    * mitad es justamente lo que hacía perder resultados ya calculados.
    */
   signal?: AbortSignal;
+  /** Progreso en vivo, opcional — ver `ResolveDetectionStage`. */
+  onStage?: (stage: ResolveDetectionStage) => void;
 };
 
 export type ResolveDetectionRequestResult = {
@@ -749,6 +751,7 @@ export async function resolveDetectionRequest(
     external: externalProvider,
     forceExternal: args.forceExternal === true,
     skipCache,
+    onStage: args.onStage,
   });
 
   const { detection, catalogResult, externalResult } = resolved;

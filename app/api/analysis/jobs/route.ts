@@ -50,6 +50,9 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       jobId: created.job.id,
       job: created.job,
       reused: created.reused,
+      staleJob: created.staleJob
+        ? { id: created.staleJob.id, status: created.staleJob.status }
+        : null,
       // Config efectiva para el extractor de frames del cliente.
       config: {
         detectionFps: config.detectionFps,

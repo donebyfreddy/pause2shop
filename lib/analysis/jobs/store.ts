@@ -3,6 +3,7 @@ import { PostgresAnalysisJobStore } from "./pgStore";
 import type {
   AnalysisJobRecord,
   JobRuntimeState,
+  MatchProgressState,
   UniqueProductRecord,
 } from "./types";
 
@@ -29,6 +30,8 @@ export type FrameMetaRow = {
   timestampSeconds: number;
   analyzed: boolean;
   sceneId: number | null;
+  /** Por qué se conservó o descartó — ver `FrameSamplingReason`. */
+  reason: string;
 };
 
 export interface AnalysisJobStore {
@@ -43,11 +46,23 @@ export interface AnalysisJobStore {
   recordFrames(id: string, rows: FrameMetaRow[]): Promise<void>;
   saveProducts(id: string, products: UniqueProductRecord[]): Promise<void>;
   getProducts(id: string): Promise<UniqueProductRecord[]>;
+  /**
+   * Actualiza SOLO el progreso en vivo de un producto ya persistido (fila
+   * creada por `saveProducts` antes de arrancar el matching). No toca el resto
+   * de columnas: evita el race de dos productos escribiéndose a la vez.
+   */
+  updateProductProgress(
+    jobId: string,
+    productId: string,
+    progress: MatchProgressState
+  ): Promise<void>;
   findReusableJob(
     fileHash: string,
     catalogVersion: string,
     analysisVersion: string
   ): Promise<AnalysisJobRecord | null>;
+  /** Job más reciente para este hash, sea cual sea su estado o versión. */
+  findLatestJobByHash(fileHash: string): Promise<AnalysisJobRecord | null>;
   listJobs(limit?: number): Promise<AnalysisJobRecord[]>;
 }
 
@@ -116,6 +131,17 @@ export class InMemoryAnalysisJobStore implements AnalysisJobStore {
     return e ? structuredClone(e.products) : [];
   }
 
+  async updateProductProgress(
+    id: string,
+    productId: string,
+    progress: MatchProgressState
+  ): Promise<void> {
+    const e = this.entry(id);
+    if (!e) return;
+    const product = e.products.find((p) => p.productId === productId);
+    if (product) product.matchProgress = progress;
+  }
+
   async findReusableJob(
     fileHash: string,
     catalogVersion: string,
@@ -128,9 +154,17 @@ export class InMemoryAnalysisJobStore implements AnalysisJobStore {
           job.media.fileHash === fileHash &&
           job.media.catalogVersion === catalogVersion &&
           job.media.analysisVersion === analysisVersion &&
-          (job.status === "completed" || job.status === "partially_completed")
+          job.status === "completed"
       )
       .sort((a, b) => (b.finishedAt ?? 0) - (a.finishedAt ?? 0))[0];
+    return found ? structuredClone(found) : null;
+  }
+
+  async findLatestJobByHash(fileHash: string): Promise<AnalysisJobRecord | null> {
+    const found = [...this.jobs.values()]
+      .map((entry) => entry.job)
+      .filter((job) => job.media.fileHash === fileHash)
+      .sort((a, b) => b.createdAt - a.createdAt)[0];
     return found ? structuredClone(found) : null;
   }
 

@@ -46,10 +46,25 @@ export function externalAvailability(
     };
   }
 
-  // Sin una URL pública alcanzable, el proveedor no puede descargar el crop:
-  // la llamada se gastaría para nada.
-  const base = cfg.storage?.publicBaseUrl;
-  if (base && !isPubliclyReachableBase(base)) {
+  // Sin storage configurado (proveedor no implementado, o `vercel_blob` sin
+  // token) no hay dónde publicar el crop: la llamada se gastaría para nada.
+  if (!cfg.storage) {
+    return {
+      available: false,
+      reason:
+        "No hay almacenamiento público configurado para publicar los recortes (STORAGE_PROVIDER/BLOB_READ_WRITE_TOKEN).",
+      primaryProvider: null,
+    };
+  }
+
+  // `PUBLIC_MEDIA_BASE_URL` solo importa para el proveedor `local`: es el único
+  // que sirve el objeto desde el propio origen de la petición y por tanto
+  // depende de que esa base sea alcanzable desde fuera. `vercel_blob` (y
+  // cualquier otro proveedor persistente) genera su propia URL pública al
+  // subir — comprobar aquí una variable que ni siquiera usa producía falsos
+  // negativos (incluida esta misma variable corrupta en algún entorno).
+  const base = cfg.storage.publicBaseUrl;
+  if (cfg.storage.provider === "local" && base && !isPubliclyReachableBase(base)) {
     return {
       available: false,
       reason:

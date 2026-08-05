@@ -57,6 +57,20 @@ const STATUS_STYLES: Record<ProductMatchStatus, string> = {
   not_searched: "border-ink-subtle/40 bg-ink-subtle/10 text-ink-muted",
 };
 
+/** Progreso EN VIVO mientras corre el matching — distinto del estado final. */
+const MATCH_PROGRESS_LABELS: Record<string, string> = {
+  embedding: "calculando embedding…",
+  catalog_search: "buscando en catálogo…",
+  catalog_matched: "encontrado en catálogo",
+  catalog_unresolved: "sin match en catálogo",
+  catalog_timeout: "catálogo sin respuesta",
+  external_queued: "en cola para Internet…",
+  external_searching: "buscando en Internet…",
+  external_candidate: "candidato encontrado",
+  review_required: "pendiente de revisión",
+  completed: "matching terminado",
+};
+
 type Phase =
   | "idle"
   | "creating"
@@ -154,6 +168,7 @@ export function PreprocessedVideoExperience({ embedded = false }: { embedded?: b
   const [videoHash, setVideoHash] = useState<string | null>(null);
   const [hashing, setHashing] = useState(false);
   const [reused, setReused] = useState(false);
+  const [staleJobNotice, setStaleJobNotice] = useState<{ id: string; status: string } | null>(null);
   const [duration, setDuration] = useState(0);
   const [videoAspect, setVideoAspect] = useState<number | null>(null);
   const [validationError, setValidationError] = useState<string | null>(null);
@@ -203,6 +218,7 @@ export function PreprocessedVideoExperience({ embedded = false }: { embedded?: b
     setLiveItems([]);
     setVideoHash(null);
     setReused(false);
+    setStaleJobNotice(null);
     selectedFileRef.current = file;
     if (!file) return;
     if (!file.type.startsWith("video/")) {
@@ -300,6 +316,7 @@ export function PreprocessedVideoExperience({ embedded = false }: { embedded?: b
       });
       const created = await createRes.json();
       if (!created.ok) throw new Error(created.error ?? t("errors.createJobFailed"));
+      setStaleJobNotice(created.reused ? null : created.staleJob ?? null);
       const id: string = created.jobId;
       const fps: number = created.config?.detectionFps ?? 5;
       const maxBatch: number = Math.min(created.config?.maxFramesPerBatch ?? 25, 8);
@@ -548,6 +565,13 @@ export function PreprocessedVideoExperience({ embedded = false }: { embedded?: b
               Vídeo ya procesado · resultados reutilizados por hash en menos de una petición.
             </p>
           ) : null}
+          {staleJobNotice ? (
+            <p className="rounded-xl border border-warning/30 bg-warning/10 px-4 py-3 text-xs text-warning">
+              Existe un análisis incompleto para este vídeo (job {staleJobNotice.id.slice(0, 8)}…,
+              estado {staleJobNotice.status}). No se reutiliza: este es un job nuevo, procesado
+              desde cero.
+            </p>
+          ) : null}
         </section>
 
         {/* Columna derecha: progreso del job */}
@@ -589,6 +613,62 @@ export function PreprocessedVideoExperience({ embedded = false }: { embedded?: b
               <Stat label={t("savings.catalogHits")} value={counters?.catalogHits ?? 0} />
             </dl>
           </div>
+
+          {job?.coverage && (
+            <div className="rounded-2xl border border-line bg-white/[0.03] p-4">
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-ink-subtle">
+                Cobertura temporal
+              </h3>
+              <dl className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs">
+                <Stat label="Cobertura" value={`${job.coverage.coveragePercent}%`} />
+                <Stat
+                  label="Escenas procesadas"
+                  value={`${job.scenes.filter((s) => s.status === "completed").length}/${job.scenes.length}`}
+                />
+                <Stat label="Rangos sin procesar" value={job.coverage.uncoveredRanges.length} />
+                <Stat
+                  label="Errores de integridad"
+                  value={job.integrityErrors.length}
+                />
+              </dl>
+              {job.coverage.uncoveredRanges.length > 0 && (
+                <ul className="mt-2 space-y-0.5 text-[11px] text-warning">
+                  {job.coverage.uncoveredRanges.map((r) => (
+                    <li key={`${r.startMs}-${r.endMs}-${r.reason}`}>
+                      {formatTimestamp(r.startMs / 1000)}–{formatTimestamp(r.endMs / 1000)} sin
+                      cubrir ({r.reason})
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {job.integrityErrors.length > 0 && (
+                <ul className="mt-2 space-y-0.5 text-[11px] text-danger">
+                  {job.integrityErrors.map((e) => (
+                    <li key={e.code}>{e.message}</li>
+                  ))}
+                </ul>
+              )}
+              {job.scenes.length > 0 && (
+                <details className="mt-2 text-[11px] text-ink-subtle">
+                  <summary className="cursor-pointer select-none text-ink-muted">
+                    Ver escenas ({job.scenes.length})
+                  </summary>
+                  <ul className="mt-1 space-y-0.5">
+                    {job.scenes.map((s) => (
+                      <li key={s.sceneId} className="flex justify-between gap-2">
+                        <span>
+                          #{s.sceneId} {formatTimestamp(s.startSeconds)}–{formatTimestamp(s.endSeconds)}
+                        </span>
+                        <span className={s.status === "failed" ? "text-danger" : ""}>
+                          {s.status} · {s.analyzedFrameCount}/{s.frameCount}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </details>
+              )}
+            </div>
+          )}
 
           {timings && (
             <div className="rounded-2xl border border-line bg-white/[0.03] p-4">
@@ -677,6 +757,13 @@ export function PreprocessedVideoExperience({ embedded = false }: { embedded?: b
                       >
                         {t(`products.status.${status}`)}
                       </span>
+                      {phase === "matching" &&
+                        p.matchProgress &&
+                        p.matchProgress !== "not_started" && (
+                          <span className="ml-1.5 mt-1.5 inline-block rounded-full border border-info/40 bg-info/10 px-2 py-0.5 text-[10px] text-info">
+                            {MATCH_PROGRESS_LABELS[p.matchProgress] ?? p.matchProgress}
+                          </span>
+                        )}
                     </div>
                   </div>
 

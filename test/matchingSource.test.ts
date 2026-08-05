@@ -314,6 +314,43 @@ test("una URL pública inalcanzable invalida la búsqueda externa (el motor no p
   assert.match(external.reason ?? "", /alcanzable/i);
 });
 
+test("con STORAGE_PROVIDER=vercel_blob, PUBLIC_MEDIA_BASE_URL corrupta o inalcanzable NO bloquea la externa", () => {
+  // `isStorageConfigured` para vercel_blob mira BLOB_READ_WRITE_TOKEN en el
+  // process.env real (no en el objeto `env` inyectado) — se fija aquí y se
+  // restaura al final para no dejar el proceso de test contaminado.
+  const prevToken = process.env.BLOB_READ_WRITE_TOKEN;
+  process.env.BLOB_READ_WRITE_TOKEN = "test-token";
+  try {
+    const external = externalAvailability(
+      env({
+        SEARCHAPI_API_KEY: "k",
+        STORAGE_PROVIDER: "vercel_blob",
+        // Basura tipo "||" (el bug real de vercel-env-link.sh) o localhost:
+        // vercel_blob no depende de esta variable, así que no debe bloquear.
+        PUBLIC_MEDIA_BASE_URL: "||",
+      })
+    );
+    assert.equal(external.available, true);
+  } finally {
+    if (prevToken === undefined) delete process.env.BLOB_READ_WRITE_TOKEN;
+    else process.env.BLOB_READ_WRITE_TOKEN = prevToken;
+  }
+});
+
+test("STORAGE_PROVIDER=vercel_blob sin BLOB_READ_WRITE_TOKEN sí invalida la externa (no hay dónde publicar el crop)", () => {
+  const prevToken = process.env.BLOB_READ_WRITE_TOKEN;
+  delete process.env.BLOB_READ_WRITE_TOKEN;
+  try {
+    const external = externalAvailability(
+      env({ SEARCHAPI_API_KEY: "k", STORAGE_PROVIDER: "vercel_blob" })
+    );
+    assert.equal(external.available, false);
+    assert.match(external.reason ?? "", /almacenamiento/i);
+  } finally {
+    if (prevToken !== undefined) process.env.BLOB_READ_WRITE_TOKEN = prevToken;
+  }
+});
+
 // --- configuración compartida --------------------------------------------
 
 test("la fuente de coincidencias viaja en la config serializada del análisis", () => {

@@ -217,6 +217,9 @@ export const analysisJobs = pgTable("analysis_jobs", {
   error: text("error"),
   /** Verdad operativa del motor: tracker serializado para REANUDAR el job. */
   runtimeState: jsonb("runtime_state"),
+  /** Cobertura temporal real — ver `TemporalCoverage`. NULL hasta finalizar. */
+  coverage: jsonb("coverage"),
+  integrityErrors: jsonb("integrity_errors").notNull().default([]),
   createdAt: createdAt(),
   startedAt: timestamp("started_at", { withTimezone: true }),
   finishedAt: timestamp("finished_at", { withTimezone: true }),
@@ -231,6 +234,8 @@ export const mediaFrames = pgTable("media_frames", {
   timestampSeconds: doublePrecision("timestamp_seconds").notNull(),
   analyzed: boolean("analyzed").notNull().default(false),
   sceneId: integer("scene_id"),
+  /** kept:* / discarded:* — ver `FrameSamplingReason`. */
+  reason: text("reason"),
   createdAt: createdAt(),
 });
 
@@ -245,6 +250,10 @@ export const mediaScenes = pgTable(
     startSeconds: doublePrecision("start_seconds").notNull(),
     endSeconds: doublePrecision("end_seconds").notNull(),
     frameCount: integer("frame_count").notNull().default(0),
+    analyzedFrameCount: integer("analyzed_frame_count").notNull().default(0),
+    /** pending | extracting | detecting | tracking | completed | failed */
+    status: text("status").notNull().default("completed"),
+    failureReason: text("failure_reason"),
   },
   (t) => [uniqueIndex("media_scenes_job_id_scene_id_key").on(t.jobId, t.sceneId)]
 );
@@ -298,6 +307,8 @@ export const productMatches = pgTable(
     matching: jsonb("matching"),
     externalSearchesUsed: integer("external_searches_used").notNull().default(0),
     skippedReason: text("skipped_reason"),
+    /** Progreso EN VIVO — ver `MatchProgressState`. Distinto de `matchStatus`. */
+    matchProgress: text("match_progress").notNull().default("not_started"),
     createdAt: createdAt(),
   },
   (t) => [

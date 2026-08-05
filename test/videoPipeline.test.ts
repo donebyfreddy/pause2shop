@@ -101,6 +101,9 @@ function stateWith(tracks: TrackRecord[]): JobRuntimeState {
   return {
     lastThumb: null,
     lastAnalyzedHash: null,
+    lastAnalyzedThumb: null,
+    lastAnalyzedAtSeconds: null,
+    pendingFlushFrame: null,
     currentSceneId: 1,
     scenes: [],
     trackerTracks: [],
@@ -149,6 +152,7 @@ function product(partial: Partial<UniqueProductRecord> = {}): UniqueProductRecor
     matchDurationMs: 0,
     externalSearchesUsed: 0,
     possibleDuplicateOf: null,
+    matchProgress: "not_started",
     identity: {
       canonicalLabel: "camiseta blanca",
       canonicalCategory: "t-shirt",
@@ -184,11 +188,16 @@ test("el mismo vídeo reutiliza resultados por hash sin volver a procesar", asyn
   const detector = new ScriptedDetector({ "0.000": [] });
   const deps = makeDeps(detector, fakeMatcher(calls));
   const hash = "a".repeat(64);
+  // Duración que redondea a 0 ms: con cualquier duración "real" pero un único
+  // frame puntual en t=0, la escena tiene ancho cero y el tramo hasta el final
+  // del vídeo cuenta como sin cubrir — correcto en general (un job sin apenas
+  // frames procesados no debería reutilizarse), pero aquí lo único que importa
+  // es la reutilización por hash, no la cobertura.
   const input = {
     fileName: "v.mp4",
     mimeType: "video/mp4",
     sizeBytes: 1024,
-    durationSeconds: DURATION,
+    durationSeconds: 0.0001,
     videoHash: hash,
   };
 
@@ -196,14 +205,17 @@ test("el mismo vídeo reutiliza resultados por hash sin volver a procesar", asyn
   assert.equal(first.ok, true);
   if (!first.ok) return;
   assert.equal(first.reused, false);
-  await finalizeAnalysisJob(first.job.id, deps);
+  await processFrameBatch(first.job.id, [frame(0, productThumb(20, []))], deps);
+  const firstFinalized = await finalizeAnalysisJob(first.job.id, deps);
+  assert.equal(firstFinalized.ok, true);
+  if (firstFinalized.ok) assert.equal(firstFinalized.job.status, "completed");
 
   const second = await createAnalysisJob(input, deps);
   assert.equal(second.ok, true);
   if (!second.ok) return;
   assert.equal(second.reused, true, "debe reutilizar el job por hash");
   assert.equal(second.job.id, first.job.id);
-  assert.equal(detector.calls.length, 0, "no vuelve a detectar");
+  assert.equal(detector.calls.length, 1, "no vuelve a detectar");
 
   // `forceReprocess` crea un job NUEVO conservando el anterior.
   const reprocessed = await createAnalysisJob({ ...input, forceReprocess: true }, deps);
@@ -631,7 +643,14 @@ test("flujo completo: frames → productos con vídeo, escena y timestamps", asy
   // Y el estado es el que corresponde, no un "NO MATCH" genérico.
   assert.equal(p.matchStatus, "external_candidate");
   assert.equal(finalized.job.counters.externalCandidates, 1);
-  assert.equal(finalized.job.status, "completed");
+  // Hueco grande (0.4→8) a propósito en el fixture, para probar la
+  // reaparición sin frames intermedios: cobertura real baja, reflejada
+  // honestamente en vez de un "completed" que no se corresponde con lo que
+  // de verdad se analizó.
+  assert.equal(finalized.job.status, "partially_completed");
+  assert.ok(
+    finalized.job.integrityErrors.some((e) => e.code === "coverage_below_threshold")
+  );
 });
 
 test("el job cancelado no gasta matching y sus productos quedan not_searched", async () => {

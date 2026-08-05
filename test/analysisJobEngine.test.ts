@@ -98,8 +98,15 @@ function e2eDeps(calls: MatchCall[]) {
   };
 }
 
-async function runE2E(calls: MatchCall[], deps: JobEngineDeps) {
-  const created = await createAnalysisJob(JOB_INPUT, deps);
+async function runE2E(
+  calls: MatchCall[],
+  deps: JobEngineDeps,
+  opts: { durationSeconds?: number } = {}
+) {
+  const created = await createAnalysisJob(
+    { ...JOB_INPUT, ...(opts.durationSeconds != null ? { durationSeconds: opts.durationSeconds } : {}) },
+    deps
+  );
   assert.equal(created.ok, true);
   if (!created.ok) throw new Error("unreachable");
   const jobId = created.job.id;
@@ -169,7 +176,12 @@ test("E2E: frames → escenas → tracks → dedup global → productos → time
   ]);
   assert.deepEqual(portatil.segments, [{ startSeconds: 0, endSeconds: 0.4 }]);
 
-  assert.equal(job.status, "completed");
+  // El fixture deja huecos grandes A propósito (0.4→4, 4→8) para simular una
+  // reaparición sin construir cientos de frames intermedios: la cobertura
+  // temporal real de ESTE vídeo sintético es baja, y la validación de
+  // integridad lo refleja honestamente en vez de mentir con "completed".
+  assert.equal(job.status, "partially_completed");
+  assert.ok(job.integrityErrors.some((e) => e.code === "coverage_below_threshold"));
   assert.ok(job.finishedAt);
 
   // Vista de estado completa para la UI.

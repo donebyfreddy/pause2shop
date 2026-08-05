@@ -48,6 +48,18 @@ export type VideoAnalysisJobConfig = {
   /** Umbral de diff perceptual (0-1) a partir del cual se abre escena nueva. */
   sceneDiffThreshold: number;
 
+  /* --- sampling adaptativo por escena --- */
+  /** Frames analizados mínimos por escena, aunque sean casi idénticos. */
+  minFramesPerScene: number;
+  /** Techo de frames analizados por escena, protege el detector de vídeos estáticos largos. */
+  maxFramesPerScene: number;
+  /** Gap máximo (ms de vídeo) sin analizar antes de forzar un frame. */
+  sampleIntervalMs: number;
+  /** Hamming máximo (aHash 8×8) para considerar dos frames "casi idénticos". */
+  phashDedupThreshold: number;
+  /** Si una escena termina con 0 frames analizados, es un fallo de integridad. */
+  sceneCoverageRequired: boolean;
+
   /* --- identidad global de producto (dedup entre tracks) --- */
   /** Por encima de este score, dos tracks son el mismo producto. */
   identityThreshold: number;
@@ -93,6 +105,11 @@ export function getVideoAnalysisJobConfig(
       env.SCENE_DIFF_THRESHOLD ?? env.NEXT_PUBLIC_SCENE_DIFF_THRESHOLD,
       0.1
     ),
+    minFramesPerScene: Math.max(1, Math.floor(num(env.VIDEO_MIN_FRAMES_PER_SCENE, 2))),
+    maxFramesPerScene: Math.max(1, Math.floor(num(env.VIDEO_MAX_FRAMES_PER_SCENE, 8))),
+    sampleIntervalMs: num(env.VIDEO_SAMPLE_INTERVAL_MS, 1000),
+    phashDedupThreshold: intOrZero(env.VIDEO_PHASH_DEDUP_THRESHOLD, 6),
+    sceneCoverageRequired: bool(env.VIDEO_SCENE_COVERAGE_REQUIRED, true),
     identityThreshold: num(env.VIDEO_PRODUCT_IDENTITY_THRESHOLD, 0.84),
     strongIdentityThreshold: num(env.VIDEO_PRODUCT_STRONG_IDENTITY_THRESHOLD, 0.9),
     possibleDuplicateThreshold: num(

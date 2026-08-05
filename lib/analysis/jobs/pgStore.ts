@@ -4,6 +4,7 @@ import type {
   AnalysisJobRecord,
   AnalysisJobStatus,
   JobRuntimeState,
+  MatchProgressState,
   UniqueProductRecord,
 } from "./types";
 
@@ -42,6 +43,24 @@ function emptyIdentity(
     seenCount: 0,
     sceneIds: [],
   };
+}
+
+/**
+ * `identity` con forma pero VACÍO no es lo mismo que ausente, y confundirlos
+ * fue el bug real: la migración 13 rellenó la columna con `'{}'::jsonb` (no
+ * `NULL`) en las filas existentes, así que `r.identity ?? emptyIdentity(...)`
+ * nunca disparaba — `{}` es verdadero — y esas filas leían `seenCount:
+ * undefined ?? 0 = 0` mientras `bestCrop.timestampSeconds` (columna hermana,
+ * siempre poblada) seguía mostrando un instante real. De ahí "mejor frame
+ * 00:07 / vistas 0". Aquí se trata como "necesita backfill" cualquier valor
+ * sin la forma esperada, no solo `null`.
+ */
+export function resolveIdentity(
+  raw: UniqueProductRecord["identity"] | null,
+  item: UniqueProductRecord["item"]
+): UniqueProductRecord["identity"] {
+  if (raw && typeof raw.seenCount === "number") return raw;
+  return emptyIdentity(item);
 }
 
 export class PostgresAnalysisJobStore implements AnalysisJobStore {
@@ -132,6 +151,8 @@ export class PostgresAnalysisJobStore implements AnalysisJobStore {
       catalog_version: string;
       analysis_version: string;
       processed_at: Date | null;
+      coverage: AnalysisJobRecord["coverage"] | null;
+      integrity_errors: AnalysisJobRecord["integrityErrors"] | null;
     }>(
       `select j.*, m.id as media_id, m.file_name, m.mime_type, m.size_bytes,
               m.duration_seconds, m.file_hash, m.catalog_version,
@@ -157,6 +178,8 @@ export class PostgresAnalysisJobStore implements AnalysisJobStore {
       createdAt: r.created_at.getTime(),
       startedAt: r.started_at ? r.started_at.getTime() : null,
       finishedAt: r.finished_at ? r.finished_at.getTime() : null,
+      coverage: r.coverage ?? null,
+      integrityErrors: r.integrity_errors ?? [],
       media: {
         id: r.media_id,
         fileName: r.file_name,
@@ -179,7 +202,8 @@ export class PostgresAnalysisJobStore implements AnalysisJobStore {
           set status = $2, checkpoint = $3, counters = $4, timings = $5,
               warnings = $6, error = $7,
               started_at = case when $8::bigint is null then null else to_timestamp($8::bigint / 1000.0) end,
-              finished_at = case when $9::bigint is null then null else to_timestamp($9::bigint / 1000.0) end
+              finished_at = case when $9::bigint is null then null else to_timestamp($9::bigint / 1000.0) end,
+              coverage = $10, integrity_errors = $11
         where id = $1`,
       [
         job.id,
@@ -191,6 +215,8 @@ export class PostgresAnalysisJobStore implements AnalysisJobStore {
         job.error,
         job.startedAt,
         job.finishedAt,
+        job.coverage ? JSON.stringify(job.coverage) : null,
+        JSON.stringify(job.integrityErrors ?? []),
       ]
       );
       await client.query(
@@ -237,12 +263,12 @@ export class PostgresAnalysisJobStore implements AnalysisJobStore {
     // Insert multi-values en una sola query (lotes pequeños, ≤ ~25 frames).
     const values: unknown[] = [id];
     const tuples = rows.map((row, i) => {
-      const base = i * 3 + 2;
-      values.push(row.timestampSeconds, row.analyzed, row.sceneId);
-      return `($1, $${base}, $${base + 1}, $${base + 2})`;
+      const base = i * 4 + 2;
+      values.push(row.timestampSeconds, row.analyzed, row.sceneId, row.reason);
+      return `($1, $${base}, $${base + 1}, $${base + 2}, $${base + 3})`;
     });
     await query(
-      `insert into media_frames (job_id, timestamp_seconds, analyzed, scene_id)
+      `insert into media_frames (job_id, timestamp_seconds, analyzed, scene_id, reason)
        values ${tuples.join(", ")}`,
       values
     );
@@ -262,9 +288,20 @@ export class PostgresAnalysisJobStore implements AnalysisJobStore {
 
       for (const scene of state?.scenes ?? []) {
         await client.query(
-          `insert into media_scenes (job_id, scene_id, start_seconds, end_seconds, frame_count)
-           values ($1, $2, $3, $4, $5)`,
-          [id, scene.sceneId, scene.startSeconds, scene.endSeconds, scene.frameCount]
+          `insert into media_scenes
+             (job_id, scene_id, start_seconds, end_seconds, frame_count,
+              analyzed_frame_count, status, failure_reason)
+           values ($1, $2, $3, $4, $5, $6, $7, $8)`,
+          [
+            id,
+            scene.sceneId,
+            scene.startSeconds,
+            scene.endSeconds,
+            scene.frameCount,
+            scene.analyzedFrameCount,
+            scene.status,
+            scene.failureReason,
+          ]
         );
       }
       for (const track of Object.values(state?.tracks ?? {})) {
@@ -310,9 +347,9 @@ export class PostgresAnalysisJobStore implements AnalysisJobStore {
              (job_id, product_id, track_ids, item, best_crop, segments,
               matching, external_searches_used, skipped_reason,
               match_status, match_attempts, match_error, match_duration_ms,
-              detection, identity, possible_duplicate_of)
+              detection, identity, possible_duplicate_of, match_progress)
            values ($1, $2, $3, $4, $5, $6, $7, $8, $9,
-                   $10, $11, $12, $13, $14, $15, $16)`,
+                   $10, $11, $12, $13, $14, $15, $16, $17)`,
           [
             id,
             p.productId,
@@ -340,6 +377,7 @@ export class PostgresAnalysisJobStore implements AnalysisJobStore {
             p.detection ? JSON.stringify(p.detection) : null,
             JSON.stringify(p.identity),
             p.possibleDuplicateOf,
+            p.matchProgress,
           ]
         );
         for (const match of p.matching?.matches ?? []) {
@@ -464,13 +502,14 @@ export class PostgresAnalysisJobStore implements AnalysisJobStore {
       match_error: string | null;
       match_duration_ms: number;
       detection: UniqueProductRecord["detection"];
-      identity: UniqueProductRecord["identity"];
+      identity: UniqueProductRecord["identity"] | null;
       possible_duplicate_of: string | null;
+      match_progress: UniqueProductRecord["matchProgress"] | null;
     }>(
       `select product_id, track_ids, item, best_crop, segments, matching,
               external_searches_used, skipped_reason, match_status,
               match_attempts, match_error, match_duration_ms, detection,
-              identity, possible_duplicate_of
+              identity, possible_duplicate_of, match_progress
          from product_matches where job_id = $1 order by product_id`,
       [id]
     );
@@ -487,10 +526,22 @@ export class PostgresAnalysisJobStore implements AnalysisJobStore {
       matchError: r.match_error ?? null,
       matchDurationMs: r.match_duration_ms ?? 0,
       possibleDuplicateOf: r.possible_duplicate_of ?? null,
-      identity: r.identity ?? emptyIdentity(r.item),
+      identity: resolveIdentity(r.identity, r.item),
       externalSearchesUsed: r.external_searches_used,
       matchingSkippedReason: r.skipped_reason,
+      matchProgress: r.match_progress ?? "not_started",
     }));
+  }
+
+  async updateProductProgress(
+    jobId: string,
+    productId: string,
+    progress: MatchProgressState
+  ): Promise<void> {
+    await query(
+      "update product_matches set match_progress = $3 where job_id = $1 and product_id = $2",
+      [jobId, productId, progress]
+    );
   }
 
   async findReusableJob(
@@ -503,9 +554,21 @@ export class PostgresAnalysisJobStore implements AnalysisJobStore {
          from analysis_jobs j
          join media_contents m on m.id = j.media_content_id
         where m.file_hash = $1 and m.catalog_version = $2 and m.analysis_version = $3
-          and j.status in ('completed', 'partially_completed')
+          and j.status = 'completed'
         order by j.finished_at desc nulls last limit 1`,
       [fileHash, catalogVersion, analysisVersion]
+    );
+    return result.rows[0] ? this.getJob(result.rows[0].id) : null;
+  }
+
+  async findLatestJobByHash(fileHash: string): Promise<AnalysisJobRecord | null> {
+    const result = await query<{ id: string }>(
+      `select j.id
+         from analysis_jobs j
+         join media_contents m on m.id = j.media_content_id
+        where m.file_hash = $1
+        order by j.created_at desc limit 1`,
+      [fileHash]
     );
     return result.rows[0] ? this.getJob(result.rows[0].id) : null;
   }

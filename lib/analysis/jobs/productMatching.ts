@@ -4,6 +4,7 @@ import type { DetectedItem } from "@/lib/types";
 import type { VideoAnalysisJobConfig } from "./config";
 import {
   RETRYABLE_MATCH_STATUSES,
+  type MatchProgressState,
   type ProductMatchStatus,
   type UniqueProductRecord,
 } from "./types";
@@ -40,6 +41,8 @@ export type MatchProductFn = (args: {
   frameDataUrl: string | null;
   mode: MatchingMode;
   attempt: number;
+  /** Progreso EN VIVO del resolver (embedding/catálogo/externo), no el resultado final. */
+  onStage?: (stage: MatchProgressState) => void;
 }) => Promise<{
   result: ProductMatchingResult;
   detection: DetectionMatchResult | null;
@@ -119,6 +122,7 @@ export async function matchOneProduct(args: {
   config: VideoAnalysisJobConfig;
   signal?: { aborted: boolean };
   onRetry?: (productId: string, attempt: number, status: ProductMatchStatus) => void;
+  onStage?: (stage: MatchProgressState) => void;
 }): Promise<ProductMatchOutcome> {
   const { product, jobId, mediaContentId, mode, matchProduct, config } = args;
   const started = Date.now();
@@ -158,6 +162,7 @@ export async function matchOneProduct(args: {
       };
     }
     attempts++;
+    args.onStage?.("embedding");
     try {
       const { result, detection } = await matchProduct({
         jobId,
@@ -168,6 +173,7 @@ export async function matchOneProduct(args: {
         frameDataUrl: product.bestCrop.frameDataUrl,
         mode,
         attempt: attempts,
+        onStage: args.onStage,
       });
       const status = statusFromDetection(detection);
       last = {
@@ -239,6 +245,8 @@ export async function matchUniqueProducts(args: {
   signal?: { aborted: boolean };
   onProgress?: (done: number, total: number, outcome: ProductMatchOutcome) => void;
   onRetry?: (productId: string, attempt: number, status: ProductMatchStatus) => void;
+  /** Progreso EN VIVO por producto — ver `MatchProgressState`. */
+  onStage?: (productId: string, stage: MatchProgressState) => void;
 }): Promise<Map<string, ProductMatchOutcome>> {
   const { products, config } = args;
   const outcomes = new Map<string, ProductMatchOutcome>();
@@ -262,6 +270,9 @@ export async function matchUniqueProducts(args: {
         config,
         signal: args.signal,
         onRetry: args.onRetry,
+        onStage: args.onStage
+          ? (stage) => args.onStage?.(product.productId, stage)
+          : undefined,
       });
       outcomes.set(product.productId, outcome);
       done++;

@@ -72,6 +72,18 @@ async function withStageTimeout<T>(
   }
 }
 
+/**
+ * Progreso EN VIVO de la resolución — el subconjunto de `MatchProgressState`
+ * que este módulo puede reportar con certeza (no adivinado por temporización).
+ */
+export type ResolveDetectionStage =
+  | "catalog_search"
+  | "catalog_matched"
+  | "catalog_unresolved"
+  | "catalog_timeout"
+  | "external_queued"
+  | "external_searching";
+
 export type ResolveDetectionInput = {
   item: DetectedItem;
   /** Identidad estable de la detección; la fija quien llama (fingerprint). */
@@ -94,6 +106,8 @@ export type ResolveDetectionInput = {
    */
   forceExternal?: boolean;
   skipCache?: boolean;
+  /** Progreso en vivo, opcional — quien no lo pase sigue viendo el mismo comportamiento. */
+  onStage?: (stage: ResolveDetectionStage) => void;
 };
 
 export type ResolveDetectionOutput = {
@@ -473,6 +487,7 @@ export async function resolveDetectionMatch(
     external,
     forceExternal = false,
     skipCache,
+    onStage,
   } = input;
 
   const usage = emptyUsage();
@@ -480,12 +495,18 @@ export async function resolveDetectionMatch(
   const searchInput: ProductMatchingInput = { item, cropDataUrl, skipCache };
 
   // 1) CATÁLOGO PRIMERO. Siempre, salvo en external_only.
+  if (modeUsesCatalog(mode)) onStage?.("catalog_search");
   const catalogStage = await runCatalogStage({
     catalog, searchInput, item, config, mode, usage,
   });
   const catalogBlock = catalogStage.block;
   const catalogResult = catalogStage.result;
   const catalogMatched = catalogBlock.status === "matched";
+  if (catalogBlock.status === "matched") onStage?.("catalog_matched");
+  else if (catalogBlock.status === "timeout") onStage?.("catalog_timeout");
+  else if (catalogBlock.status === "unresolved" || catalogBlock.status === "empty") {
+    onStage?.("catalog_unresolved");
+  }
 
   // 2) EXTERNO, solo si procede. `decision` es la única puerta al gasto.
   const decision = shouldCallExternal({
@@ -496,12 +517,16 @@ export async function resolveDetectionMatch(
     forceExternal,
   });
 
+  if (decision.call) onStage?.("external_queued");
   const externalStage =
     decision.call && external
-      ? await runExternalStage({
-          external, searchInput, item, config,
-          isFallback: decision.isFallback, usage,
-        })
+      ? await (async () => {
+          onStage?.("external_searching");
+          return runExternalStage({
+            external, searchInput, item, config,
+            isFallback: decision.isFallback, usage,
+          });
+        })()
       : {
           result: null,
           block: buildExternalBlock(null, item, config, { status: decision.status }),

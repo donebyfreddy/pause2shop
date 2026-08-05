@@ -28,6 +28,16 @@ export const TEST_JOB_CONFIG: VideoAnalysisJobConfig = {
   maxVideoSizeBytes: 500 * 1024 * 1024,
   nearDuplicateDiffThreshold: 0.02,
   sceneDiffThreshold: 0.1,
+  // Igual al `NEAR_DUP_HAMMING` que sustituyó este umbral: los tests
+  // existentes se escribieron contra ese valor concreto. `minFramesPerScene`
+  // se fija a 1 (el mínimo posible) para no interferir con esos tests — los
+  // que SÍ prueban el mínimo por escena pasan su propia config con un valor
+  // mayor.
+  minFramesPerScene: 1,
+  maxFramesPerScene: 8,
+  sampleIntervalMs: 1000,
+  phashDedupThreshold: 5,
+  sceneCoverageRequired: true,
   identityThreshold: 0.84,
   strongIdentityThreshold: 0.9,
   possibleDuplicateThreshold: 0.76,

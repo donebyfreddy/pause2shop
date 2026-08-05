@@ -18,10 +18,10 @@ import {
 import {
   averageHash,
   decodeThumb,
-  hammingDistance,
   sharpnessScore,
   thumbDiff,
   type DecodedThumb,
+  type RawThumb,
 } from "./perceptualHash";
 import { cropQuality } from "./cropQuality";
 import {
@@ -35,6 +35,9 @@ import {
   type MatchProductFn,
   type ProductMatchOutcome,
 } from "./productMatching";
+import { decideFrameSampling, hasLocalChange } from "./sceneSampling";
+import { computeTemporalCoverage } from "./coverage";
+import { validateProcessedVideoResult } from "./validation";
 import type { AnalysisJobStore } from "./store";
 import type {
   AnalysisJobRecord,
@@ -46,7 +49,10 @@ import type {
   CropRequest,
   FrameBatchResult,
   FramePayload,
+  FrameSamplingReason,
   JobRuntimeState,
+  MatchProgressState,
+  PendingFlushFrame,
   SceneRecord,
   SerializedTrack,
   TimelineSegment,
@@ -88,8 +94,6 @@ export type JobEngineDeps = {
   log?: (level: "info" | "warn" | "success", stage: string, message: string) => void;
 };
 
-/** Hamming máximo (sobre aHash de 64 bits) para "frame casi idéntico". */
-const NEAR_DUP_HAMMING = 5;
 /** Hueco máximo (s) entre apariciones para considerarlas el mismo tramo. */
 const SEGMENT_MAX_GAP_SECONDS = 1.5;
 /** Techo de frames por lote: protege la función de payloads absurdos. */
@@ -145,6 +149,9 @@ function emptyRuntimeState(): JobRuntimeState {
   return {
     lastThumb: null,
     lastAnalyzedHash: null,
+    lastAnalyzedThumb: null,
+    lastAnalyzedAtSeconds: null,
+    pendingFlushFrame: null,
     currentSceneId: 0,
     scenes: [],
     trackerTracks: [],
@@ -158,7 +165,7 @@ export async function createAnalysisJob(
   input: CreateAnalysisJobInput,
   deps: JobEngineDeps
 ): Promise<
-  | { ok: true; job: AnalysisJobRecord; reused: boolean }
+  | { ok: true; job: AnalysisJobRecord; reused: boolean; staleJob: AnalysisJobRecord | null }
   | { ok: false; error: string; status: number }
 > {
   const config = deps.config ?? getVideoAnalysisJobConfig(deps.env);
@@ -172,14 +179,27 @@ export async function createAnalysisJob(
 
   const env = deps.env ?? process.env;
   const catalogVersion = env.CATALOG_VERSION?.trim() || "catalog:v1";
-  const analysisVersion = env.VIDEO_ANALYSIS_VERSION?.trim() || "video-pipeline:v2";
-  if (input.videoHash && !input.forceReprocess) {
-    const reusable = await deps.store.findReusableJob(
-      input.videoHash,
-      catalogVersion,
-      analysisVersion
-    );
-    if (reusable) return { ok: true, job: reusable, reused: true };
+  // v3: sampling adaptativo por escena, cobertura temporal, ReID con score
+  // ponderado y matching en proceso (sin self-fetch). Un job "completed" de
+  // v2 se resolvió con un pipeline distinto y no debe servirse como si fuera
+  // el mismo resultado.
+  const analysisVersion = env.VIDEO_ANALYSIS_VERSION?.trim() || "video-pipeline:v3";
+  let staleJob: AnalysisJobRecord | null = null;
+  if (input.videoHash) {
+    if (!input.forceReprocess) {
+      const reusable = await deps.store.findReusableJob(
+        input.videoHash,
+        catalogVersion,
+        analysisVersion
+      );
+      if (reusable) return { ok: true, job: reusable, reused: true, staleJob: null };
+    }
+    // No hay job reutilizable: si el más reciente para este vídeo tampoco
+    // terminó en `completed` (partially_completed/failed/cancelled, o de una
+    // versión anterior), se informa — el job que se crea a continuación es
+    // SIEMPRE nuevo, nunca reanuda el incompleto.
+    const latest = await deps.store.findLatestJobByHash(input.videoHash);
+    if (latest && latest.status !== "completed") staleJob = latest;
   }
 
   const now = Date.now();
@@ -232,10 +252,12 @@ export async function createAnalysisJob(
     createdAt: now,
     startedAt: null,
     finishedAt: null,
+    coverage: null,
+    integrityErrors: [],
   };
 
   await deps.store.createJob(job, emptyRuntimeState());
-  return { ok: true, job, reused: false };
+  return { ok: true, job, reused: false, staleJob };
 }
 
 // ---------------------------------------------------------------------------
@@ -263,6 +285,181 @@ function trackerToState(tracker: TrackerState): {
 // ---------------------------------------------------------------------------
 
 const ACTIVE_STATUSES = new Set(["queued", "running"]);
+
+type FrameMetaEntry = {
+  timestampSeconds: number;
+  analyzed: boolean;
+  sceneId: number | null;
+  reason: FrameSamplingReason;
+};
+
+/** Nueva escena vacía, lista para recibir su primer frame. */
+function openScene(sceneId: number, ts: number): SceneRecord {
+  return {
+    sceneId,
+    startSeconds: ts,
+    endSeconds: ts,
+    frameCount: 0,
+    analyzedFrameCount: 0,
+    status: "extracting",
+    lastAnalyzedSeconds: null,
+    failureReason: null,
+  };
+}
+
+/**
+ * Cierra una escena que ya no va a recibir más frames (llega la siguiente, o
+ * el job finaliza). `failed` aquí NO significa "un frame falló" — eso ya se
+ * tolera arriba con un warning y se sigue; significa que la escena, con
+ * `sceneCoverageRequired` activo, terminó sin analizar ni un frame.
+ */
+function closeScene(scene: SceneRecord, config: VideoAnalysisJobConfig): void {
+  if (config.sceneCoverageRequired && scene.analyzedFrameCount === 0) {
+    scene.status = "failed";
+    scene.failureReason = "La escena terminó sin analizar ningún frame.";
+    return;
+  }
+  scene.status = "completed";
+}
+
+/**
+ * Detección + tracking de UN frame ya decidido como "se analiza". Aislado de
+ * `processFrameBatch` para poder reutilizarlo también en el rescate de
+ * `pendingFlushFrame` al cerrar una escena.
+ *
+ * Un fallo en tracking (antes sin try/catch: una excepción aquí tiraba el
+ * lote ENTERO, con todas sus demás escenas) se trata igual que un fallo de
+ * detección: warning y frame no contado como analizado, sin abortar nada.
+ */
+async function analyzeFrame(args: {
+  job: AnalysisJobRecord;
+  state: JobRuntimeState;
+  tracker: TrackerState;
+  scene: SceneRecord;
+  ts: number;
+  dataUrl: string;
+  thumb: DecodedThumb | null;
+  hash: string | null;
+  rawThumb: RawThumb | null | undefined;
+  config: VideoAnalysisJobConfig;
+  deps: JobEngineDeps;
+  cropRequests: CropRequest[];
+  frameMeta: FrameMetaEntry[];
+  frameResults: FrameBatchResult["frames"];
+  reason: FrameSamplingReason;
+}): Promise<boolean> {
+  const {
+    job, state, tracker, scene, ts, dataUrl, thumb, hash, rawThumb, config, deps,
+    cropRequests, frameMeta, frameResults, reason,
+  } = args;
+
+  scene.status = "detecting";
+  const tDetect = Date.now();
+  let detections: DetectedItem[];
+  try {
+    detections = await deps.detector.detect({
+      dataUrl,
+      timestampSeconds: ts,
+      analysisConfig: job.analysisConfig,
+    });
+  } catch (err) {
+    // Un frame fallido no tumba el job: warning y seguimos (el checkpoint ya
+    // avanzó; el estado final podrá ser partially_completed).
+    job.warnings.push(
+      `Detección fallida en t=${ts.toFixed(2)}s: ${err instanceof Error ? err.message.slice(0, 160) : "error"}`
+    );
+    job.timings.detectionMs += Date.now() - tDetect;
+    frameMeta.push({ timestampSeconds: ts, analyzed: false, sceneId: scene.sceneId, reason });
+    frameResults.push({ timestampSeconds: ts, analyzed: false, sceneId: scene.sceneId, items: [] });
+    return false;
+  }
+  job.timings.detectionMs += Date.now() - tDetect;
+
+  try {
+    scene.status = "tracking";
+    // Tracking server-side reutilizando lib/video/tracker: el tiempo del
+    // tracker es TIEMPO DE VÍDEO en ms (un track se pierde tras ~6s de vídeo
+    // sin verse — la reaparición posterior la funde el dedup global).
+    const tTrack = Date.now();
+    const withTracks = config.trackingEnabled
+      ? associateDetections(tracker, detections, Math.round(ts * 1000))
+      : // Tracking desactivado: cada detección abre track nuevo (el dedup
+        // global sigue fundiendo el mismo objeto). Se conserva el contador
+        // de ids para que no colisionen entre lotes.
+        detections.map((d) => ({ ...d, trackId: `t${tracker.nextId++}` }));
+
+    for (const det of withTracks) {
+      updateTrackRecord(state, det, ts, dataUrl, thumb, config, cropRequests);
+      state.appearances.push({
+        trackId: det.trackId,
+        timestampSeconds: ts,
+        sceneId: scene.sceneId,
+        box: det.bounding_box ?? null,
+        confidence: det.confidence,
+      });
+    }
+    job.timings.trackingMs += Date.now() - tTrack;
+
+    job.counters.framesAnalyzed++;
+    scene.analyzedFrameCount++;
+    scene.lastAnalyzedSeconds = ts;
+    state.lastAnalyzedHash = hash;
+    state.lastAnalyzedThumb = rawThumb ?? null;
+    state.lastAnalyzedAtSeconds = ts;
+
+    frameMeta.push({ timestampSeconds: ts, analyzed: true, sceneId: scene.sceneId, reason });
+    frameResults.push({ timestampSeconds: ts, analyzed: true, sceneId: scene.sceneId, items: withTracks });
+    return true;
+  } catch (err) {
+    job.warnings.push(
+      `Tracking fallido en t=${ts.toFixed(2)}s: ${err instanceof Error ? err.message.slice(0, 160) : "error"}`
+    );
+    frameMeta.push({ timestampSeconds: ts, analyzed: false, sceneId: scene.sceneId, reason });
+    frameResults.push({ timestampSeconds: ts, analyzed: false, sceneId: scene.sceneId, items: [] });
+    return false;
+  }
+}
+
+/**
+ * Rescata, si hace falta, el último frame descartado de una escena que se va
+ * a cerrar. Sin esto, una escena corta con todo casi-idéntico podía cerrar
+ * con menos frames analizados que el mínimo configurado — o con cero.
+ */
+async function attemptSceneFlush(args: {
+  scene: SceneRecord;
+  pending: PendingFlushFrame | null;
+  job: AnalysisJobRecord;
+  state: JobRuntimeState;
+  tracker: TrackerState;
+  config: VideoAnalysisJobConfig;
+  deps: JobEngineDeps;
+  cropRequests: CropRequest[];
+  frameMeta: FrameMetaEntry[];
+  frameResults: FrameBatchResult["frames"];
+}): Promise<boolean> {
+  const { scene, pending, job, state, tracker, config, deps, cropRequests, frameMeta, frameResults } = args;
+  if (!pending) return false;
+  if (scene.analyzedFrameCount >= config.minFramesPerScene) return false;
+  if (pending.timestampSeconds < scene.startSeconds || pending.timestampSeconds > scene.endSeconds) {
+    return false;
+  }
+  const thumb = pending.thumb ? decodeThumb(pending.thumb) : null;
+  const hash = thumb ? averageHash(thumb) : null;
+  return analyzeFrame({
+    job, state, tracker, scene,
+    ts: pending.timestampSeconds,
+    dataUrl: pending.dataUrl,
+    thumb,
+    hash,
+    rawThumb: pending.thumb,
+    config,
+    deps,
+    cropRequests,
+    frameMeta,
+    frameResults,
+    reason: "kept:scene_last",
+  });
+}
 
 export async function processFrameBatch(
   jobId: string,
@@ -299,7 +496,7 @@ export async function processFrameBatch(
   const tracker = trackerFromState(state);
   const cropRequests: CropRequest[] = [];
   const frameResults: FrameBatchResult["frames"] = [];
-  const frameMeta: { timestampSeconds: number; analyzed: boolean; sceneId: number | null }[] = [];
+  const frameMeta: FrameMetaEntry[] = [];
   let skippedCheckpoint = 0;
   let skippedSimilar = 0;
   let analyzed = 0;
@@ -326,95 +523,73 @@ export async function processFrameBatch(
       sceneChanged = diff >= config.sceneDiffThreshold;
     }
     if (state.scenes.length === 0 || sceneChanged) {
+      const previousScene = state.scenes.at(-1) ?? null;
+      if (previousScene) {
+        if (
+          await attemptSceneFlush({
+            scene: previousScene,
+            pending: state.pendingFlushFrame,
+            job, state, tracker, config, deps, cropRequests, frameMeta, frameResults,
+          })
+        ) {
+          analyzed++;
+        }
+        state.pendingFlushFrame = null;
+        closeScene(previousScene, config);
+      }
       state.currentSceneId += 1;
-      state.scenes.push({
-        sceneId: state.currentSceneId,
-        startSeconds: ts,
-        endSeconds: ts,
-        frameCount: 0,
-      });
+      state.scenes.push(openScene(state.currentSceneId, ts));
     }
-    const scene = state.scenes[state.scenes.length - 1];
+    const scene = state.scenes.at(-1)!;
 
-    // Hash perceptual: frame casi idéntico al último ANALIZADO ⇒ no se paga
-    // detección. Un cambio de escena SIEMPRE se analiza.
+    // Hash perceptual global + local (región de cada track activo).
     const hash = thumb ? averageHash(thumb) : null;
     job.timings.hashMs += Date.now() - tHash;
-    const nearDuplicate =
-      config.perceptualHashEnabled &&
-      !sceneChanged &&
-      hash !== null &&
-      state.lastAnalyzedHash !== null &&
-      hammingDistance(hash, state.lastAnalyzedHash) <= NEAR_DUP_HAMMING;
+
+    let localChange = false;
+    if (!sceneChanged && thumb && state.lastAnalyzedThumb) {
+      const prevDecoded = decodeThumb(state.lastAnalyzedThumb);
+      if (prevDecoded) {
+        const activeBoxes = [...tracker.tracks.values()].map((t) => t.currentBoundingBox);
+        localChange = hasLocalChange(thumb, prevDecoded, activeBoxes, config.phashDedupThreshold);
+      }
+    }
+
+    const secondsSinceLastAnalyzed =
+      state.lastAnalyzedAtSeconds === null ? null : ts - state.lastAnalyzedAtSeconds;
+
+    const decision = decideFrameSampling({
+      sceneChanged,
+      hash,
+      lastAnalyzedHash: state.lastAnalyzedHash,
+      sceneAnalyzedCount: scene.analyzedFrameCount,
+      secondsSinceLastAnalyzed,
+      localChange,
+      config,
+    });
 
     state.lastThumb = frame.thumb ?? null;
     job.checkpoint.processedUpToSeconds = ts;
     scene.endSeconds = ts;
     scene.frameCount++;
 
-    if (nearDuplicate) {
+    if (!decision.keep) {
       skippedSimilar++;
       job.counters.framesSkippedSimilar++;
-      frameMeta.push({ timestampSeconds: ts, analyzed: false, sceneId: scene.sceneId });
+      state.pendingFlushFrame = { timestampSeconds: ts, dataUrl: frame.dataUrl, thumb: frame.thumb ?? null };
+      frameMeta.push({ timestampSeconds: ts, analyzed: false, sceneId: scene.sceneId, reason: decision.reason });
       frameResults.push({ timestampSeconds: ts, analyzed: false, sceneId: scene.sceneId, items: [] });
       continue;
     }
+    state.pendingFlushFrame = null;
 
-    // Detección SOLO en frames seleccionados.
-    const tDetect = Date.now();
-    let detections: DetectedItem[];
-    try {
-      detections = await deps.detector.detect({
-        dataUrl: frame.dataUrl,
-        timestampSeconds: ts,
-        analysisConfig: job.analysisConfig,
-      });
-    } catch (err) {
-      // Un frame fallido no tumba el job: warning y seguimos (el checkpoint
-      // ya avanzó; el estado final podrá ser partially_completed).
-      job.warnings.push(
-        `Detección fallida en t=${ts.toFixed(2)}s: ${err instanceof Error ? err.message.slice(0, 160) : "error"}`
-      );
-      job.timings.detectionMs += Date.now() - tDetect;
-      frameMeta.push({ timestampSeconds: ts, analyzed: false, sceneId: scene.sceneId });
-      frameResults.push({ timestampSeconds: ts, analyzed: false, sceneId: scene.sceneId, items: [] });
-      continue;
-    }
-    job.timings.detectionMs += Date.now() - tDetect;
-    analyzed++;
-    job.counters.framesAnalyzed++;
-    state.lastAnalyzedHash = hash;
-
-    // Tracking server-side reutilizando lib/video/tracker: el tiempo del
-    // tracker es TIEMPO DE VÍDEO en ms (un track se pierde tras ~6s de vídeo
-    // sin verse — la reaparición posterior la funde el dedup global).
-    const tTrack = Date.now();
-    const withTracks = config.trackingEnabled
-      ? associateDetections(tracker, detections, Math.round(ts * 1000))
-      : // Tracking desactivado: cada detección abre track nuevo (el dedup
-        // global sigue fundiendo el mismo objeto). Se conserva el contador
-        // de ids para que no colisionen entre lotes.
-        detections.map((d) => ({ ...d, trackId: `t${tracker.nextId++}` }));
-
-    for (const det of withTracks) {
-      updateTrackRecord(state, det, ts, frame.dataUrl, thumb, config, cropRequests);
-      state.appearances.push({
-        trackId: det.trackId,
-        timestampSeconds: ts,
-        sceneId: scene.sceneId,
-        box: det.bounding_box ?? null,
-        confidence: det.confidence,
-      });
-    }
-    job.timings.trackingMs += Date.now() - tTrack;
-
-    frameMeta.push({ timestampSeconds: ts, analyzed: true, sceneId: scene.sceneId });
-    frameResults.push({
-      timestampSeconds: ts,
-      analyzed: true,
-      sceneId: scene.sceneId,
-      items: withTracks,
+    const ok = await analyzeFrame({
+      job, state, tracker, scene, ts,
+      dataUrl: frame.dataUrl, thumb, hash, rawThumb: frame.thumb,
+      config, deps, cropRequests, frameMeta, frameResults,
+      reason: decision.reason,
     });
+    if (ok) analyzed++;
   }
 
   // Persistencia del estado: TODO vive en el store (multi-worker ready).
@@ -721,6 +896,7 @@ function buildProduct(
       group.possibleDuplicateOfIndex != null
         ? `p${group.possibleDuplicateOfIndex + 1}`
         : null,
+    matchProgress: "not_started",
     identity: {
       canonicalLabel: canonicalLabel(group.tracks.map((t) => t.name)),
       canonicalCategory: canonicalCategoryOf(item) ?? item.category,
@@ -786,6 +962,20 @@ async function embedBestCrops(
   return ok;
 }
 
+/** `matchStatus` final → progreso EN VIVO terminal (ver `MatchProgressState`). */
+function terminalMatchProgress(status: ProductMatchOutcome["status"]): MatchProgressState {
+  switch (status) {
+    case "catalog_matched":
+      return "catalog_matched";
+    case "external_candidate":
+      return "review_required";
+    case "not_searched":
+      return "not_started";
+    default:
+      return "completed";
+  }
+}
+
 export async function finalizeAnalysisJob(
   jobId: string,
   deps: JobEngineDeps
@@ -806,6 +996,35 @@ export async function finalizeAnalysisJob(
   if (!state) return { ok: false, status: 500, error: "Estado del job no disponible." };
 
   const cancelled = job.status === "cancelled";
+
+  // 0) Cerrar la ÚLTIMA escena: nunca llega un "cambio de escena" que la
+  // cierre porque no hay frame siguiente. Se rescata su pendiente si hace
+  // falta para llegar al mínimo, igual que entre dos escenas cualquiera.
+  const lastScene = state.scenes.at(-1) ?? null;
+  if (lastScene) {
+    const tracker = trackerFromState(state);
+    const flushFrameMeta: FrameMetaEntry[] = [];
+    await attemptSceneFlush({
+      scene: lastScene,
+      pending: state.pendingFlushFrame,
+      job,
+      state,
+      tracker,
+      config,
+      deps,
+      // Sin cliente al que pedir el crop real: se queda con el frame completo.
+      cropRequests: [],
+      frameMeta: flushFrameMeta,
+      frameResults: [],
+    });
+    state.pendingFlushFrame = null;
+    closeScene(lastScene, config);
+    Object.assign(state, trackerToState(tracker));
+    await deps.store.saveRuntimeState(jobId, state);
+    if (flushFrameMeta.length) {
+      await deps.store.recordFrames(jobId, flushFrameMeta).catch(() => undefined);
+    }
+  }
 
   // 1) Embeddings de los mejores crops (señal de identidad del dedup).
   const tEmbed = Date.now();
@@ -833,6 +1052,14 @@ export async function finalizeAnalysisJob(
     `${trackCount} tracks → ${products.length} productos únicos` +
       ` (${embedded} con embedding, ${job.counters.possibleDuplicates} posibles duplicados)`
   );
+
+  // 2.5) Persistencia TEMPRANA: antes de pedir nada a los proveedores, para
+  // que quien haga polling durante el matching vea productos reales (con
+  // `matchProgress: "not_started"`) en vez de nada. `updateProductProgress`
+  // solo puede actualizar una fila que ya existe.
+  if (!cancelled && products.length > 0) {
+    await deps.store.saveProducts(jobId, products);
+  }
 
   // 3) Matching por PRODUCTO ÚNICO, con concurrencia y reintentos aislados.
   // Presupuesto agotado a nivel de producto: con el default (1) la primera
@@ -867,6 +1094,9 @@ export async function finalizeAnalysisJob(
             "MATCHING",
             `${productId} · ${status} · reintento ${attempt}/${config.matchingMaxRetries}`
           );
+        },
+        onStage: (productId, stage) => {
+          void deps.store.updateProductProgress(jobId, productId, stage).catch(() => undefined);
         },
       });
   job.timings.matchingMs += Date.now() - tMatch;
@@ -912,16 +1142,47 @@ export async function finalizeAnalysisJob(
       default:
         unresolvedProducts++;
     }
+    product.matchProgress = terminalMatchProgress(product.matchStatus);
   }
 
-  // 5) Estado final honesto. Un producto sin resolver NO invalida el job:
-  // los demás productos son resultados perfectamente utilizables.
+  // 5) Cobertura temporal real (no "frames analizados") + validación de
+  // integridad. Un job no puede llegar a `completed` en silencio si algo de
+  // esto falla — se degrada a `partially_completed` con el motivo exacto.
+  const coverage = computeTemporalCoverage({
+    videoDurationMs: Math.round(job.media.durationSeconds * 1000),
+    scenes: state.scenes,
+    requireSceneCoverage: config.sceneCoverageRequired,
+  });
+  job.coverage = coverage;
+
+  // Estado final honesto. Un producto sin resolver NO invalida el job: los
+  // demás productos son resultados perfectamente utilizables.
   if (!cancelled) {
     job.status =
       unresolvedProducts > 0 || job.warnings.length > 0
         ? "partially_completed"
         : "completed";
   }
+
+  const integrityErrors = cancelled
+    ? []
+    : validateProcessedVideoResult({
+        job: {
+          status: job.status,
+          warnings: job.warnings,
+          timings: job.timings,
+          counters: job.counters,
+          matchingMode: job.matchingMode,
+        },
+        scenes: state.scenes,
+        products,
+        coverage,
+        externalSearchEnabled: getMatchingConfig(deps.env).externalSearchEnabled,
+        unresolvedProducts,
+      });
+  job.integrityErrors = integrityErrors;
+  if (!cancelled && integrityErrors.length > 0) job.status = "partially_completed";
+
   job.finishedAt = Date.now();
   job.media.processedAt = job.finishedAt;
   job.timings.totalMs = job.finishedAt - (job.startedAt ?? job.createdAt);
@@ -932,7 +1193,8 @@ export async function finalizeAnalysisJob(
     "info",
     "PERSIST",
     `${products.length} productos guardados · ${job.counters.catalogHits} en catálogo` +
-      ` · ${job.counters.externalCandidates} candidatos externos · ${job.timings.totalMs} ms`
+      ` · ${job.counters.externalCandidates} candidatos externos · cobertura ${coverage.coveragePercent}%` +
+      ` · ${integrityErrors.length} error(es) de integridad · ${job.timings.totalMs} ms`
   );
   return { ok: true, job, products };
 }
