@@ -1,5 +1,5 @@
 /**
- * Cliente de base de datos (Neon Postgres) — punto de entrada único.
+ * Cliente de base de datos (Supabase Postgres) — punto de entrada único.
  *
  *   import { db, schema, isDatabaseConfigured } from "@/lib/db";
  *
@@ -9,9 +9,10 @@
  * la URL completa (ver `describeConnection`).
  *
  * Drizzle se monta SOBRE el mismo `pg.Pool` que ya usa el código con SQL
- * crudo (lib/db/pool.ts). Un solo pool, un solo presupuesto de conexiones:
- * Neon las cobra por proyecto y el pooler tiene un techo, así que abrir un
- * segundo pool para el ORM sería pagar dos veces por lo mismo.
+ * crudo (lib/db/pool.ts). Un solo pool, un solo presupuesto de conexiones: el
+ * pooler de Supabase (Supavisor) tiene un techo de conexiones por proyecto,
+ * así que abrir un segundo pool para el ORM sería pagar dos veces por lo
+ * mismo.
  *
  * Convivencia con SQL crudo: las queries existentes (lib/catalogIngestion,
  * lib/catalog) siguen funcionando sin cambios. Drizzle es la vía tipada para
@@ -58,12 +59,12 @@ export const db = new Proxy({} as NodePgDatabase<typeof schema>, {
 
 /**
  * Descripción de la conexión SEGURA PARA LOGS Y RESPUESTAS: host, base de
- * datos y si parece Neon. Nunca usuario ni contraseña.
+ * datos y si parece Supabase. Nunca usuario ni contraseña.
  */
 export function describeConnection(): {
   host: string;
   database: string;
-  isNeon: boolean;
+  isSupabase: boolean;
   pooled: boolean;
 } | null {
   const raw = process.env.DATABASE_URL;
@@ -73,10 +74,11 @@ export function describeConnection(): {
     return {
       host: url.hostname,
       database: url.pathname.replace(/^\//, "") || "(default)",
-      isNeon: url.hostname.endsWith(".neon.tech"),
-      // Neon expone dos endpoints por rama: el directo y el `-pooler`
-      // (PgBouncer). En serverless queremos SIEMPRE el pooler.
-      pooled: url.hostname.includes("-pooler."),
+      isSupabase: url.hostname.endsWith(".supabase.co") || url.hostname.endsWith(".supabase.com"),
+      // Supabase expone dos endpoints: el directo (db.<ref>.supabase.co,
+      // IPv6-only salvo add-on) y el pooler (Supavisor, *.pooler.supabase.com).
+      // En serverless queremos SIEMPRE el pooler.
+      pooled: url.hostname.endsWith(".pooler.supabase.com"),
     };
   } catch {
     return null;

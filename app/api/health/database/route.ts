@@ -6,21 +6,21 @@ import { isDatabaseConfigured, getPool } from "@/lib/db/pool";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-/** Migraciones esperadas: db/migrations tiene 7 ficheros .sql. */
-const EXPECTED_MIGRATIONS = 7;
+/** Migraciones esperadas: db/migrations tiene 14 ficheros .sql. */
+const EXPECTED_MIGRATIONS = 14;
 
 /**
- * GET /api/health/database — estado de la base de datos (Neon) SIN exponer
- * usuario, contraseña ni la connection string. Distingue tres cosas que en
- * producción se confunden mucho:
+ * GET /api/health/database — estado de la base de datos (Supabase) SIN
+ * exponer usuario, contraseña ni la connection string. Distingue tres cosas
+ * que en producción se confunden mucho:
  *
  *   · no configurada      → DATABASE_URL ausente o no es postgres://
  *   · inalcanzable        → hay URL pero la conexión falla
  *   · alcanzable a medias → conecta pero faltan migraciones
  *
  * Del host solo se devuelve el nombre (no lleva credenciales) porque saber a
- * QUÉ rama de Neon está apuntando un deploy es justo el dato que hace falta
- * cuando "los datos no aparecen".
+ * QUÉ proyecto de Supabase está apuntando un deploy es justo el dato que hace
+ * falta cuando "los datos no aparecen".
  */
 export async function GET() {
   const connection = describeConnection();
@@ -34,8 +34,8 @@ export async function GET() {
         driver: "postgres",
         detail:
           "DATABASE_URL ausente o no es una cadena postgres://. Se usa el " +
-          "catálogo en memoria. Copia la connection string del endpoint " +
-          "-pooler desde Neon → Connect.",
+          "catálogo en memoria. Copia la connection string del Transaction " +
+          "pooler desde Supabase → Connect.",
       },
       { status: 503 }
     );
@@ -68,7 +68,7 @@ export async function GET() {
         latencyMs,
         host: connection?.host ?? null,
         database: connection?.database ?? null,
-        provider: connection?.isNeon ? "neon" : "postgres",
+        provider: connection?.isSupabase ? "supabase" : "postgres",
         pooled: connection?.pooled ?? null,
         detail: migrationsUpToDate
           ? null
@@ -87,7 +87,7 @@ export async function GET() {
         migrationsUpToDate: false,
         driver: "postgres",
         host: connection?.host ?? null,
-        provider: connection?.isNeon ? "neon" : "postgres",
+        provider: connection?.isSupabase ? "supabase" : "postgres",
         detail: `No se pudo conectar (${name}). Revisa host, contraseña y SSL de la connection string.`,
       },
       { status: 503 }

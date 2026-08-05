@@ -16,8 +16,8 @@ import { invalidateProductSnapshot } from "./productSnapshot";
 
 /**
  * Store en fichero JSON (data/catalog.json). Es el backend por defecto cuando
- * no hay DATABASE_URL válida — el .env heredado del proyecto tiene la URL REST
- * de Neon, así que este backend es el que sostiene la demo E2E completa.
+ * no hay DATABASE_URL válida — este backend es el que sostiene la demo E2E
+ * completa en ese caso.
  *
  * La búsqueda vectorial se hace por similitud coseno en memoria: con miles de
  * productos es instantánea; para cientos de miles hace falta Postgres+pgvector.

@@ -46,9 +46,9 @@ Abre [http://localhost:3000](http://localhost:3000). El catálogo está en
 | `NEXT_PUBLIC_APP_NAME`      | Nombre de la app (cliente).                                        | `Pause2Shop`   |
 | `DATABASE_URL`              | Postgres/Supabase. Vacía → **catálogo en memoria** (no persiste).  | _(vacío)_      |
 | `DATABASE_SSL`              | `true` exige SSL (Supabase); `false` en local sin SSL.             | `true`         |
-| `SUPABASE_URL`              | _(opcional)_ Solo para subir frames/crops a Storage (futuro).      | _(vacío)_      |
-| `SUPABASE_SERVICE_ROLE_KEY` | _(opcional)_ Igual que arriba. **Nunca** se expone al cliente.     | _(vacío)_      |
-| `STORAGE_BUCKET`            | _(opcional)_ Bucket de Supabase Storage para imágenes.             | `frames`       |
+| `STORAGE_PROVIDER`          | `vercel_blob` (persistente) o `local` (efímero, solo dev).         | `vercel_blob`  |
+| `BLOB_READ_WRITE_TOKEN`     | Token de Vercel Blob. Requerido si `STORAGE_PROVIDER=vercel_blob`. | _(vacío)_      |
+| `STORAGE_BUCKET`            | Prefijo/carpeta lógica dentro del store de Vercel Blob.            | _(vacío)_      |
 | `ENABLE_MOCK_PRODUCTS`      | `false` desactiva el mock (solo aplica si no hay `OPENAI_API_KEY`). | `true`         |
 
 > 🔒 La llamada a OpenAI y el acceso a la base de datos se hacen **siempre desde el
@@ -57,17 +57,19 @@ Abre [http://localhost:3000](http://localhost:3000). El catálogo está en
 ## 🛢️ Base de datos (Postgres / Supabase)
 
 El catálogo persiste en Postgres mediante `pg` (node-postgres) usando `DATABASE_URL`.
-Funciona con Neon, RDS o un Postgres local.
+Funciona con Supabase, RDS o un Postgres local.
 
-### Opción A — Neon (recomendado)
+### Opción A — Supabase (recomendado)
 
-1. Crea un proyecto en [neon.com](https://neon.com).
-2. En **Connect**, copia la connection string del endpoint **`-pooler`** y pégala en
-   `.env.local` como `DATABASE_URL`. Deja `DATABASE_SSL` vacía: Neon exige TLS y la
-   cadena ya lleva `sslmode=require`.
+1. Crea un proyecto en [supabase.com](https://supabase.com).
+2. En **Connect → ORM/Direct**, elige **Transaction pooler** y copia la connection
+   string (puerto `6543`) a `.env.local` como `DATABASE_URL`. Percent-codifica
+   cualquier carácter especial de la contraseña (`@` → `%40`, `$` → `%24`, …).
 
-   El `-pooler` no es opcional en serverless: con el endpoint directo, cada
-   invocación abre su propia conexión y se agota el límite del proyecto.
+   El pooler no es opcional en serverless: la conexión directa (`db.<ref>.supabase.co`,
+   puerto `5432`) es **IPv6-only** salvo que actives el add-on de IPv4, y además con
+   el endpoint directo cada invocación abre su propia conexión y se agota el límite
+   del proyecto.
 3. Aplica el esquema y verifica:
 
    ```bash
@@ -306,7 +308,7 @@ lib/
   db/ pool · schema (espejo tipado Drizzle) · index (cliente)
   mediaStorage/index                   (publicación de frames/crops públicos)
 scripts/migrate.ts                     (aplicador de migraciones)
-scripts/verifyDb.ts                    (verificación de la conexión a Neon)
+scripts/verifyDb.ts                    (verificación de la conexión a Supabase)
 db/migrations/*.sql                    (esquema del catálogo — fuente de verdad)
 test/*.test.ts
 ```

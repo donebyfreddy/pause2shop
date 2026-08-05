@@ -1391,7 +1391,7 @@
         "missing": "없음 또는 postgres://가 아님",
         "dataDirLabel": "데이터 디렉터리",
         "imagesDirLabel": "이미지 디렉터리",
-        "fileWarning": "파일 모드: 카탈로그는 JSON으로 저장되며 벡터 검색은 메모리에서 수행됩니다. pgvector를 활성화하려면 <code>postgres://</code> 연결 문자열(Neon의 <code>-pooler</code> 엔드포인트)을 설정하고 마이그레이션을 실행하세요."
+        "fileWarning": "파일 모드: 카탈로그는 JSON으로 저장되며 벡터 검색은 메모리에서 수행됩니다. pgvector를 활성화하려면 <code>postgres://</code> 연결 문자열(Supabase의 <code>-pooler</code> 엔드포인트)을 설정하고 마이그레이션을 실행하세요."
       },
       "embeddings": {
         "reindex": "재인덱싱",

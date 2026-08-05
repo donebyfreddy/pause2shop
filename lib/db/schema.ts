@@ -1,5 +1,5 @@
 /**
- * Esquema Drizzle del Postgres de Pause2Shop (Neon).
+ * Esquema Drizzle del Postgres de Pause2Shop (Supabase).
  *
  * ESTE FICHERO NO ES LA FUENTE DE VERDAD DEL DDL. Las tablas se crean y
  * evolucionan con los .sql de `db/migrations/` (ver scripts/migrate.ts), que
@@ -38,7 +38,7 @@ import {
  * (CATALOG_EMBEDDING_PROVIDER), no el DDL. Por eso no se puede tipar como
  * `vector(768)`: se declara sin dimensión y la conversión se hace a mano.
  *
- * Neon trae pgvector, así que en producción la columna es `vector`.
+ * Supabase trae pgvector, así que en producción la columna es `vector`.
  */
 const embedding = customType<{ data: number[]; driverData: string }>({
   dataType: () => "vector",

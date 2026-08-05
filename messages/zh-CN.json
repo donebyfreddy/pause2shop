@@ -1391,7 +1391,7 @@
         "missing": "缺失或不是 postgres:// 格式",
         "dataDirLabel": "数据目录",
         "imagesDirLabel": "图片目录",
-        "fileWarning": "文件模式：商品库以 JSON 形式持久化，向量搜索在内存中进行。配置一个 <code>postgres://</code> 连接字符串（Neon 的 <code>-pooler</code> 端点）并运行迁移以启用 pgvector。"
+        "fileWarning": "文件模式：商品库以 JSON 形式持久化，向量搜索在内存中进行。配置一个 <code>postgres://</code> 连接字符串（Supabase 的 <code>-pooler</code> 端点）并运行迁移以启用 pgvector。"
       },
       "embeddings": {
         "reindex": "重建索引",

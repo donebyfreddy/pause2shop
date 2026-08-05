@@ -1,5 +1,5 @@
 /**
- * Verificación de la conexión a Neon.
+ * Verificación de la conexión a Supabase.
  *
  *   npm run db:verify
  *
@@ -79,7 +79,7 @@ async function main(): Promise<void> {
     fail(
       "DATABASE_URL",
       "no está configurada",
-      "Añádela a .env.local (Neon → Connect → connection string del -pooler)."
+      "Añádela a .env.local (Supabase → Connect → Transaction pooler)."
     );
     process.exit(1);
   }
@@ -94,18 +94,25 @@ async function main(): Promise<void> {
   pass("DATABASE_URL", describeDatabaseUrl(connectionString));
 
   const host = new URL(connectionString).hostname;
-  if (host.endsWith(".neon.tech") && !host.includes("-pooler.")) {
+  const isSupabaseHost = host.endsWith(".supabase.co") || host.endsWith(".pooler.supabase.com");
+  if (host.endsWith(".supabase.co") && !host.endsWith(".pooler.supabase.com")) {
     warn(
       "Endpoint",
-      "es la conexión directa de Neon, no el pooler. En serverless cada " +
-        "invocación abre su propia conexión y se agota el límite: usa el host -pooler."
+      "es la conexión directa de Supabase (IPv6-only salvo add-on), no el " +
+        "pooler. En serverless usa el Transaction pooler (*.pooler.supabase.com)."
     );
   }
 
-  const ssl =
-    process.env.DATABASE_SSL === "false"
-      ? false
-      : /[?&]sslmode=/i.test(connectionString) || { rejectUnauthorized: true };
+  let ssl: boolean | { rejectUnauthorized: boolean };
+  if (process.env.DATABASE_SSL === "false") {
+    ssl = false;
+  } else if (isSupabaseHost) {
+    // Ver el comentario extenso en lib/db/pool.ts (sslConfig): el pooler de
+    // Supabase no verifica contra el almacén de confianza del sistema.
+    ssl = { rejectUnauthorized: false };
+  } else {
+    ssl = /[?&]sslmode=/i.test(connectionString) || { rejectUnauthorized: true };
+  }
   if (ssl === false) {
     warn("TLS", "desactivado por DATABASE_SSL=false (solo para Postgres local)");
   }
@@ -119,7 +126,7 @@ async function main(): Promise<void> {
     fail(
       "Conexión",
       err instanceof Error ? err.message : String(err),
-      "Comprueba que la contraseña es la vigente y que el proyecto de Neon existe."
+      "Comprueba que la contraseña es la vigente y que el proyecto de Supabase existe y no está pausado."
     );
     process.exit(1);
   }

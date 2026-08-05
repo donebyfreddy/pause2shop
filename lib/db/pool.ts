@@ -2,7 +2,7 @@ import { Pool } from "pg";
 import type { PoolClient, QueryResult, QueryResultRow } from "pg";
 
 /**
- * Pool de Postgres compartido (Neon). La conexión se hace SIEMPRE desde el
+ * Pool de Postgres compartido (Supabase). La conexión se hace SIEMPRE desde el
  * servidor (route handlers con runtime = "nodejs"); las credenciales nunca
  * llegan al cliente. Si no hay DATABASE_URL, el catálogo cae a un repositorio
  * en memoria (ver lib/catalog) — mismo patrón "modo demo" que la visión sin
@@ -31,7 +31,7 @@ export function isDatabaseConfigured(): boolean {
       console.warn(
         "[db] DATABASE_URL no es una cadena postgres:// . Se usará el catálogo " +
           "en memoria. Copia la connection string del pooler desde el " +
-          "dashboard de Neon → Connect."
+          "dashboard de Supabase → Connect → Transaction pooler."
       );
     }
     return false;
@@ -39,19 +39,40 @@ export function isDatabaseConfigured(): boolean {
   return true;
 }
 
+function isSupabaseHost(hostname: string): boolean {
+  return hostname.endsWith(".supabase.co") || hostname.endsWith(".pooler.supabase.com");
+}
+
 /**
- * Configuración TLS. Neon exige TLS y su certificado es válido y público, así
- * que verificamos la cadena en vez de desactivarla: `rejectUnauthorized: false`
- * aceptaría cualquier certificado y tiraría por tierra la protección contra
- * man-in-the-middle sobre una conexión que lleva la contraseña de la base.
+ * Configuración TLS.
  *
- * Si la URL ya trae `sslmode`, dejamos que `pg` lo interprete y no pasamos
- * objeto `ssl` — pasar ambos hace que el objeto gane silenciosamente sobre lo
- * que dice la cadena, que es justo la clase de sorpresa que no queremos aquí.
- * `DATABASE_SSL=false` sigue siendo el escape para un Postgres local sin TLS.
+ * El pooler de Supabase (Supavisor) sirve un certificado cuya cadena no
+ * verifica contra el almacén de confianza del sistema (comprobado con
+ * `psql sslmode=verify-full sslrootcert=system`, falla igual) — es una
+ * limitación conocida del servicio, no un problema de esta app. Para esos
+ * hosts la conexión sigue siendo TLS (el tráfico va cifrado), pero sin
+ * verificar la cadena: `rejectUnauthorized: false`.
+ *
+ * Para cualquier otro Postgres (uno con certificado público verificable)
+ * mantenemos verificación estricta: `rejectUnauthorized: false` a ciegas
+ * tiraría por tierra la protección contra man-in-the-middle sobre una
+ * conexión que lleva la contraseña de la base.
+ *
+ * Si la URL ya trae `sslmode` y el host no es de Supabase, dejamos que `pg`
+ * lo interprete y no pasamos objeto `ssl` — pasar ambos hace que el objeto
+ * gane silenciosamente sobre lo que dice la cadena, que es justo la clase de
+ * sorpresa que no queremos aquí. `DATABASE_SSL=false` sigue siendo el escape
+ * para un Postgres local sin TLS.
  */
 function sslConfig(url: string): boolean | { rejectUnauthorized: boolean } {
   if (process.env.DATABASE_SSL === "false") return false;
+  let hostname = "";
+  try {
+    hostname = new URL(url).hostname;
+  } catch {
+    // URL inválida: se detecta y falla más abajo, no aquí.
+  }
+  if (isSupabaseHost(hostname)) return { rejectUnauthorized: false };
   if (/[?&]sslmode=/i.test(url)) return true;
   return { rejectUnauthorized: true };
 }
@@ -74,18 +95,11 @@ export function getPool(): Pool {
       /**
        * Los límites siguen existiendo para que un host inalcanzable falle
        * rápido en vez de colgarse hasta el timeout TCP del SO (~75-85 s)
-       * ocupando un slot del pool. Pero están calibrados para Neon, no para un
-       * Postgres siempre caliente.
+       * ocupando un slot del pool.
        *
-       * Neon escala a cero: tras un rato sin tráfico el compute se suspende y
-       * la PRIMERA conexión tiene que despertarlo. Medido en este proyecto,
-       * ese arranque en frío tarda ~3 s (y puede ir a más si la región va
-       * cargada), mientras que las queries en caliente van en 300-500 ms.
-       *
-       * Con los 3 s / 5 s de antes, la primera petición después de cada
-       * periodo de inactividad caía justo en el límite y fallaba de forma
-       * intermitente — el clásico "la primera vez nunca carga". 15 s da
-       * margen al arranque en frío y sigue estando muy lejos de los 75 s.
+       * El compute "nano" de Supabase (plan gratuito) también puede tener un
+       * arranque en frío tras inactividad prolongada. 15 s da margen de sobra
+       * sin acercarse a los 75 s del timeout TCP.
        */
       connectionTimeoutMillis: 15_000,
       query_timeout: 15_000,

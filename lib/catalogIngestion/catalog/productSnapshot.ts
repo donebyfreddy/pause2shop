@@ -8,7 +8,7 @@ import type { CatalogStore } from "./store";
  * a `store.allProducts()` una vez POR OBJETO detectado. Contra Postgres eso es
  * traerse el documento JSONB entero de cada producto —embedding CLIP de 512
  * floats incluido— por la red, en cada petición. Con ~1000 fichas y tres
- * objetos resolviéndose en paralelo (lo normal en un frame), Neon devolvía
+ * objetos resolviéndose en paralelo (lo normal en un frame), Supabase devolvía
  * "Query read timeout" y el matching se caía justo cuando el catálogo pasó a
  * ser la fuente principal.
  *

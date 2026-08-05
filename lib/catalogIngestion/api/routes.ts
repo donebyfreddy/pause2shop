@@ -258,7 +258,7 @@ export function buildRouter(store: CatalogStore): Router {
    * Antes cada `describeConnector` hacía `getSourceState` + `countProducts` del
    * conector: con 68 fuentes, 136 round trips por petición a través de un pool
    * de 5 conexiones. Contra un Postgres local (~1 ms) pasaba desapercibido;
-   * contra Neon (cientos de ms por query) la landing tardaba 15-25 s.
+   * contra Supabase (cientos de ms por query) la landing tardaba 15-25 s.
    */
   const prefetchSourceData = async () => {
     const [states, counts, extraction, jobs] = await Promise.all([

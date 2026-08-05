@@ -104,11 +104,11 @@ export function resolveOptions(
  *
  * Medido: en serie, importar 100 fichas tardó 236 s — 2,4 s por ficha — con
  * CLIP costando solo 37 ms. El resto era latencia de red en serie: descargar la
- * imagen de HuggingFace, subirla al storage y tres o cuatro viajes a Neon (que
+ * imagen de HuggingFace, subirla al storage y tres o cuatro viajes a Supabase (que
  * está en eu-central-1). Trabajo dominado por I/O, no por CPU, así que se
  * solapa.
  *
- * Se queda en 6 a propósito y no más: por encima, Neon empieza a rechazar
+ * Se queda en 6 a propósito y no más: por encima, Supabase empieza a rechazar
  * conexiones (el pool es de 5 por proceso) y HuggingFace responde 429.
  */
 const ROW_CONCURRENCY = 6;

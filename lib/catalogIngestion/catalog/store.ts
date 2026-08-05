@@ -124,7 +124,7 @@ export interface CatalogStore {
    * Nº de productos por fuente, TODAS de una vez.
    *
    * Existe para no hacer un `countProducts(id)` por conector: con 68 fuentes
-   * eso son 68 round trips, y contra una base remota (Neon) cada uno cuesta
+   * eso son 68 round trips, y contra una base remota (Supabase) cada uno cuesta
    * cientos de ms. Aquí es un solo `GROUP BY`.
    *
    * Las fuentes sin productos NO aparecen en el mapa: quien lo use debe

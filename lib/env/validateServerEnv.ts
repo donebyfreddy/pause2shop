@@ -89,16 +89,20 @@ function invalid(hint: string): { status: EnvStatus; hint?: string } {
 /**
  * Forma del endpoint de Postgres, sin revelar la connection string. Lo que
  * importa operativamente es si apunta al pooler: con el endpoint directo de
- * Neon, cada invocación serverless abre su propia conexión y se agota el límite
- * del proyecto en cuanto hay algo de tráfico.
+ * Supabase (IPv6-only salvo add-on de IPv4), cada invocación serverless abre
+ * su propia conexión y se agota el límite del proyecto en cuanto hay algo de
+ * tráfico.
  */
 function describePostgresHost(v: string): string {
   try {
     const host = new URL(v).hostname;
-    if (!host.endsWith(".neon.tech")) return "postgres://… (host propio)";
-    return host.includes("-pooler.")
-      ? "Neon, endpoint -pooler (correcto para serverless)"
-      : "Neon, conexión DIRECTA — usa el endpoint -pooler en serverless";
+    if (host.endsWith(".pooler.supabase.com")) {
+      return "Supabase, Transaction pooler (correcto para serverless)";
+    }
+    if (host.endsWith(".supabase.co")) {
+      return "Supabase, conexión DIRECTA — usa el Transaction pooler en serverless";
+    }
+    return "postgres://… (host propio)";
   } catch {
     return "postgres://…";
   }
@@ -115,9 +119,9 @@ export function validateServerEnv(): EnvCheck[] {
   checks.push(present("VISION_MODEL", false, () => configured()));
 
   // DATABASE_URL: DEBE ser postgres:// / postgresql:// — nunca una URL HTTP.
-  // Es la ÚNICA fuente de la conexión (Neon). No hay variante NEXT_PUBLIC_ a
-  // propósito: la connection string lleva la contraseña y no puede salir al
-  // navegador bajo ninguna circunstancia.
+  // Es la ÚNICA fuente de la conexión (Supabase). No hay variante
+  // NEXT_PUBLIC_ a propósito: la connection string lleva la contraseña y no
+  // puede salir al navegador bajo ninguna circunstancia.
   checks.push(
     present("DATABASE_URL", true, (v) => {
       if (/^postgres(ql)?:\/\//.test(v)) return ok(describePostgresHost(v));

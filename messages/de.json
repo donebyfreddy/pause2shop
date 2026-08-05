@@ -1391,7 +1391,7 @@
         "missing": "fehlt oder ist kein postgres://",
         "dataDirLabel": "Datenverzeichnis",
         "imagesDirLabel": "Bildverzeichnis",
-        "fileWarning": "Dateimodus: Der Katalog wird als JSON persistiert, und die Vektorsuche läuft im Speicher. Konfiguriere eine <code>postgres://</code>-Connection-String (Neons <code>-pooler</code>-Endpunkt) und führe die Migrationen aus, um pgvector zu aktivieren."
+        "fileWarning": "Dateimodus: Der Katalog wird als JSON persistiert, und die Vektorsuche läuft im Speicher. Konfiguriere eine <code>postgres://</code>-Connection-String (Supabases <code>-pooler</code>-Endpunkt) und führe die Migrationen aus, um pgvector zu aktivieren."
       },
       "embeddings": {
         "reindex": "Neu indexieren",

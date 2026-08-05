@@ -10,7 +10,7 @@
  * REST. Ahora es este adaptador: el motor de búsqueda visual pide "publica
  * este buffer y dame una URL" y no sabe ni le importa quién lo sirve.
  *
- * REGLA QUE NO SE ROMPE: los binarios NUNCA se guardan en Postgres. Neon cobra
+ * REGLA QUE NO SE ROMPE: los binarios NUNCA se guardan en Postgres. Supabase cobra
  * por almacenamiento y por transferencia, los blobs revientan los backups y una
  * fila de varios MB destroza el rendimiento de cualquier `select *` que la
  * toque. En la base de datos van la URL y el hash; los píxeles, fuera.

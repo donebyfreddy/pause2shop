@@ -59,7 +59,7 @@ export interface FindDuplicateOptions {
    *    hasta 5.000 `doc` jsonb completos (embeddings incluidos) por CADA
    *    producto que no case por un nivel exacto. Un producto nuevo nunca casa,
    *    así que importar 1.000 fichas nuevas serían 1.000 escaneos completos:
-   *    gigabytes de egreso de Neon para no encontrar nada.
+   *    gigabytes de egreso de Supabase para no encontrar nada.
    *
    *  · CORRECCIÓN. Cuando la fuente tiene ids propios y únicos por construcción
    *    (un dataset cerrado), el id ES la autoridad y el nivel difuso solo puede

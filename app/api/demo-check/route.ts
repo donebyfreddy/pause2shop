@@ -205,14 +205,14 @@ async function checkDataForSeo(): Promise<CheckResult> {
 }
 
 async function checkDatabase(): Promise<CheckResult> {
-  const base = { id: "database", label: "Base de datos (Neon Postgres)" };
+  const base = { id: "database", label: "Base de datos (Supabase Postgres)" };
   if (!process.env.DATABASE_URL) {
     return {
       ...base,
       status: "warning",
       latencyMs: null,
       detail: "DATABASE_URL no configurada: catálogo en memoria (se pierde al reiniciar).",
-      action: "Opcional para la demo. Copia la connection string del endpoint -pooler de Neon.",
+      action: "Opcional para la demo. Copia la connection string del Transaction pooler de Supabase.",
     };
   }
   if (!isDatabaseConfigured()) {
@@ -222,7 +222,7 @@ async function checkDatabase(): Promise<CheckResult> {
       latencyMs: null,
       detail:
         "DATABASE_URL no es una cadena postgres://. Catálogo en memoria.",
-      action: "Cópiala del dashboard de Neon → Connect (endpoint -pooler).",
+      action: "Cópiala del dashboard de Supabase → Connect → Transaction pooler.",
     };
   }
   const lap = timed();
@@ -235,7 +235,7 @@ async function checkDatabase(): Promise<CheckResult> {
       status: "warning",
       latencyMs: lap(),
       detail: `DB inaccesible (${err instanceof Error ? err.message : "error"}). La app usa memoria automáticamente.`,
-      action: "Comprueba las credenciales y que la rama de Neon exista.",
+      action: "Comprueba las credenciales y que el proyecto de Supabase exista y no esté pausado.",
     };
   }
 }

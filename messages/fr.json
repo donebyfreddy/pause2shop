@@ -1391,7 +1391,7 @@
         "missing": "absente ou non postgres://",
         "dataDirLabel": "Répertoire de données",
         "imagesDirLabel": "Répertoire d'images",
-        "fileWarning": "Mode fichier : le catalogue persiste en JSON et la recherche vectorielle se fait en mémoire. Configurez une connection string <code>postgres://</code> (endpoint <code>-pooler</code> de Neon) et exécutez les migrations pour activer pgvector."
+        "fileWarning": "Mode fichier : le catalogue persiste en JSON et la recherche vectorielle se fait en mémoire. Configurez une connection string <code>postgres://</code> (endpoint <code>-pooler</code> de Supabase) et exécutez les migrations pour activer pgvector."
       },
       "embeddings": {
         "reindex": "Réindexer",

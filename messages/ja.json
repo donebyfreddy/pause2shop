@@ -1391,7 +1391,7 @@
         "missing": "存在しない、またはpostgres://ではありません",
         "dataDirLabel": "データディレクトリ",
         "imagesDirLabel": "画像ディレクトリ",
-        "fileWarning": "ファイルモード: カタログはJSONで永続化され、ベクトル検索はメモリ内で行われます。<code>postgres://</code>接続文字列(Neonの<code>-pooler</code>エンドポイント)を設定してマイグレーションを実行し、pgvectorを有効化してください。"
+        "fileWarning": "ファイルモード: カタログはJSONで永続化され、ベクトル検索はメモリ内で行われます。<code>postgres://</code>接続文字列(Supabaseの<code>-pooler</code>エンドポイント)を設定してマイグレーションを実行し、pgvectorを有効化してください。"
       },
       "embeddings": {
         "reindex": "再インデックス",

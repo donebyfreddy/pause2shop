@@ -60,11 +60,12 @@ export function describeDatabaseUrl(raw: string): string {
   try {
     const url = new URL(raw);
     const database = url.pathname.replace(/^\//, "") || "(default)";
-    const flavour = url.hostname.endsWith(".neon.tech")
-      ? url.hostname.includes("-pooler.")
-        ? "Neon (pooler)"
-        : "Neon (conexión directa)"
-      : "Postgres";
+    let flavour = "Postgres";
+    if (url.hostname.endsWith(".pooler.supabase.com")) {
+      flavour = "Supabase (pooler)";
+    } else if (url.hostname.endsWith(".supabase.co")) {
+      flavour = "Supabase (conexión directa)";
+    }
     return `${flavour} · ${url.hostname} · db="${database}"`;
   } catch {
     return "(DATABASE_URL no es una URL válida)";

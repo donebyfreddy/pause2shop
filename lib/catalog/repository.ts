@@ -17,7 +17,7 @@ import type {
 
 /**
  * Contrato del catálogo. Hay dos implementaciones:
- *  - PostgresCatalogRepository (producción: Neon Postgres)
+ *  - PostgresCatalogRepository (producción: Supabase Postgres)
  *  - MemoryCatalogRepository (fallback sin DATABASE_URL + tests)
  *
  * La elección la hace lib/catalog/index.ts según haya o no DATABASE_URL.

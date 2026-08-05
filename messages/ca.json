@@ -1391,7 +1391,7 @@
         "missing": "absent o no és postgres://",
         "dataDirLabel": "Directori de dades",
         "imagesDirLabel": "Directori d'imatges",
-        "fileWarning": "Mode fitxer: el catàleg persisteix en JSON i la cerca vectorial es fa en memòria. Configura una connection string <code>postgres://</code> (endpoint <code>-pooler</code> de Neon) i executa les migracions per activar pgvector."
+        "fileWarning": "Mode fitxer: el catàleg persisteix en JSON i la cerca vectorial es fa en memòria. Configura una connection string <code>postgres://</code> (endpoint <code>-pooler</code> de Supabase) i executa les migracions per activar pgvector."
       },
       "embeddings": {
         "reindex": "Reindexa",

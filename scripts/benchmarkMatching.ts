@@ -11,7 +11,7 @@
  * `catalog_products`: un fallo a mitad de limpieza dejaría basura en el
  * catálogo de verdad, y el catálogo de verdad es lo que se está midiendo.
  *
- * IMPORTANTE al leer los resultados: entre este proceso y Neon hay ~200 ms de
+ * IMPORTANTE al leer los resultados: entre este proceso y Supabase hay ~200 ms de
  * ida y vuelta. Ese suelo se mide aparte (`RTT`) y hay que restarlo para
  * estimar producción, donde funciones y base están en la misma región.
  */

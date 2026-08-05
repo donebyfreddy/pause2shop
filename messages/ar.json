@@ -1391,7 +1391,7 @@
         "missing": "غائبة أو ليست postgres://",
         "dataDirLabel": "دليل البيانات",
         "imagesDirLabel": "دليل الصور",
-        "fileWarning": "وضع الملف: يستمر الكتالوج بصيغة JSON ويتم البحث الاتجاهي في الذاكرة. اضبط سلسلة اتصال <code>postgres://</code> (نقطة نهاية <code>-pooler</code> من Neon) ونفّذ الترحيلات لتفعيل pgvector."
+        "fileWarning": "وضع الملف: يستمر الكتالوج بصيغة JSON ويتم البحث الاتجاهي في الذاكرة. اضبط سلسلة اتصال <code>postgres://</code> (نقطة نهاية <code>-pooler</code> من Supabase) ونفّذ الترحيلات لتفعيل pgvector."
       },
       "embeddings": {
         "reindex": "إعادة فهرسة",

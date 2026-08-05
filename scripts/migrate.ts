@@ -1,5 +1,5 @@
 /**
- * Aplicador de migraciones para Neon (o cualquier Postgres).
+ * Aplicador de migraciones para Supabase (o cualquier Postgres).
  *
  *   npm run db:migrate
  *
@@ -28,8 +28,8 @@ async function main(): Promise<void> {
   if (!connectionString) {
     console.error(
       "\n✖ Falta DATABASE_URL. Configúrala en .env.local antes de migrar.\n" +
-        "  (En Neon: dashboard del proyecto → Connect → connection string\n" +
-        "   del endpoint -pooler.)\n"
+        "  (En Supabase: dashboard del proyecto → Connect → Transaction\n" +
+        "   pooler, connection string tipo URI.)\n"
     );
     process.exit(1);
   }
@@ -49,7 +49,7 @@ async function main(): Promise<void> {
     console.error(
       `\n✖ DATABASE_URL usa ${databaseUrl.protocol}//, pero las migraciones ` +
         "requieren una cadena postgres:// o postgresql://.\n" +
-        "  Cópiala del dashboard de Neon → Connect (endpoint -pooler).\n"
+        "  Cópiala del dashboard de Supabase → Connect (Transaction pooler).\n"
     );
     process.exit(1);
   }
@@ -57,11 +57,21 @@ async function main(): Promise<void> {
   // Nunca la URL completa: lleva la contraseña y esto se ejecuta en CI.
   console.log(`\nBase de datos: ${describeDatabaseUrl(connectionString)}\n`);
 
-  // Neon exige TLS con certificado válido; ver lib/db/pool.ts (sslConfig).
-  const ssl =
-    process.env.DATABASE_SSL === "false"
-      ? false
-      : /[?&]sslmode=/i.test(connectionString) || { rejectUnauthorized: true };
+  // El pooler de Supabase (Supavisor) sirve un certificado cuya cadena no
+  // verifica contra el almacén de confianza del sistema — ver el comentario
+  // extenso en lib/db/pool.ts (sslConfig). Para otros hosts se mantiene
+  // verificación estricta.
+  const isSupabaseHost =
+    databaseUrl.hostname.endsWith(".supabase.co") ||
+    databaseUrl.hostname.endsWith(".pooler.supabase.com");
+  let ssl: boolean | { rejectUnauthorized: boolean };
+  if (process.env.DATABASE_SSL === "false") {
+    ssl = false;
+  } else if (isSupabaseHost) {
+    ssl = { rejectUnauthorized: false };
+  } else {
+    ssl = /[?&]sslmode=/i.test(connectionString) || { rejectUnauthorized: true };
+  }
 
   const client = new Client({ connectionString, ssl });
   await client.connect();

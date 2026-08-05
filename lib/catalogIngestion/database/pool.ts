@@ -3,7 +3,7 @@ import { loadEnv } from "../config/index";
 import { logger } from "../observability/logger";
 
 /**
- * Pool de Postgres compartido (Neon), mismo patrón resiliente que
+ * Pool de Postgres compartido (Supabase), mismo patrón resiliente que
  * pause2shop/lib/db/pool.ts: si DATABASE_URL no es una cadena postgres:// NO
  * intentamos conectar — caemos al FileCatalogStore. Sin esta comprobación, cada
  * petición pagaría el connectionTimeout completo antes de fallar.
@@ -20,13 +20,17 @@ export function isDatabaseConfigured(): boolean {
       warnedInvalidUrl = true;
       logger.warn(
         "DATABASE_URL no es una cadena postgres:// . Se usará el catálogo en " +
-          "fichero (data/). Copia la connection string del endpoint -pooler " +
-          "desde el dashboard de Neon → Connect."
+          "fichero (data/). Copia la connection string del Transaction pooler " +
+          "desde el dashboard de Supabase → Connect."
       );
     }
     return false;
   }
   return true;
+}
+
+function isSupabaseHost(hostname: string): boolean {
+  return hostname.endsWith(".supabase.co") || hostname.endsWith(".pooler.supabase.com");
 }
 
 let pool: pg.Pool | null = null;
@@ -37,22 +41,31 @@ export function getPool(): pg.Pool {
   }
   if (!pool) {
     const connectionString = process.env.DATABASE_URL;
+    let hostname = "";
+    try {
+      hostname = new URL(connectionString).hostname;
+    } catch {
+      // URL inválida: fallará al conectar, no aquí.
+    }
+    let ssl: boolean | { rejectUnauthorized: boolean };
+    if (process.env.DATABASE_SSL === "false") {
+      ssl = false;
+    } else if (isSupabaseHost(hostname)) {
+      // El pooler de Supabase (Supavisor) sirve un certificado cuya cadena no
+      // verifica contra el almacén de confianza del sistema — ver el
+      // comentario extenso en lib/db/pool.ts (sslConfig).
+      ssl = { rejectUnauthorized: false };
+    } else {
+      ssl = /[?&]sslmode=/i.test(connectionString) || { rejectUnauthorized: true };
+    }
     pool = new pg.Pool({
       connectionString,
-      // Neon exige TLS y su certificado es válido: verificamos la cadena en vez
-      // de aceptar cualquiera. Si la URL ya trae `sslmode`, dejamos que `pg` lo
-      // interprete. Mismo criterio que lib/db/pool.ts (sslConfig).
-      ssl:
-        process.env.DATABASE_SSL === "false"
-          ? false
-          : /[?&]sslmode=/i.test(connectionString) || {
-              rejectUnauthorized: true,
-            },
+      ssl,
       max: 5,
       idleTimeoutMillis: 30_000,
-      // Neon escala a cero y la primera conexión tras la inactividad tiene que
-      // despertar el compute (~3 s medidos). Con 3 s el arranque en frío fallaba
-      // de forma intermitente. Ver el comentario extenso en lib/db/pool.ts.
+      // El compute "nano" de Supabase (plan gratuito) puede tener un arranque
+      // en frío tras inactividad prolongada. Ver el comentario extenso en
+      // lib/db/pool.ts.
       connectionTimeoutMillis: 15_000,
       query_timeout: 15_000,
       statement_timeout: 15_000,
