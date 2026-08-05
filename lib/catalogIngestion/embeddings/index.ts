@@ -233,11 +233,32 @@ function optionalTransformersImport(): Promise<any> {
 let activeProvider: EmbeddingProvider | null = null;
 
 /**
+ * Inicialización EN VUELO, memoizada.
+ *
+ * Sin esto, `getEmbeddingProvider` tenía una carrera clásica: la guarda
+ * `if (activeProvider)` se evalúa, el `await local.init()` cede el control, y
+ * cualquier llamada que entre mientras tanto vuelve a pasar la guarda y carga
+ * otro CLIP. Medido con el matching a concurrencia 3: el modelo (~90 MB ONNX)
+ * se cargaba TRES veces y el embedding del primer crop pasaba de ~500 ms a
+ * 5.400 ms. No fallaba nada — solo era tres veces más lento y tres veces más
+ * memoria, que es la clase de defecto que no se ve sin medir.
+ */
+let providerInFlight: Promise<EmbeddingProvider> | null = null;
+
+/**
  * Devuelve el provider activo. Si CATALOG_IMAGE_EMBEDDING_PROVIDER=local pero
  * transformers no está disponible (no instalado / sin red para el modelo),
  * degradamos a hash y lo dejamos registrado — nunca rompemos el arranque.
  */
 export async function getEmbeddingProvider(): Promise<EmbeddingProvider> {
+  if (activeProvider) return activeProvider;
+  providerInFlight ??= initEmbeddingProvider().finally(() => {
+    providerInFlight = null;
+  });
+  return providerInFlight;
+}
+
+async function initEmbeddingProvider(): Promise<EmbeddingProvider> {
   if (activeProvider) return activeProvider;
   const config = getConfig();
   if (config.imageEmbeddingProvider === "local") {
@@ -270,4 +291,5 @@ export async function getEmbeddingProvider(): Promise<EmbeddingProvider> {
 /** Solo para tests: resetea el provider cacheado. */
 export function resetEmbeddingProvider(): void {
   activeProvider = null;
+  providerInFlight = null;
 }

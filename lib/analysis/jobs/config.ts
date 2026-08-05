@@ -10,6 +10,13 @@ function bool(v: string | undefined, fallback: boolean): boolean {
   return v === "true" || v === "1" || v === "yes";
 }
 
+/** Entero >= 0 (a diferencia de `num`, admite el 0 como valor válido). */
+function intOrZero(v: string | undefined, fallback: number): number {
+  if (v == null || v === "") return fallback;
+  const n = Number(v);
+  return Number.isFinite(n) && n >= 0 ? Math.floor(n) : fallback;
+}
+
 function num(v: string | undefined, fallback: number): number {
   const n = Number(v);
   return Number.isFinite(n) && n > 0 ? n : fallback;
@@ -40,6 +47,22 @@ export type VideoAnalysisJobConfig = {
   nearDuplicateDiffThreshold: number;
   /** Umbral de diff perceptual (0-1) a partir del cual se abre escena nueva. */
   sceneDiffThreshold: number;
+
+  /* --- identidad global de producto (dedup entre tracks) --- */
+  /** Por encima de este score, dos tracks son el mismo producto. */
+  identityThreshold: number;
+  /** Por encima de este, la fusión es automática y no se marca para revisión. */
+  strongIdentityThreshold: number;
+  /** Entre este y el fuerte, se marca `possible_duplicate` en vez de fundir. */
+  possibleDuplicateThreshold: number;
+
+  /* --- matching por producto único --- */
+  /** Productos resueltos a la vez. */
+  matchingMaxConcurrency: number;
+  /** Reintentos ADICIONALES tras un fallo transitorio. */
+  matchingMaxRetries: number;
+  /** Espera base entre reintentos (crece exponencialmente). */
+  matchingRetryBackoffMs: number;
 };
 
 export function getVideoAnalysisJobConfig(
@@ -70,5 +93,16 @@ export function getVideoAnalysisJobConfig(
       env.SCENE_DIFF_THRESHOLD ?? env.NEXT_PUBLIC_SCENE_DIFF_THRESHOLD,
       0.1
     ),
+    identityThreshold: num(env.VIDEO_PRODUCT_IDENTITY_THRESHOLD, 0.84),
+    strongIdentityThreshold: num(env.VIDEO_PRODUCT_STRONG_IDENTITY_THRESHOLD, 0.9),
+    possibleDuplicateThreshold: num(
+      env.VIDEO_PRODUCT_POSSIBLE_DUPLICATE_THRESHOLD,
+      0.76
+    ),
+    matchingMaxConcurrency: Math.floor(num(env.MATCHING_MAX_CONCURRENCY, 3)),
+    // `num` descarta 0 y negativos, así que 0 reintentos hay que leerlo aparte:
+    // "sin reintentos" es una configuración legítima, no un valor inválido.
+    matchingMaxRetries: intOrZero(env.MATCHING_MAX_RETRIES, 2),
+    matchingRetryBackoffMs: num(env.MATCHING_RETRY_BACKOFF_MS, 1000),
   };
 }

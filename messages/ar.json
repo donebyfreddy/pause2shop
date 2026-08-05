@@ -1909,7 +1909,13 @@
         "scenes": "المشاهد",
         "tracks": "المسارات",
         "uniqueProducts": "المنتجات الفريدة",
-        "externalSearches": "عمليات البحث الخارجية"
+        "externalSearches": "عمليات البحث الخارجية",
+        "framesDiscarded": "إطارات مُستبعدة",
+        "catalogTimeouts": "مهلات الكتالوج",
+        "externalCandidates": "مرشحون خارجيون",
+        "possibleDuplicates": "نسخ محتملة",
+        "matchingRetries": "إعادة المحاولات",
+        "productsMerged": "منتجات مدمجة"
       }
     },
     "savings": {
@@ -1940,7 +1946,31 @@
       "scoreLine": "الدرجة {score} · المصدر {source} ({provider})",
       "matchingSkipped": "تم تجاوز المطابقة: {reason}",
       "noProductsDetected": "لم يتم اكتشاف منتجات في الفئات المختارة.",
-      "segmentTooltip": "{start} – {end}"
+      "segmentTooltip": "{start} – {end}",
+      "status": {
+        "catalog_matched": "مطابق للكتالوج",
+        "external_candidate": "تم العثور على مرشح خارجي",
+        "no_match": "لا يوجد تطابق في الكتالوج",
+        "catalog_timeout": "انتهت مهلة الكتالوج · في انتظار إعادة المحاولة",
+        "external_timeout": "انتهت مهلة البحث على الإنترنت · في انتظار إعادة المحاولة",
+        "embedding_error": "خطأ في التضمين",
+        "partial_result": "نتيجة جزئية",
+        "not_searched": "لم يتم البحث",
+        "matching_error": "خطأ في المطابقة"
+      },
+      "appearances": "{count} ظهور",
+      "seenRange": "{start} – {end}",
+      "bestFrame": "أفضل إطار: {time}",
+      "catalogLine": "الكتالوج: {value}",
+      "externalLine": "البحث الخارجي: {value}",
+      "reviewLine": "الحالة: {value}",
+      "reviewPending": "في انتظار المراجعة",
+      "noCatalogMatch": "لا يوجد تطابق",
+      "externalFound": "تم العثور على مرشح",
+      "externalNotRun": "لم يتم التنفيذ",
+      "possibleDuplicate": "نسخة محتملة من {productId}",
+      "mergedFrom": "مدمج من {count} مسارات",
+      "retryHint": "أُعيدت المحاولة {count} مرات"
     },
     "check": {
       "title": "الفحص المسبق للعرض التوضيحي",

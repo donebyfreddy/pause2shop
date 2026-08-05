@@ -1909,7 +1909,13 @@
         "scenes": "Scènes",
         "tracks": "Tracks",
         "uniqueProducts": "Produits uniques",
-        "externalSearches": "Recherches externes"
+        "externalSearches": "Recherches externes",
+        "framesDiscarded": "Images écartées",
+        "catalogTimeouts": "Délais catalogue dépassés",
+        "externalCandidates": "Candidats externes",
+        "possibleDuplicates": "Doublons possibles",
+        "matchingRetries": "Nouvelles tentatives",
+        "productsMerged": "Produits fusionnés"
       }
     },
     "savings": {
@@ -1940,7 +1946,31 @@
       "scoreLine": "score {score} · source {source} ({provider})",
       "matchingSkipped": "matching ignoré : {reason}",
       "noProductsDetected": "Aucun produit n'a été détecté dans les catégories sélectionnées.",
-      "segmentTooltip": "{start} – {end}"
+      "segmentTooltip": "{start} – {end}",
+      "status": {
+        "catalog_matched": "Correspond au catalogue",
+        "external_candidate": "Candidat externe trouvé",
+        "no_match": "Aucune correspondance au catalogue",
+        "catalog_timeout": "Délai catalogue dépassé · nouvelle tentative en attente",
+        "external_timeout": "Délai Internet dépassé · nouvelle tentative en attente",
+        "embedding_error": "Erreur d'embedding",
+        "partial_result": "Résultat partiel",
+        "not_searched": "Non recherché",
+        "matching_error": "Erreur de matching"
+      },
+      "appearances": "{count} apparitions",
+      "seenRange": "{start} – {end}",
+      "bestFrame": "Meilleure image : {time}",
+      "catalogLine": "Catalogue : {value}",
+      "externalLine": "Recherche externe : {value}",
+      "reviewLine": "Statut : {value}",
+      "reviewPending": "en attente de révision",
+      "noCatalogMatch": "aucune correspondance",
+      "externalFound": "candidat trouvé",
+      "externalNotRun": "non exécutée",
+      "possibleDuplicate": "Doublon possible de {productId}",
+      "mergedFrom": "Fusionné à partir de {count} tracks",
+      "retryHint": "Réessayé {count} fois"
     },
     "check": {
       "title": "Préflight de la démo",

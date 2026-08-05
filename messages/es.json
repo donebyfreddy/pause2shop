@@ -1909,7 +1909,13 @@
         "scenes": "Escenas",
         "tracks": "Tracks",
         "uniqueProducts": "Productos únicos",
-        "externalSearches": "Búsquedas externas"
+        "externalSearches": "Búsquedas externas",
+        "framesDiscarded": "Frames descartados",
+        "catalogTimeouts": "Timeouts de catálogo",
+        "externalCandidates": "Candidatos externos",
+        "possibleDuplicates": "Posibles duplicados",
+        "matchingRetries": "Reintentos",
+        "productsMerged": "Productos fusionados"
       }
     },
     "savings": {
@@ -1940,7 +1946,31 @@
       "scoreLine": "score {score} · fuente {source} ({provider})",
       "matchingSkipped": "matching omitido: {reason}",
       "noProductsDetected": "No se detectaron productos en las categorías seleccionadas.",
-      "segmentTooltip": "{start} – {end}"
+      "segmentTooltip": "{start} – {end}",
+      "status": {
+        "catalog_matched": "Coincide con el catálogo",
+        "external_candidate": "Candidato externo encontrado",
+        "no_match": "Sin match en catálogo",
+        "catalog_timeout": "Timeout de catálogo · pendiente de reintento",
+        "external_timeout": "Timeout de Internet · pendiente de reintento",
+        "embedding_error": "Error de embedding",
+        "partial_result": "Resultado parcial",
+        "not_searched": "Sin buscar",
+        "matching_error": "Error de matching"
+      },
+      "appearances": "{count} apariciones",
+      "seenRange": "{start} – {end}",
+      "bestFrame": "Mejor frame: {time}",
+      "catalogLine": "Catálogo: {value}",
+      "externalLine": "Búsqueda externa: {value}",
+      "reviewLine": "Estado: {value}",
+      "reviewPending": "pendiente de revisión",
+      "noCatalogMatch": "sin match",
+      "externalFound": "candidato encontrado",
+      "externalNotRun": "no ejecutada",
+      "possibleDuplicate": "Posible duplicado de {productId}",
+      "mergedFrom": "Fusionado desde {count} tracks",
+      "retryHint": "Se reintentó {count} veces"
     },
     "check": {
       "title": "Preflight de la demo",

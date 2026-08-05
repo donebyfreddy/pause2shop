@@ -19,6 +19,31 @@ import type {
  *    external_search_results, escritas al finalizar (best-effort). Los data
  *    URLs de frames NO se guardan (media_frames solo lleva metadata).
  */
+/**
+ * Identidad mínima para filas escritas ANTES de la migración 13, que no la
+ * tienen. Se deriva del item, que sí está: mejor un dato pobre pero cierto que
+ * un `undefined` que reviente la tarjeta al leer `identity.canonicalLabel`.
+ */
+function emptyIdentity(
+  item: UniqueProductRecord["item"]
+): UniqueProductRecord["identity"] {
+  return {
+    canonicalLabel: item?.name ?? "",
+    canonicalCategory: item?.category ?? "",
+    category: item?.category ?? "",
+    subcategory: item?.subcategory ?? null,
+    color: item?.color ?? null,
+    pattern: item?.pattern ?? null,
+    material: null,
+    observedLabels: item?.name ? [item.name] : [],
+    firstSeenAtMs: 0,
+    lastSeenAtMs: 0,
+    timestampsMs: [],
+    seenCount: 0,
+    sceneIds: [],
+  };
+}
+
 export class PostgresAnalysisJobStore implements AnalysisJobStore {
   readonly kind = "postgres" as const;
 
@@ -283,18 +308,38 @@ export class PostgresAnalysisJobStore implements AnalysisJobStore {
         await client.query(
           `insert into product_matches
              (job_id, product_id, track_ids, item, best_crop, segments,
-              matching, external_searches_used, skipped_reason)
-           values ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+              matching, external_searches_used, skipped_reason,
+              match_status, match_attempts, match_error, match_duration_ms,
+              detection, identity, possible_duplicate_of)
+           values ($1, $2, $3, $4, $5, $6, $7, $8, $9,
+                   $10, $11, $12, $13, $14, $15, $16)`,
           [
             id,
             p.productId,
             JSON.stringify(p.trackIds),
             JSON.stringify(p.item),
-            JSON.stringify({ ...p.bestCrop, frameDataUrl: null, cropDataUrl: null }),
+            // Ni los píxeles ni el embedding se guardan aquí: el data URL pesa
+            // megas y el vector se recalcula si hace falta. Esta fila es el
+            // nivel analítico, no el operativo (ese vive en runtime_state).
+            JSON.stringify({
+              ...p.bestCrop,
+              frameDataUrl: null,
+              cropDataUrl: null,
+              embedding: null,
+            }),
             JSON.stringify(p.segments),
             p.matching ? JSON.stringify(p.matching) : null,
             p.externalSearchesUsed,
-            p.matchingSkippedReason,
+            // `skipped_reason` se conserva por compatibilidad con lo ya escrito;
+            // la fuente de verdad es ahora `match_status`.
+            p.matchError,
+            p.matchStatus,
+            p.matchAttempts,
+            p.matchError,
+            Math.round(p.matchDurationMs),
+            p.detection ? JSON.stringify(p.detection) : null,
+            JSON.stringify(p.identity),
+            p.possibleDuplicateOf,
           ]
         );
         for (const match of p.matching?.matches ?? []) {
@@ -319,12 +364,13 @@ export class PostgresAnalysisJobStore implements AnalysisJobStore {
           `insert into video_product_occurrences
              (media_content_id, analysis_job_id, global_product_id, first_seen_at,
               last_seen_at, timestamps, scene_ids, best_frame_id, best_crop_id,
-              catalog_product_id, external_candidate_id, confidence)
+              catalog_product_id, external_candidate_id, confidence,
+              canonical_label, canonical_category, seen_count, match_status)
            select j.media_content_id, $1, $2, $3, $4, $5, $6, $7, $8, $9,
                   (select c.id from external_product_candidates c
                     where c.analysis_job_id = $1 and c.global_product_id = $2
                     order by c.final_score desc limit 1),
-                  $10
+                  $10, $11, $12, $13, $14
              from analysis_jobs j where j.id = $1`,
           [
             id,
@@ -337,6 +383,10 @@ export class PostgresAnalysisJobStore implements AnalysisJobStore {
             p.bestCrop.signatureHash ?? `${p.productId}:crop`,
             catalogProductId,
             p.item.confidence,
+            p.identity.canonicalLabel,
+            p.identity.canonicalCategory,
+            p.identity.seenCount,
+            p.matchStatus,
           ]
         );
 
@@ -409,9 +459,18 @@ export class PostgresAnalysisJobStore implements AnalysisJobStore {
       matching: UniqueProductRecord["matching"];
       external_searches_used: number;
       skipped_reason: string | null;
+      match_status: UniqueProductRecord["matchStatus"];
+      match_attempts: number;
+      match_error: string | null;
+      match_duration_ms: number;
+      detection: UniqueProductRecord["detection"];
+      identity: UniqueProductRecord["identity"];
+      possible_duplicate_of: string | null;
     }>(
       `select product_id, track_ids, item, best_crop, segments, matching,
-              external_searches_used, skipped_reason
+              external_searches_used, skipped_reason, match_status,
+              match_attempts, match_error, match_duration_ms, detection,
+              identity, possible_duplicate_of
          from product_matches where job_id = $1 order by product_id`,
       [id]
     );
@@ -422,6 +481,13 @@ export class PostgresAnalysisJobStore implements AnalysisJobStore {
       bestCrop: r.best_crop,
       segments: r.segments,
       matching: r.matching,
+      detection: r.detection ?? null,
+      matchStatus: r.match_status ?? "not_searched",
+      matchAttempts: r.match_attempts ?? 0,
+      matchError: r.match_error ?? null,
+      matchDurationMs: r.match_duration_ms ?? 0,
+      possibleDuplicateOf: r.possible_duplicate_of ?? null,
+      identity: r.identity ?? emptyIdentity(r.item),
       externalSearchesUsed: r.external_searches_used,
       matchingSkippedReason: r.skipped_reason,
     }));

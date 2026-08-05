@@ -1909,7 +1909,13 @@
         "scenes": "シーン数",
         "tracks": "トラック数",
         "uniqueProducts": "ユニーク商品数",
-        "externalSearches": "外部検索数"
+        "externalSearches": "外部検索数",
+        "framesDiscarded": "破棄されたフレーム",
+        "catalogTimeouts": "カタログのタイムアウト",
+        "externalCandidates": "外部候補",
+        "possibleDuplicates": "重複の可能性",
+        "matchingRetries": "再試行",
+        "productsMerged": "統合された商品"
       }
     },
     "savings": {
@@ -1940,7 +1946,31 @@
       "scoreLine": "スコア {score} · ソース {source} ({provider})",
       "matchingSkipped": "マッチングをスキップ: {reason}",
       "noProductsDetected": "選択したカテゴリでは商品が検出されませんでした。",
-      "segmentTooltip": "{start} – {end}"
+      "segmentTooltip": "{start} – {end}",
+      "status": {
+        "catalog_matched": "カタログと一致",
+        "external_candidate": "外部候補が見つかりました",
+        "no_match": "カタログに一致なし",
+        "catalog_timeout": "カタログのタイムアウト · 再試行待ち",
+        "external_timeout": "インターネットのタイムアウト · 再試行待ち",
+        "embedding_error": "埋め込みエラー",
+        "partial_result": "部分的な結果",
+        "not_searched": "未検索",
+        "matching_error": "マッチングエラー"
+      },
+      "appearances": "{count} 回の出現",
+      "seenRange": "{start} – {end}",
+      "bestFrame": "ベストフレーム: {time}",
+      "catalogLine": "カタログ: {value}",
+      "externalLine": "外部検索: {value}",
+      "reviewLine": "状態: {value}",
+      "reviewPending": "レビュー待ち",
+      "noCatalogMatch": "一致なし",
+      "externalFound": "候補あり",
+      "externalNotRun": "未実行",
+      "possibleDuplicate": "{productId} の重複の可能性",
+      "mergedFrom": "{count} 件のトラックから統合",
+      "retryHint": "{count} 回再試行しました"
     },
     "check": {
       "title": "デモのプリフライト",

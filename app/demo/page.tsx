@@ -14,6 +14,7 @@ import type {
   AnalysisJobStatusView,
   CropRequest,
   FrameBatchResult,
+  ProductMatchStatus,
 } from "@/lib/analysis/jobs/types";
 import type { RawThumb } from "@/lib/analysis/jobs/perceptualHash";
 import type { BoundingBox, DetectedItem } from "@/lib/types";
@@ -34,11 +35,26 @@ const CLIENT_MAX_DURATION_S = Number(
   process.env.NEXT_PUBLIC_MAX_VIDEO_DURATION_SECONDS ?? "120"
 );
 
-const LABEL_STYLES: Record<string, string> = {
-  CATALOG_MATCH: "border-success/50 bg-success/15 text-success",
-  EXTERNAL_MATCH: "border-info/50 bg-info/15 text-info",
-  SIMILAR: "border-warning/50 bg-warning/15 text-warning",
-  NO_MATCH: "border-ink-subtle/40 bg-ink-subtle/10 text-ink-muted",
+/**
+ * Un color por ESTADO, no por etiqueta de matching.
+ *
+ * Antes todo lo que no fuera coincidencia se pintaba igual ("NO MATCH" gris) y
+ * el motivo real aparecía como texto crudo debajo. Un timeout —que es
+ * reintentable y no dice nada del producto— se veía idéntico a "este producto
+ * no existe en el catálogo", que es definitivo. Son decisiones distintas para
+ * quien revisa, así que se distinguen: ámbar para lo pendiente, gris para lo
+ * cerrado, rojo para lo roto.
+ */
+const STATUS_STYLES: Record<ProductMatchStatus, string> = {
+  catalog_matched: "border-success/50 bg-success/15 text-success",
+  external_candidate: "border-info/50 bg-info/15 text-info",
+  no_match: "border-ink-subtle/40 bg-ink-subtle/10 text-ink-muted",
+  catalog_timeout: "border-warning/50 bg-warning/15 text-warning",
+  external_timeout: "border-warning/50 bg-warning/15 text-warning",
+  partial_result: "border-warning/50 bg-warning/15 text-warning",
+  embedding_error: "border-danger/50 bg-danger/15 text-danger",
+  matching_error: "border-danger/50 bg-danger/15 text-danger",
+  not_searched: "border-ink-subtle/40 bg-ink-subtle/10 text-ink-muted",
 };
 
 type Phase =
@@ -553,6 +569,12 @@ export function PreprocessedVideoExperience({ embedded = false }: { embedded?: b
               <Stat label={t("job.stats.tracks")} value={counters?.tracks ?? 0} />
               <Stat label={t("job.stats.uniqueProducts")} value={counters?.uniqueProducts ?? 0} />
               <Stat label={t("job.stats.externalSearches")} value={counters?.externalSearchesUsed ?? 0} />
+              <Stat label={t("job.stats.framesDiscarded")} value={counters?.framesSkippedSimilar ?? 0} />
+              <Stat label={t("job.stats.productsMerged")} value={counters?.dedupMergedTracks ?? 0} />
+              <Stat label={t("job.stats.possibleDuplicates")} value={counters?.possibleDuplicates ?? 0} />
+              <Stat label={t("job.stats.catalogTimeouts")} value={counters?.catalogTimeouts ?? 0} />
+              <Stat label={t("job.stats.externalCandidates")} value={counters?.externalCandidates ?? 0} />
+              <Stat label={t("job.stats.matchingRetries")} value={counters?.matchingRetries ?? 0} />
             </dl>
           </div>
 
@@ -595,7 +617,19 @@ export function PreprocessedVideoExperience({ embedded = false }: { embedded?: b
           <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
             {job.products.map((p) => {
               const best = p.matching?.matches?.[0] ?? null;
-              const label = p.matching?.matchLabel ?? "NO_MATCH";
+              const status = p.matchStatus ?? "not_searched";
+              const identity = p.identity;
+              const catalogValue =
+                p.detection?.catalog.status === "matched"
+                  ? (p.detection.catalog.selected?.title ?? t("products.status.catalog_matched"))
+                  : t("products.noCatalogMatch");
+              const externalValue =
+                p.detection?.external.status === "matched"
+                  ? t("products.externalFound")
+                  : p.detection?.external.status === "not_requested" ||
+                      p.detection?.external.status === "disabled"
+                    ? t("products.externalNotRun")
+                    : t("products.noCatalogMatch");
               return (
                 <article
                   key={p.productId}
@@ -611,7 +645,9 @@ export function PreprocessedVideoExperience({ embedded = false }: { embedded?: b
                       />
                     )}
                     <div className="min-w-0">
-                      <p className="truncate text-sm font-medium text-ink">{p.item.name}</p>
+                      <p className="truncate text-sm font-medium text-ink">
+                        {identity?.canonicalLabel || p.item.name}
+                      </p>
                       <p className="text-[11px] text-ink-subtle">
                         {p.item.category}
                         {p.trackIds.length > 1 && (
@@ -620,13 +656,26 @@ export function PreprocessedVideoExperience({ embedded = false }: { embedded?: b
                           </span>
                         )}
                       </p>
+                      <p className="text-[11px] text-ink-subtle">
+                        {t("products.appearances", { count: identity?.seenCount ?? 0 })}
+                        {" · "}
+                        {t("products.seenRange", {
+                          start: formatTimestamp((identity?.firstSeenAtMs ?? 0) / 1000),
+                          end: formatTimestamp((identity?.lastSeenAtMs ?? 0) / 1000),
+                        })}
+                      </p>
+                      <p className="text-[11px] text-ink-subtle">
+                        {t("products.bestFrame", {
+                          time: formatTimestamp(p.bestCrop.timestampSeconds),
+                        })}
+                      </p>
                       <span
                         className={
                           "mt-1.5 inline-block rounded-full border px-2 py-0.5 text-[10px] font-semibold " +
-                          (LABEL_STYLES[label] ?? LABEL_STYLES.NO_MATCH)
+                          STATUS_STYLES[status]
                         }
                       >
-                        {label.replace("_", " ")}
+                        {t(`products.status.${status}`)}
                       </span>
                     </div>
                   </div>
@@ -654,9 +703,28 @@ export function PreprocessedVideoExperience({ embedded = false }: { embedded?: b
                       </p>
                     </div>
                   )}
-                  {p.matchingSkippedReason && (
-                    <p className="mt-2 text-[11px] text-warning/80">
-                      {t("products.matchingSkipped", { reason: p.matchingSkippedReason })}
+                  <div className="mt-2 space-y-0.5 text-[11px] text-ink-subtle">
+                    <p>{t("products.catalogLine", { value: catalogValue })}</p>
+                    <p>{t("products.externalLine", { value: externalValue })}</p>
+                    {status === "external_candidate" && (
+                      <p className="text-info">
+                        {t("products.reviewLine", { value: t("products.reviewPending") })}
+                      </p>
+                    )}
+                    {p.possibleDuplicateOf && (
+                      <p className="text-warning">
+                        {t("products.possibleDuplicate", {
+                          productId: p.possibleDuplicateOf,
+                        })}
+                      </p>
+                    )}
+                    {p.matchAttempts > 1 && (
+                      <p>{t("products.retryHint", { count: p.matchAttempts })}</p>
+                    )}
+                  </div>
+                  {p.matchError && (
+                    <p className="mt-1 text-[11px] text-warning/80">
+                      {t("products.matchingSkipped", { reason: p.matchError })}
                     </p>
                   )}
 

@@ -355,9 +355,7 @@ test("cancel: el job deja de aceptar frames y el matching se omite", async () =>
   if (!finalized.ok) return;
   assert.equal(finalized.job.status, "cancelled");
   assert.equal(calls.length, 0); // ninguna búsqueda cara tras cancelar
-  assert.ok(
-    finalized.products.every((p) => p.matchingSkippedReason === "job_cancelled")
-  );
+  assert.ok(finalized.products.every((p) => p.matchStatus === "not_searched"));
 });
 
 test("MAX_EXTERNAL_SEARCHES_PER_PRODUCT=0 fuerza catalog_only en el matching", async () => {
@@ -404,7 +402,7 @@ test("un fallo de matching deja el job en partially_completed sin perder el rest
   assert.equal(finalized.ok, true);
   if (!finalized.ok) return;
   assert.equal(finalized.job.status, "partially_completed");
-  const failed = finalized.products.filter((p) => p.matchingSkippedReason);
+  const failed = finalized.products.filter((p) => p.matchStatus === "matching_error");
   const okOnes = finalized.products.filter((p) => p.matching);
   assert.equal(failed.length, 1);
   assert.equal(okOnes.length, 1);

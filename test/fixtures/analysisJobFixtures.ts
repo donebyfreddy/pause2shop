@@ -1,5 +1,8 @@
 import type { Detection, DetectorHealth, FrameInput, ObjectDetector } from "../../lib/detection/types";
-import type { ProductMatchingResult } from "../../lib/matching/types";
+import type {
+  DetectionMatchResult,
+  ProductMatchingResult,
+} from "../../lib/matching/types";
 import type { DetectedItem } from "../../lib/types";
 import type { VideoAnalysisJobConfig } from "../../lib/analysis/jobs/config";
 import { encodeThumb, type RawThumb } from "../../lib/analysis/jobs/perceptualHash";
@@ -25,6 +28,15 @@ export const TEST_JOB_CONFIG: VideoAnalysisJobConfig = {
   maxVideoSizeBytes: 500 * 1024 * 1024,
   nearDuplicateDiffThreshold: 0.02,
   sceneDiffThreshold: 0.1,
+  identityThreshold: 0.84,
+  strongIdentityThreshold: 0.9,
+  possibleDuplicateThreshold: 0.76,
+  matchingMaxConcurrency: 3,
+  // Los tests que NO prueban reintentos no deben pagarlos: el backoff haría
+  // que cada fallo esperado durase segundos. Los que sí los prueban pasan su
+  // propia config.
+  matchingMaxRetries: 0,
+  matchingRetryBackoffMs: 1,
 };
 
 export function item(partial: Partial<DetectedItem> & { name: string }): DetectedItem {
@@ -64,14 +76,71 @@ export type MatchCall = {
   mode: string;
 };
 
+/**
+ * Bloques de detección coherentes con un resultado externo fiable. El motor
+ * deriva el estado del producto de AQUÍ, no de `matchLabel`, así que los
+ * fixtures tienen que producirlos.
+ */
+export function detectionFor(
+  it: DetectedItem,
+  opts: {
+    catalog?: "matched" | "unresolved" | "empty" | "error" | "timeout" | "not_requested";
+    external?: "matched" | "unresolved" | "not_requested" | "disabled" | "error" | "timeout";
+  } = {}
+): DetectionMatchResult {
+  const catalog = opts.catalog ?? "unresolved";
+  const external = opts.external ?? "matched";
+  const candidate = {
+    id: `c:${it.name}`,
+    title: `match de ${it.name}`,
+    brand: null,
+    imageUrl: null,
+    price: 19.99,
+    currency: "EUR",
+    productUrl: "https://example.com/p",
+    category: null,
+    color: null,
+    score: 0.9,
+    matchType: "probable" as const,
+    isDemoProduct: false,
+    merchant: "example",
+    evidence: [],
+  };
+  return {
+    detectionId: it.name,
+    label: it.name,
+    confidence: it.confidence,
+    boundingBox: it.bounding_box ?? null,
+    timestampSeconds: null,
+    catalog: {
+      status: catalog,
+      candidates: [],
+      threshold: 0.8,
+      ...(catalog === "matched"
+        ? { selected: { ...candidate, source: "catalog" as const } }
+        : {}),
+    },
+    external: {
+      status: external,
+      candidates: [],
+      threshold: 0.72,
+      ...(external === "matched"
+        ? { selected: { ...candidate, source: "external" as const } }
+        : {}),
+    },
+    matchingMode: "catalog_first",
+  };
+}
+
 /** Matcher falso: registra llamadas y devuelve un EXTERNAL_MATCH fijo. */
 export function fakeMatcher(
   calls: MatchCall[],
-  result?: Partial<ProductMatchingResult>
+  result?: Partial<ProductMatchingResult>,
+  detection?: (it: DetectedItem) => DetectionMatchResult
 ): MatchProductFn {
   return async ({ item: it, cropDataUrl, frameDataUrl, mode }) => {
     calls.push({ itemName: it.name, cropDataUrl, frameDataUrl, mode });
-    return {
+    const built: ProductMatchingResult = {
       matches: [
         {
           source: "external",
@@ -107,6 +176,10 @@ export function fakeMatcher(
       cached: false,
       timings: {},
       ...result,
+    };
+    return {
+      result: built,
+      detection: (detection ?? ((x: DetectedItem) => detectionFor(x)))(it),
     };
   };
 }

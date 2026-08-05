@@ -34,6 +34,44 @@ import { emptyUsage } from "./types";
 const EXTERNAL_CALL_COST_USD =
   Number(process.env.EXTERNAL_SEARCH_ESTIMATED_COST_USD) || 0.006;
 
+/** Marca que devuelve `withStageTimeout` cuando una fuente no llegó a tiempo. */
+const STAGE_TIMEOUT = Symbol("stage_timeout");
+
+/**
+ * Presupuesto de tiempo POR FUENTE.
+ *
+ * El error que corrige: antes el presupuesto se aplicaba a la resolución
+ * ENTERA con un `AbortSignal`. Cuando saltaba, se perdía todo — incluido un
+ * resultado del catálogo que ya estaba calculado y era perfectamente válido.
+ * En el vídeo preprocesado eso se veía como "0 catalog hits" con productos
+ * marcados `matching omitido: The operation was aborted due to timeout`.
+ *
+ * Aquí cada fuente tiene su propio reloj y agotarlo produce un ESTADO
+ * (`timeout`), no una excepción. El trabajo en vuelo no se aborta: cancelarlo
+ * no devolvería el tiempo ya gastado y sí perdería un resultado a medio
+ * camino. Lo que se abandona es la ESPERA, no la consulta.
+ */
+async function withStageTimeout<T>(
+  promise: Promise<T>,
+  ms: number
+): Promise<T | typeof STAGE_TIMEOUT> {
+  if (!Number.isFinite(ms) || ms <= 0) return promise;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<typeof STAGE_TIMEOUT>((resolve) => {
+        timer = setTimeout(() => resolve(STAGE_TIMEOUT), ms);
+      }),
+    ]);
+  } finally {
+    if (timer) clearTimeout(timer);
+    // La promesa perdedora sigue viva: sin este catch, un fallo posterior
+    // suyo sería un unhandledRejection que tumba el proceso en Node.
+    void promise.catch(() => undefined);
+  }
+}
+
 export type ResolveDetectionInput = {
   item: DetectedItem;
   /** Identidad estable de la detección; la fija quien llama (fingerprint). */
@@ -327,6 +365,100 @@ export function shouldCallExternal(args: {
 
 /* ------------------------------ orquestación ------------------------------ */
 
+/**
+ * Etapa CATÁLOGO con su propio reloj. Devuelve el bloque ya construido y, por
+ * separado, el resultado crudo (null si no se consultó o si no llegó a tiempo).
+ */
+async function runCatalogStage(args: {
+  catalog: ProductMatchingProvider;
+  searchInput: ProductMatchingInput;
+  item: DetectedItem;
+  config: MatchingConfig;
+  mode: MatchingMode;
+  usage: MatchingUsage;
+}): Promise<{
+  block: DetectionMatchResult["catalog"];
+  result: ProductMatchingResult | null;
+}> {
+  const { catalog, searchInput, item, config, mode, usage } = args;
+  const requested = modeUsesCatalog(mode);
+  if (!requested) {
+    return { block: buildCatalogBlock(null, item, config, { requested }), result: null };
+  }
+
+  const t0 = Date.now();
+  const raced = await withStageTimeout(
+    catalog.search(searchInput),
+    config.catalogMatchTimeoutMs
+  );
+  usage.catalogQueries = 1;
+
+  if (raced === STAGE_TIMEOUT) {
+    usage.timings.catalogMs = Date.now() - t0;
+    return {
+      result: null,
+      block: {
+        status: "timeout",
+        candidates: [],
+        threshold: catalogThresholdFor(config, item.category),
+        unresolvedReason: `El catálogo no respondió en ${config.catalogMatchTimeoutMs} ms.`,
+      },
+    };
+  }
+
+  if (raced.cached) usage.cacheHits += 1;
+  Object.assign(usage.timings, raced.timings);
+  return {
+    result: raced,
+    block: buildCatalogBlock(raced, item, config, { requested }),
+  };
+}
+
+/** Etapa EXTERNA con su propio reloj. Solo se entra si `decision.call`. */
+async function runExternalStage(args: {
+  external: ProductMatchingProvider;
+  searchInput: ProductMatchingInput;
+  item: DetectedItem;
+  config: MatchingConfig;
+  isFallback: boolean;
+  usage: MatchingUsage;
+}): Promise<{
+  block: DetectionMatchResult["external"];
+  result: ProductMatchingResult | null;
+}> {
+  const { external, searchInput, item, config, isFallback, usage } = args;
+  const raced = await withStageTimeout(
+    external.search(searchInput),
+    config.externalSearchTimeoutMs
+  );
+  usage.externalCalls = 1;
+  if (isFallback) usage.fallbacks = 1;
+
+  if (raced === STAGE_TIMEOUT) {
+    // La llamada se pagó igual: el proveedor sigue procesándola aunque hayamos
+    // dejado de esperarla. Contabilizarla como gratis falsearía el coste justo
+    // en el caso en que más se gasta.
+    usage.estimatedExternalCostUsd += EXTERNAL_CALL_COST_USD;
+    return {
+      result: null,
+      block: {
+        status: "timeout",
+        candidates: [],
+        threshold: config.externalMatchMinScore,
+        unresolvedReason: `La búsqueda en Internet no respondió en ${config.externalSearchTimeoutMs} ms.`,
+      },
+    };
+  }
+
+  if (raced.cached) usage.cacheHits += 1;
+  else usage.estimatedExternalCostUsd += EXTERNAL_CALL_COST_USD;
+  Object.assign(usage.timings, raced.timings);
+  return {
+    result: raced,
+    block: buildExternalBlock(raced, item, config, { status: "loading" }),
+  };
+}
+
 export async function resolveDetectionMatch(
   input: ResolveDetectionInput
 ): Promise<ResolveDetectionOutput> {
@@ -348,18 +480,11 @@ export async function resolveDetectionMatch(
   const searchInput: ProductMatchingInput = { item, cropDataUrl, skipCache };
 
   // 1) CATÁLOGO PRIMERO. Siempre, salvo en external_only.
-  const useCatalog = modeUsesCatalog(mode);
-  let catalogResult: ProductMatchingResult | null = null;
-  if (useCatalog) {
-    catalogResult = await catalog.search(searchInput);
-    usage.catalogQueries = 1;
-    if (catalogResult.cached) usage.cacheHits += 1;
-    Object.assign(usage.timings, catalogResult.timings);
-  }
-
-  const catalogBlock = buildCatalogBlock(catalogResult, item, config, {
-    requested: useCatalog,
+  const catalogStage = await runCatalogStage({
+    catalog, searchInput, item, config, mode, usage,
   });
+  const catalogBlock = catalogStage.block;
+  const catalogResult = catalogStage.result;
   const catalogMatched = catalogBlock.status === "matched";
 
   // 2) EXTERNO, solo si procede. `decision` es la única puerta al gasto.
@@ -371,23 +496,18 @@ export async function resolveDetectionMatch(
     forceExternal,
   });
 
-  let externalResult: ProductMatchingResult | null = null;
-  let externalBlock: DetectionMatchResult["external"];
-  if (decision.call && external) {
-    externalResult = await external.search(searchInput);
-    usage.externalCalls = 1;
-    if (externalResult.cached) usage.cacheHits += 1;
-    else usage.estimatedExternalCostUsd += EXTERNAL_CALL_COST_USD;
-    if (decision.isFallback) usage.fallbacks = 1;
-    Object.assign(usage.timings, externalResult.timings);
-    externalBlock = buildExternalBlock(externalResult, item, config, {
-      status: "loading",
-    });
-  } else {
-    externalBlock = buildExternalBlock(null, item, config, {
-      status: decision.status,
-    });
-  }
+  const externalStage =
+    decision.call && external
+      ? await runExternalStage({
+          external, searchInput, item, config,
+          isFallback: decision.isFallback, usage,
+        })
+      : {
+          result: null,
+          block: buildExternalBlock(null, item, config, { status: decision.status }),
+        };
+  const externalBlock = externalStage.block;
+  const externalResult = externalStage.result;
 
   if (catalogMatched) usage.resolvedInternally = 1;
   else if (externalBlock.status === "matched") usage.resolvedExternally = 1;

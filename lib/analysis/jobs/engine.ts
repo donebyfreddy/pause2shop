@@ -1,11 +1,10 @@
 import { randomUUID } from "node:crypto";
 import { getMatchingConfig } from "@/lib/matching/config";
 import { normalizeMatchingMode } from "@/lib/matching/types";
-import type { MatchingMode, ProductMatchingResult } from "@/lib/matching/types";
+import type { MatchingMode } from "@/lib/matching/types";
 import { parseConfig } from "@/lib/analysis/categories";
 import {
   associateDetections,
-  cropQualityScore,
   type TrackerState,
   type TrackedProduct,
 } from "@/lib/video/tracker";
@@ -24,6 +23,18 @@ import {
   thumbDiff,
   type DecodedThumb,
 } from "./perceptualHash";
+import { cropQuality } from "./cropQuality";
+import {
+  canonicalCategoryOf,
+  canonicalLabel,
+  identityScore,
+  slotForItem,
+} from "./identity";
+import {
+  matchUniqueProducts,
+  type MatchProductFn,
+  type ProductMatchOutcome,
+} from "./productMatching";
 import type { AnalysisJobStore } from "./store";
 import type {
   AnalysisJobRecord,
@@ -57,29 +68,28 @@ import type {
  * búsquedas caras) → timeline de apariciones.
  */
 
-/** Firma del matcher por producto único: el route inyecta la real. */
-export type MatchProductFn = (args: {
-  jobId: string;
-  mediaContentId: string;
-  globalProductId: string;
-  item: DetectedItem;
-  cropDataUrl: string | null;
-  frameDataUrl: string | null;
-  mode: MatchingMode;
-}) => Promise<ProductMatchingResult>;
+export type { MatchProductFn };
+
+/**
+ * Embedding del CROP (no del catálogo). Inyectable para que los tests corran
+ * el pipeline entero sin cargar CLIP; en producción lo provee `serverDeps`.
+ */
+export type EmbedCropFn = (dataUrl: string) => Promise<number[] | null>;
 
 export type JobEngineDeps = {
   store: AnalysisJobStore;
   detector: ObjectDetector;
   matchProduct: MatchProductFn;
+  /** Ausente ⇒ el dedup cae al hash perceptual (peor, pero funciona). */
+  embedCrop?: EmbedCropFn;
   config?: VideoAnalysisJobConfig;
   env?: NodeJS.ProcessEnv;
+  /** Log estructurado de etapas. Por defecto, `console`. */
+  log?: (level: "info" | "warn" | "success", stage: string, message: string) => void;
 };
 
 /** Hamming máximo (sobre aHash de 64 bits) para "frame casi idéntico". */
 const NEAR_DUP_HAMMING = 5;
-/** Hamming máximo entre firmas de crop para fundir dos tracks (dedup global). */
-const SIGNATURE_HAMMING = 12;
 /** Hueco máximo (s) entre apariciones para considerarlas el mismo tramo. */
 const SEGMENT_MAX_GAP_SECONDS = 1.5;
 /** Techo de frames por lote: protege la función de payloads absurdos. */
@@ -203,6 +213,11 @@ export async function createAnalysisJob(
       externalSearchesUsed: 0,
       cacheHits: 0,
       catalogHits: 0,
+      catalogTimeouts: 0,
+      externalTimeouts: 0,
+      externalCandidates: 0,
+      possibleDuplicates: 0,
+      matchingRetries: 0,
     },
     timings: {
       hashMs: 0,
@@ -445,12 +460,13 @@ function updateTrackRecord(
   config: VideoAnalysisJobConfig,
   cropRequests: CropRequest[]
 ): void {
-  // Calidad del encuadre: área × confianza (proxy existente del tracker) ×
-  // nitidez aproximada de la región (un crop borroso no debe ganar).
   const sharpness = thumb ? sharpnessScore(thumb, det.bounding_box) : 0.5;
-  const quality =
-    cropQualityScore(det.bounding_box ?? null, det.confidence) *
-    (0.7 + 0.3 * sharpness);
+  const { score: quality, breakdown } = cropQuality({
+    box: det.bounding_box ?? null,
+    item: det,
+    sharpness,
+    slot: slotForItem(det),
+  });
 
   const existing = state.tracks[det.trackId];
   if (!existing) {
@@ -462,6 +478,8 @@ function updateTrackRecord(
       frameDataUrl,
       cropDataUrl: null,
       signatureHash: thumb ? averageHash(thumb, det.bounding_box) : null,
+      embedding: null,
+      qualityBreakdown: breakdown,
     };
     state.tracks[det.trackId] = {
       trackId: det.trackId,
@@ -491,7 +509,8 @@ function updateTrackRecord(
   existing.color ??= det.color ?? null;
 
   // Mejor crop SOLO si mejora lo suficiente (histéresis configurable): evita
-  // pedir un crop nuevo al cliente por mejoras marginales.
+  // pedir un crop nuevo al cliente por mejoras marginales. Y si se sustituye,
+  // el embedding cacheado deja de valer — es de OTRO recorte.
   const required =
     existing.bestCrop.quality * (1 + config.bestCropImprovementThreshold);
   if (quality > required || existing.bestCrop.box === null) {
@@ -503,6 +522,8 @@ function updateTrackRecord(
       frameDataUrl,
       cropDataUrl: null,
       signatureHash: thumb ? averageHash(thumb, det.bounding_box) : existing.bestCrop.signatureHash,
+      embedding: null,
+      qualityBreakdown: breakdown,
     };
     if (det.bounding_box) {
       cropRequests.push({ trackId: det.trackId, timestampSeconds: ts, box: det.bounding_box });
@@ -547,32 +568,22 @@ export async function attachCrops(
 // Dedup GLOBAL entre tracks + matching por producto único + timeline
 // ---------------------------------------------------------------------------
 
-function normText(s?: string | null): string {
-  return (s ?? "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").trim();
-}
-
-function shortName(name: string): string {
-  return normText(name).split(/\s+/).slice(0, 3).join(" ");
-}
-
 /**
- * ¿Son dos tracks el MISMO objeto físico? El tracker por IoU no puede saberlo
- * cuando el objeto desaparece y reaparece (trackId nuevo), así que aquí se
- * compara la FIRMA del crop (aHash de la región) + atributos:
- *   misma categoría Y (firmas perceptuales cercanas O mismo nombre corto con
- *   mismo color). Nunca solo el tracker.
+ * ¿Son dos tracks el MISMO objeto físico?
+ *
+ * Se conserva por compatibilidad con los tests existentes y con el modo de
+ * dedup simple. La decisión REAL la toma `identityScore`
+ * (`lib/analysis/jobs/identity.ts`): esta función es su versión booleana con
+ * los umbrales por defecto y sin señal de embedding.
  */
 export function sameProductSignature(a: TrackRecord, b: TrackRecord): boolean {
-  if (normText(a.category) !== normText(b.category)) return false;
-  const aHash = a.bestCrop.signatureHash;
-  const bHash = b.bestCrop.signatureHash;
-  if (aHash && bHash && hammingDistance(aHash, bHash) <= SIGNATURE_HAMMING) {
-    return true;
-  }
-  const sameName = shortName(a.name) === shortName(b.name);
-  const sameColor = normText(a.color) === normText(b.color);
-  return sameName && sameColor;
+  const breakdown = identityScore(a, b, { videoDurationSeconds: 1 });
+  if (breakdown.blockedBySlot || breakdown.blockedByPerson) return false;
+  return breakdown.score >= DEFAULT_IDENTITY_WEIGHTS_THRESHOLD;
 }
+
+/** Umbral por defecto de `sameProductSignature` (= VIDEO_PRODUCT_IDENTITY_THRESHOLD). */
+const DEFAULT_IDENTITY_WEIGHTS_THRESHOLD = 0.84;
 
 /** Fusiona timestamps de apariciones en tramos continuos para la timeline. */
 export function buildSegments(
@@ -589,53 +600,190 @@ export function buildSegments(
   return segments;
 }
 
-/** Agrupa tracks en productos únicos (sin matching todavía). */
+/** Grupo de tracks que el dedup considera un mismo producto. */
+type TrackGroup = {
+  tracks: TrackRecord[];
+  /** Índice del grupo del que se sospecha que es duplicado, o null. */
+  possibleDuplicateOfIndex: number | null;
+};
+
+/**
+ * Agrupa tracks en productos únicos.
+ *
+ * Reglas de la especificación, aplicadas sobre `identityScore`:
+ *   score ≥ strong            → fusión automática;
+ *   possible ≤ score < strong → grupo aparte, MARCADO como posible duplicado;
+ *   score < possible          → producto nuevo, sin relación.
+ *
+ * El umbral de fusión efectivo es `identityThreshold`; `strongIdentityThreshold`
+ * distingue la fusión que además se considera segura. Entre `possible` y
+ * `identity` se marca la sospecha sin fundir: fundir de más es peor que fundir
+ * de menos, porque une dos productos reales en una ficha que ya no se puede
+ * separar sin reprocesar.
+ */
 export function dedupTracksIntoProducts(
   state: JobRuntimeState,
-  globalDedupEnabled: boolean
+  globalDedupEnabled: boolean,
+  opts: {
+    videoDurationSeconds: number;
+    identityThreshold: number;
+    strongIdentityThreshold: number;
+    possibleDuplicateThreshold: number;
+  } = {
+    videoDurationSeconds: 60,
+    identityThreshold: 0.84,
+    strongIdentityThreshold: 0.9,
+    possibleDuplicateThreshold: 0.76,
+  }
 ): UniqueProductRecord[] {
   const tracks = Object.values(state.tracks).sort(
     (a, b) => a.firstSeenSeconds - b.firstSeenSeconds
   );
-  const groups: TrackRecord[][] = [];
+  const groups: TrackGroup[] = [];
+
   for (const track of tracks) {
-    const group = globalDedupEnabled
-      ? groups.find((g) => g.some((t) => sameProductSignature(t, track)))
-      : undefined;
-    if (group) group.push(track);
-    else groups.push([track]);
+    if (!globalDedupEnabled) {
+      groups.push({ tracks: [track], possibleDuplicateOfIndex: null });
+      continue;
+    }
+
+    // Mejor grupo candidato: el de mayor score entre los compatibles.
+    let bestIndex = -1;
+    let bestScore = 0;
+    for (let i = 0; i < groups.length; i++) {
+      for (const member of groups[i].tracks) {
+        const breakdown = identityScore(member, track, {
+          videoDurationSeconds: opts.videoDurationSeconds,
+        });
+        // Las puertas duras no se negocian: distinto slot o dos personas a la
+        // vez ⇒ productos distintos, por mucho que se parezcan.
+        if (breakdown.blockedBySlot || breakdown.blockedByPerson) continue;
+        if (breakdown.score > bestScore) {
+          bestScore = breakdown.score;
+          bestIndex = i;
+        }
+      }
+    }
+
+    if (bestIndex >= 0 && bestScore >= opts.identityThreshold) {
+      groups[bestIndex].tracks.push(track);
+      continue;
+    }
+    groups.push({
+      tracks: [track],
+      possibleDuplicateOfIndex:
+        bestIndex >= 0 && bestScore >= opts.possibleDuplicateThreshold
+          ? bestIndex
+          : null,
+    });
   }
 
-  return groups.map((group, i) => {
-    const best = group.reduce((acc, t) =>
-      t.bestCrop.quality > acc.bestCrop.quality ? t : acc
-    );
-    const representative = group.reduce((acc, t) =>
-      t.confidence > acc.confidence ? t : acc
-    );
-    const trackIds = group.map((t) => t.trackId);
-    const timestamps = state.appearances
-      .filter((a) => trackIds.includes(a.trackId))
-      .map((a) => a.timestampSeconds);
-    return {
-      productId: `p${i + 1}`,
-      trackIds,
-      item: representative.representativeItem,
-      bestCrop: best.bestCrop,
-      segments: buildSegments(timestamps),
-      matching: null,
-      externalSearchesUsed: 0,
-      matchingSkippedReason: null,
-    };
-  });
+  return groups.map((group, i) => buildProduct(group, i, state));
 }
 
-/** ¿El resultado de matching consumió una búsqueda externa de verdad? */
-function usedExternalSearch(result: ProductMatchingResult): boolean {
-  if (result.cached) return false;
-  if (result.providerUsed === null || result.providerUsed === "catalog") return false;
-  if (result.providerUsed === "cache") return false;
-  return true;
+/** Construye el registro de producto único a partir de su grupo de tracks. */
+function buildProduct(
+  group: TrackGroup,
+  index: number,
+  state: JobRuntimeState
+): UniqueProductRecord {
+  const best = group.tracks.reduce((acc, t) =>
+    t.bestCrop.quality > acc.bestCrop.quality ? t : acc
+  );
+  const representative = group.tracks.reduce((acc, t) =>
+    t.confidence > acc.confidence ? t : acc
+  );
+  const trackIds = group.tracks.map((t) => t.trackId);
+  const appearances = state.appearances.filter((a) =>
+    trackIds.includes(a.trackId)
+  );
+  const timestamps = appearances.map((a) => a.timestampSeconds);
+  const sorted = [...timestamps].sort((a, b) => a - b);
+  const sceneIds = [...new Set(appearances.map((a) => a.sceneId))].sort(
+    (a, b) => a - b
+  );
+  const item = representative.representativeItem;
+
+  return {
+    productId: `p${index + 1}`,
+    trackIds,
+    item,
+    bestCrop: best.bestCrop,
+    segments: buildSegments(timestamps),
+    matching: null,
+    detection: null,
+    matchStatus: "not_searched",
+    matchAttempts: 0,
+    matchError: null,
+    matchDurationMs: 0,
+    externalSearchesUsed: 0,
+    possibleDuplicateOf:
+      group.possibleDuplicateOfIndex != null
+        ? `p${group.possibleDuplicateOfIndex + 1}`
+        : null,
+    identity: {
+      canonicalLabel: canonicalLabel(group.tracks.map((t) => t.name)),
+      canonicalCategory: canonicalCategoryOf(item) ?? item.category,
+      category: item.category,
+      subcategory: item.subcategory ?? null,
+      color: item.color ?? null,
+      pattern: item.pattern ?? null,
+      material: null,
+      observedLabels: [...new Set(group.tracks.map((t) => t.name))],
+      firstSeenAtMs: Math.round((sorted[0] ?? best.bestCrop.timestampSeconds) * 1000),
+      lastSeenAtMs: Math.round(
+        (sorted[sorted.length - 1] ?? best.bestCrop.timestampSeconds) * 1000
+      ),
+      timestampsMs: sorted.map((t) => Math.round(t * 1000)),
+      seenCount: appearances.length,
+      sceneIds,
+    },
+  };
+}
+
+/** Log por defecto: estructurado y con etapa, como pide la especificación. */
+const defaultLog: NonNullable<JobEngineDeps["log"]> = (level, stage, message) => {
+  const line = `[analysis-job] ${level.toUpperCase()} ${stage} ${message}`;
+  if (level === "warn") console.warn(line);
+  else console.info(line);
+};
+
+/**
+ * Embeddings de los mejores crops, ANTES del dedup global.
+ *
+ * Es la señal principal de identidad, así que sin ella el dedup vuelve a
+ * depender del hash perceptual y a partir productos. Se calculan en local
+ * (CLIP), uno por track, en paralelo: ~35 ms cada uno con el modelo caliente.
+ *
+ * Ojo con la confusión fácil: estos NO son los embeddings del catálogo. Los
+ * del catálogo están precalculados en la ingesta y nunca se generan durante
+ * una búsqueda. Este es el del RECORTE, que por definición no existe hasta que
+ * hay un recorte.
+ */
+async function embedBestCrops(
+  state: JobRuntimeState,
+  embedCrop: EmbedCropFn | undefined,
+  log: NonNullable<JobEngineDeps["log"]>
+): Promise<number> {
+  if (!embedCrop) return 0;
+  const pending = Object.values(state.tracks).filter(
+    (t) => !t.bestCrop.embedding && (t.bestCrop.cropDataUrl ?? t.bestCrop.frameDataUrl)
+  );
+  if (!pending.length) return 0;
+
+  const settled = await Promise.allSettled(
+    pending.map(async (track) => {
+      const image = track.bestCrop.cropDataUrl ?? track.bestCrop.frameDataUrl;
+      if (!image) return;
+      track.bestCrop.embedding = await embedCrop(image);
+    })
+  );
+  const failed = settled.filter((r) => r.status === "rejected").length;
+  const ok = pending.length - failed;
+  if (failed > 0) {
+    log("warn", "EMBED", `${failed}/${pending.length} embeddings de crop fallaron; esos tracks caen al hash perceptual`);
+  }
+  return ok;
 }
 
 export async function finalizeAnalysisJob(
@@ -646,6 +794,7 @@ export async function finalizeAnalysisJob(
   | { ok: false; error: string; status: number }
 > {
   const config = deps.config ?? getVideoAnalysisJobConfig(deps.env);
+  const log = deps.log ?? defaultLog;
   const job = await deps.store.getJob(jobId);
   if (!job) return { ok: false, status: 404, error: "Job no encontrado." };
   if (job.finishedAt) {
@@ -658,60 +807,118 @@ export async function finalizeAnalysisJob(
 
   const cancelled = job.status === "cancelled";
 
-  // 1) Dedup global entre tracks → productos únicos.
+  // 1) Embeddings de los mejores crops (señal de identidad del dedup).
+  const tEmbed = Date.now();
+  const embedded = await embedBestCrops(state, deps.embedCrop, log);
+  job.timings.cropEmbeddingMs = Date.now() - tEmbed;
+
+  // 2) Dedup GLOBAL entre tracks → productos únicos.
   const tDedup = Date.now();
-  const products = dedupTracksIntoProducts(state, config.globalDedupEnabled);
+  const trackCount = Object.keys(state.tracks).length;
+  const products = dedupTracksIntoProducts(state, config.globalDedupEnabled, {
+    videoDurationSeconds: job.media.durationSeconds,
+    identityThreshold: config.identityThreshold,
+    strongIdentityThreshold: config.strongIdentityThreshold,
+    possibleDuplicateThreshold: config.possibleDuplicateThreshold,
+  });
   job.timings.dedupMs += Date.now() - tDedup;
   job.counters.uniqueProducts = products.length;
-  job.counters.dedupMergedTracks =
-    Object.keys(state.tracks).length - products.length;
+  job.counters.dedupMergedTracks = trackCount - products.length;
+  job.counters.possibleDuplicates = products.filter(
+    (p) => p.possibleDuplicateOf !== null
+  ).length;
+  log(
+    "info",
+    "GLOBAL_DEDUP",
+    `${trackCount} tracks → ${products.length} productos únicos` +
+      ` (${embedded} con embedding, ${job.counters.possibleDuplicates} posibles duplicados)`
+  );
 
-  // 2) Matching por PRODUCTO ÚNICO con su mejor crop. Operación cara: una
-  // sola llamada por producto (cada llamada consume ≤1 búsqueda externa) y
-  // nunca más de MAX_EXTERNAL_SEARCHES_PER_PRODUCT externas por producto.
-  let matchingFailures = 0;
+  // 3) Matching por PRODUCTO ÚNICO, con concurrencia y reintentos aislados.
+  // Presupuesto agotado a nivel de producto: con el default (1) la primera
+  // llamada es la única; con 0 el producto se resuelve solo contra catálogo.
+  const mode: MatchingMode =
+    config.maxExternalSearchesPerProduct <= 0 && job.matchingMode !== "catalog_only"
+      ? "catalog_only"
+      : job.matchingMode;
+
   const tMatch = Date.now();
-  for (const product of products) {
-    if (cancelled) {
-      product.matchingSkippedReason = "job_cancelled";
-      continue;
-    }
-    // Presupuesto agotado a nivel de producto: con el default (1) la primera
-    // llamada es la única; con 0 el producto se resuelve solo contra catálogo.
-    const mode: MatchingMode =
-      config.maxExternalSearchesPerProduct <= 0 &&
-      job.matchingMode !== "catalog_only"
-        ? "catalog_only"
-        : job.matchingMode;
-    try {
-      const result = await deps.matchProduct({
+  const outcomes = cancelled
+    ? new Map<string, ProductMatchOutcome>()
+    : await matchUniqueProducts({
+        products,
         jobId,
         mediaContentId: job.media.id,
-        globalProductId: product.productId,
-        item: product.item,
-        cropDataUrl: product.bestCrop.cropDataUrl,
-        frameDataUrl: product.bestCrop.frameDataUrl,
         mode,
+        matchProduct: deps.matchProduct,
+        config,
+        onProgress: (done, total, outcome) => {
+          log(
+            outcome.status === "catalog_matched" ? "success" : "info",
+            "MATCHING",
+            `Producto ${done}/${total} · ${outcome.productId} · ${outcome.status}` +
+              ` (${outcome.attempts} intento${outcome.attempts === 1 ? "" : "s"}, ${outcome.durationMs} ms)`
+          );
+        },
+        onRetry: (productId, attempt, status) => {
+          job.counters.matchingRetries++;
+          log(
+            "warn",
+            "MATCHING",
+            `${productId} · ${status} · reintento ${attempt}/${config.matchingMaxRetries}`
+          );
+        },
       });
-      product.matching = result;
-      if (usedExternalSearch(result)) {
-        product.externalSearchesUsed = 1;
-        job.counters.externalSearchesUsed++;
-      }
-      if (result.cached) job.counters.cacheHits++;
-      if (result.matchLabel === "CATALOG_MATCH") job.counters.catalogHits++;
-    } catch (err) {
-      matchingFailures++;
-      product.matchingSkippedReason =
-        err instanceof Error ? err.message.slice(0, 200) : "matching_error";
-    }
-  }
   job.timings.matchingMs += Date.now() - tMatch;
 
-  // 3) Estado final honesto.
+  // 4) Volcado de resultados a los productos + contadores.
+  let unresolvedProducts = 0;
+  for (const product of products) {
+    const outcome = outcomes.get(product.productId);
+    if (!outcome) {
+      product.matchStatus = cancelled ? "not_searched" : "matching_error";
+      product.matchError = cancelled ? "Job cancelado." : "Sin resultado de matching.";
+      unresolvedProducts++;
+      continue;
+    }
+    product.matching = outcome.result;
+    product.detection = outcome.detection;
+    product.matchStatus = outcome.status;
+    product.matchAttempts = outcome.attempts;
+    product.matchError = outcome.error;
+    product.matchDurationMs = outcome.durationMs;
+    if (outcome.externalSearchUsed) {
+      product.externalSearchesUsed = 1;
+      job.counters.externalSearchesUsed++;
+    }
+    if (outcome.cached) job.counters.cacheHits++;
+    switch (outcome.status) {
+      case "catalog_matched":
+        job.counters.catalogHits++;
+        break;
+      case "external_candidate":
+        job.counters.externalCandidates++;
+        break;
+      case "catalog_timeout":
+        job.counters.catalogTimeouts++;
+        unresolvedProducts++;
+        break;
+      case "external_timeout":
+        job.counters.externalTimeouts++;
+        unresolvedProducts++;
+        break;
+      case "no_match":
+        break;
+      default:
+        unresolvedProducts++;
+    }
+  }
+
+  // 5) Estado final honesto. Un producto sin resolver NO invalida el job:
+  // los demás productos son resultados perfectamente utilizables.
   if (!cancelled) {
     job.status =
-      matchingFailures > 0 || job.warnings.length > 0
+      unresolvedProducts > 0 || job.warnings.length > 0
         ? "partially_completed"
         : "completed";
   }
@@ -721,6 +928,12 @@ export async function finalizeAnalysisJob(
 
   await deps.store.saveProducts(jobId, products);
   await deps.store.updateJob(job);
+  log(
+    "info",
+    "PERSIST",
+    `${products.length} productos guardados · ${job.counters.catalogHits} en catálogo` +
+      ` · ${job.counters.externalCandidates} candidatos externos · ${job.timings.totalMs} ms`
+  );
   return { ok: true, job, products };
 }
 

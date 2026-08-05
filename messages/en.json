@@ -1909,7 +1909,13 @@
         "scenes": "Scenes",
         "tracks": "Tracks",
         "uniqueProducts": "Unique products",
-        "externalSearches": "External searches"
+        "externalSearches": "External searches",
+        "framesDiscarded": "Frames discarded",
+        "catalogTimeouts": "Catalogue timeouts",
+        "externalCandidates": "External candidates",
+        "possibleDuplicates": "Possible duplicates",
+        "matchingRetries": "Retries",
+        "productsMerged": "Products merged"
       }
     },
     "savings": {
@@ -1940,7 +1946,31 @@
       "scoreLine": "score {score} · source {source} ({provider})",
       "matchingSkipped": "matching skipped: {reason}",
       "noProductsDetected": "No products were detected in the selected categories.",
-      "segmentTooltip": "{start} – {end}"
+      "segmentTooltip": "{start} – {end}",
+      "status": {
+        "catalog_matched": "Matches the catalogue",
+        "external_candidate": "External candidate found",
+        "no_match": "No catalogue match",
+        "catalog_timeout": "Catalogue timeout · retry pending",
+        "external_timeout": "Internet timeout · retry pending",
+        "embedding_error": "Embedding error",
+        "partial_result": "Partial result",
+        "not_searched": "Not searched",
+        "matching_error": "Matching error"
+      },
+      "appearances": "{count} appearances",
+      "seenRange": "{start} – {end}",
+      "bestFrame": "Best frame: {time}",
+      "catalogLine": "Catalogue: {value}",
+      "externalLine": "External search: {value}",
+      "reviewLine": "Status: {value}",
+      "reviewPending": "pending review",
+      "noCatalogMatch": "no match",
+      "externalFound": "candidate found",
+      "externalNotRun": "not run",
+      "possibleDuplicate": "Possible duplicate of {productId}",
+      "mergedFrom": "Merged from {count} tracks",
+      "retryHint": "Retried {count} times"
     },
     "check": {
       "title": "Demo preflight",

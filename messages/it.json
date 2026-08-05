@@ -1909,7 +1909,13 @@
         "scenes": "Scene",
         "tracks": "Track",
         "uniqueProducts": "Prodotti unici",
-        "externalSearches": "Ricerche esterne"
+        "externalSearches": "Ricerche esterne",
+        "framesDiscarded": "Fotogrammi scartati",
+        "catalogTimeouts": "Timeout del catalogo",
+        "externalCandidates": "Candidati esterni",
+        "possibleDuplicates": "Possibili duplicati",
+        "matchingRetries": "Nuovi tentativi",
+        "productsMerged": "Prodotti uniti"
       }
     },
     "savings": {
@@ -1940,7 +1946,31 @@
       "scoreLine": "punteggio {score} · fonte {source} ({provider})",
       "matchingSkipped": "matching omesso: {reason}",
       "noProductsDetected": "Non sono stati rilevati prodotti nelle categorie selezionate.",
-      "segmentTooltip": "{start} – {end}"
+      "segmentTooltip": "{start} – {end}",
+      "status": {
+        "catalog_matched": "Corrisponde al catalogo",
+        "external_candidate": "Candidato esterno trovato",
+        "no_match": "Nessuna corrispondenza nel catalogo",
+        "catalog_timeout": "Timeout del catalogo · nuovo tentativo in attesa",
+        "external_timeout": "Timeout di Internet · nuovo tentativo in attesa",
+        "embedding_error": "Errore di embedding",
+        "partial_result": "Risultato parziale",
+        "not_searched": "Non cercato",
+        "matching_error": "Errore di matching"
+      },
+      "appearances": "{count} apparizioni",
+      "seenRange": "{start} – {end}",
+      "bestFrame": "Fotogramma migliore: {time}",
+      "catalogLine": "Catalogo: {value}",
+      "externalLine": "Ricerca esterna: {value}",
+      "reviewLine": "Stato: {value}",
+      "reviewPending": "in attesa di revisione",
+      "noCatalogMatch": "nessuna corrispondenza",
+      "externalFound": "candidato trovato",
+      "externalNotRun": "non eseguita",
+      "possibleDuplicate": "Possibile duplicato di {productId}",
+      "mergedFrom": "Unito da {count} track",
+      "retryHint": "Riprovato {count} volte"
     },
     "check": {
       "title": "Preflight della demo",

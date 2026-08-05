@@ -1909,7 +1909,13 @@
         "scenes": "Escenes",
         "tracks": "Tracks",
         "uniqueProducts": "Productes únics",
-        "externalSearches": "Cerques externes"
+        "externalSearches": "Cerques externes",
+        "framesDiscarded": "Fotogrames descartats",
+        "catalogTimeouts": "Temps esgotats del catàleg",
+        "externalCandidates": "Candidats externs",
+        "possibleDuplicates": "Possibles duplicats",
+        "matchingRetries": "Reintents",
+        "productsMerged": "Productes fusionats"
       }
     },
     "savings": {
@@ -1940,7 +1946,31 @@
       "scoreLine": "score {score} · font {source} ({provider})",
       "matchingSkipped": "matching omès: {reason}",
       "noProductsDetected": "No s'ha detectat cap producte en les categories seleccionades.",
-      "segmentTooltip": "{start} – {end}"
+      "segmentTooltip": "{start} – {end}",
+      "status": {
+        "catalog_matched": "Coincideix amb el catàleg",
+        "external_candidate": "Candidat extern trobat",
+        "no_match": "Sense coincidència al catàleg",
+        "catalog_timeout": "Temps esgotat del catàleg · pendent de reintent",
+        "external_timeout": "Temps esgotat d'Internet · pendent de reintent",
+        "embedding_error": "Error d'embedding",
+        "partial_result": "Resultat parcial",
+        "not_searched": "Sense cercar",
+        "matching_error": "Error de matching"
+      },
+      "appearances": "{count} aparicions",
+      "seenRange": "{start} – {end}",
+      "bestFrame": "Millor fotograma: {time}",
+      "catalogLine": "Catàleg: {value}",
+      "externalLine": "Cerca externa: {value}",
+      "reviewLine": "Estat: {value}",
+      "reviewPending": "pendent de revisió",
+      "noCatalogMatch": "sense coincidència",
+      "externalFound": "candidat trobat",
+      "externalNotRun": "no executada",
+      "possibleDuplicate": "Possible duplicat de {productId}",
+      "mergedFrom": "Fusionat des de {count} tracks",
+      "retryHint": "S'ha reintentat {count} vegades"
     },
     "check": {
       "title": "Preflight de la demo",

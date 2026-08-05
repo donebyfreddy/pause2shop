@@ -1909,7 +1909,13 @@
         "scenes": "장면",
         "tracks": "트랙",
         "uniqueProducts": "고유 상품",
-        "externalSearches": "외부 검색"
+        "externalSearches": "외부 검색",
+        "framesDiscarded": "버려진 프레임",
+        "catalogTimeouts": "카탈로그 시간 초과",
+        "externalCandidates": "외부 후보",
+        "possibleDuplicates": "중복 가능성",
+        "matchingRetries": "재시도",
+        "productsMerged": "병합된 상품"
       }
     },
     "savings": {
@@ -1940,7 +1946,31 @@
       "scoreLine": "점수 {score} · 출처 {source}({provider})",
       "matchingSkipped": "매칭 생략됨: {reason}",
       "noProductsDetected": "선택한 카테고리에서 감지된 상품이 없습니다.",
-      "segmentTooltip": "{start} – {end}"
+      "segmentTooltip": "{start} – {end}",
+      "status": {
+        "catalog_matched": "카탈로그와 일치",
+        "external_candidate": "외부 후보 발견",
+        "no_match": "카탈로그에 일치 항목 없음",
+        "catalog_timeout": "카탈로그 시간 초과 · 재시도 대기",
+        "external_timeout": "인터넷 시간 초과 · 재시도 대기",
+        "embedding_error": "임베딩 오류",
+        "partial_result": "부분 결과",
+        "not_searched": "검색되지 않음",
+        "matching_error": "매칭 오류"
+      },
+      "appearances": "{count}회 등장",
+      "seenRange": "{start} – {end}",
+      "bestFrame": "베스트 프레임: {time}",
+      "catalogLine": "카탈로그: {value}",
+      "externalLine": "외부 검색: {value}",
+      "reviewLine": "상태: {value}",
+      "reviewPending": "검토 대기",
+      "noCatalogMatch": "일치 항목 없음",
+      "externalFound": "후보 발견",
+      "externalNotRun": "실행되지 않음",
+      "possibleDuplicate": "{productId}의 중복 가능성",
+      "mergedFrom": "{count}개 트랙에서 병합",
+      "retryHint": "{count}회 재시도함"
     },
     "check": {
       "title": "데모 사전 점검",

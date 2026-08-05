@@ -1909,7 +1909,13 @@
         "scenes": "场景数",
         "tracks": "追踪数",
         "uniqueProducts": "独立商品数",
-        "externalSearches": "外部搜索次数"
+        "externalSearches": "外部搜索次数",
+        "framesDiscarded": "已丢弃的帧",
+        "catalogTimeouts": "目录超时",
+        "externalCandidates": "外部候选",
+        "possibleDuplicates": "可能的重复",
+        "matchingRetries": "重试次数",
+        "productsMerged": "已合并的商品"
       }
     },
     "savings": {
@@ -1940,7 +1946,31 @@
       "scoreLine": "得分 {score} · 来源 {source}（{provider}）",
       "matchingSkipped": "跳过匹配：{reason}",
       "noProductsDetected": "在所选类别中未检测到商品。",
-      "segmentTooltip": "{start} – {end}"
+      "segmentTooltip": "{start} – {end}",
+      "status": {
+        "catalog_matched": "与目录匹配",
+        "external_candidate": "找到外部候选",
+        "no_match": "目录中无匹配",
+        "catalog_timeout": "目录超时 · 待重试",
+        "external_timeout": "网络搜索超时 · 待重试",
+        "embedding_error": "嵌入错误",
+        "partial_result": "部分结果",
+        "not_searched": "未搜索",
+        "matching_error": "匹配错误"
+      },
+      "appearances": "出现 {count} 次",
+      "seenRange": "{start} – {end}",
+      "bestFrame": "最佳帧：{time}",
+      "catalogLine": "目录：{value}",
+      "externalLine": "外部搜索：{value}",
+      "reviewLine": "状态：{value}",
+      "reviewPending": "待审核",
+      "noCatalogMatch": "无匹配",
+      "externalFound": "已找到候选",
+      "externalNotRun": "未执行",
+      "possibleDuplicate": "可能与 {productId} 重复",
+      "mergedFrom": "由 {count} 个轨迹合并",
+      "retryHint": "已重试 {count} 次"
     },
     "check": {
       "title": "演示预检",

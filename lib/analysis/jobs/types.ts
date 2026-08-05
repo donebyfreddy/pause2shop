@@ -1,4 +1,8 @@
-import type { MatchingMode, ProductMatchingResult } from "@/lib/matching/types";
+import type {
+  DetectionMatchResult,
+  MatchingMode,
+  ProductMatchingResult,
+} from "@/lib/matching/types";
 import type { BoundingBox, DetectedItem, VideoAnalysisConfig } from "@/lib/types";
 import type { RawThumb } from "./perceptualHash";
 
@@ -83,6 +87,27 @@ export type BestCropRecord = {
   cropDataUrl: string | null;
   /** aHash de la región del crop en el thumb: firma para dedup global. */
   signatureHash: string | null;
+  /**
+   * Embedding CLIP del mejor crop. Se calcula UNA vez por track, en local y
+   * justo antes del dedup global: es la señal que decide la identidad. No es
+   * el embedding del catálogo (esos están precalculados en la ingesta y jamás
+   * se generan durante una búsqueda); este es el del recorte, que por
+   * definición no puede precalcularse.
+   */
+  embedding: number[] | null;
+  /** Desglose de `cropQuality` — para poder auditar por qué ganó este crop. */
+  qualityBreakdown?: CropQualityBreakdown;
+};
+
+/** Componentes de la calidad de un encuadre (todas 0-1). */
+export type CropQualityBreakdown = {
+  sharpness: number;
+  resolution: number;
+  visibility: number;
+  lowOcclusion: number;
+  frontalView: number;
+  logoVisibility: number;
+  detectorConfidence: number;
 };
 
 export type TrackRecord = {
@@ -113,6 +138,46 @@ export type TimelineSegment = {
   endSeconds: number;
 };
 
+/**
+ * Estado de matching de un producto único.
+ *
+ * Antes solo había `matching: ProductMatchingResult | null` +
+ * `matchingSkippedReason: string`, así que TODO lo que no fuera un match salía
+ * como "NO MATCH" o como un mensaje de error crudo pegado en la tarjeta
+ * (`matching omitido: The operation was aborted due to timeout`). Eso mezcla
+ * tres cosas muy distintas para quien mira la pantalla:
+ *   - "se buscó y no existe"      → no_match, definitivo;
+ *   - "no dio tiempo"             → *_timeout, REINTENTABLE;
+ *   - "se rompió el embedding"    → embedding_error, hay que mirar el log.
+ * Con un único cajón no se puede decidir qué reintentar ni qué revisar.
+ */
+export type ProductMatchStatus =
+  /** Resuelto por el catálogo propio por encima del umbral. */
+  | "catalog_matched"
+  /** Internet encontró algo fiable: queda pendiente de revisión, no publicado. */
+  | "external_candidate"
+  /** Se consultó todo lo que procedía y no hay coincidencia. Definitivo. */
+  | "no_match"
+  /** El catálogo no respondió a tiempo. Reintentable. */
+  | "catalog_timeout"
+  /** La búsqueda externa no respondió a tiempo. Reintentable. */
+  | "external_timeout"
+  /** No se pudo calcular el embedding del crop. */
+  | "embedding_error"
+  /** Una fuente respondió y la otra falló: hay resultado, pero incompleto. */
+  | "partial_result"
+  /** Nunca se buscó: job cancelado, presupuesto agotado o sin crop. */
+  | "not_searched"
+  /** Error inesperado tras agotar los reintentos. */
+  | "matching_error";
+
+/** Estados que merece la pena reintentar (los transitorios). */
+export const RETRYABLE_MATCH_STATUSES: ReadonlySet<ProductMatchStatus> = new Set([
+  "catalog_timeout",
+  "external_timeout",
+  "matching_error",
+]);
+
 /** Producto ÚNICO tras la deduplicación global entre tracks. */
 export type UniqueProductRecord = {
   productId: string;
@@ -122,10 +187,51 @@ export type UniqueProductRecord = {
   bestCrop: BestCropRecord;
   segments: TimelineSegment[];
   matching: ProductMatchingResult | null;
+  /** Bloques separados catálogo/Internet, tal cual los devolvió el resolver. */
+  detection: DetectionMatchResult | null;
+  /** Estado exacto del matching — nunca un "NO MATCH" para todo. */
+  matchStatus: ProductMatchStatus;
+  /** Intentos consumidos (1 = fue a la primera). */
+  matchAttempts: number;
+  /** Mensaje técnico del último fallo, si lo hubo. Para el log, no para la UI. */
+  matchError: string | null;
+  /** Duración del matching de ESTE producto. */
+  matchDurationMs: number;
   /** Nº de llamadas de matching con búsqueda externa habilitada gastadas. */
   externalSearchesUsed: number;
-  /** Motivo por el que no hay matching (cancelled, budget, error…), o null. */
-  matchingSkippedReason: string | null;
+  /**
+   * Marcado por el dedup global cuando dos productos se parecen lo bastante
+   * para sospechar (entre el umbral posible y el fuerte) pero no lo bastante
+   * para fundirlos solos. Requiere decisión humana.
+   */
+  possibleDuplicateOf: string | null;
+  /** Identidad canónica y apariciones. Ver `VideoProductIdentity`. */
+  identity: VideoProductIdentity;
+};
+
+/**
+ * Identidad global de un producto dentro de un vídeo: es lo que convierte
+ * "cinco tarjetas de la misma camiseta" en una sola con ocho apariciones.
+ */
+export type VideoProductIdentity = {
+  /** Nombre elegido entre todas las variantes observadas. */
+  canonicalLabel: string;
+  /** Familia canónica (`prenda_superior`, `calzado`…), no el texto del modelo. */
+  canonicalCategory: string;
+  category: string;
+  subcategory: string | null;
+  color: string | null;
+  pattern: string | null;
+  material: string | null;
+  /** Todas las variantes de nombre que el modelo produjo para este producto. */
+  observedLabels: string[];
+  firstSeenAtMs: number;
+  lastSeenAtMs: number;
+  /** Todos los timestamps en los que se vio, en ms y ordenados. */
+  timestampsMs: number[];
+  seenCount: number;
+  /** Escenas en las que aparece. */
+  sceneIds: number[];
 };
 
 export type JobCounters = {
@@ -146,12 +252,24 @@ export type JobCounters = {
   cacheHits: number;
   /** Matching resuelto por el catálogo propio (no se pagó proveedor externo). */
   catalogHits: number;
+  /** Productos cuyo catálogo agotó su presupuesto de tiempo. Reintentables. */
+  catalogTimeouts: number;
+  /** Productos cuya búsqueda externa agotó su presupuesto de tiempo. */
+  externalTimeouts: number;
+  /** Candidatos externos guardados a la espera de revisión. */
+  externalCandidates: number;
+  /** Pares marcados como posible duplicado (entre umbral posible y fuerte). */
+  possibleDuplicates: number;
+  /** Reintentos de matching consumidos en total. */
+  matchingRetries: number;
 };
 
 export type JobTimings = {
   hashMs: number;
   detectionMs: number;
   trackingMs: number;
+  /** Embeddings de los mejores crops (previo al dedup global). */
+  cropEmbeddingMs?: number;
   dedupMs: number;
   matchingMs: number;
   totalMs: number;

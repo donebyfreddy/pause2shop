@@ -233,6 +233,12 @@ export type CatalogBlockStatus =
   | "unresolved"
   | "empty"
   | "error"
+  /**
+   * El catálogo no respondió dentro de su presupuesto de tiempo. Es distinto
+   * de `error` (respondió y falló) y de `unresolved` (respondió y no llegó al
+   * umbral): un timeout es REINTENTABLE y no dice nada sobre el producto.
+   */
+  | "timeout"
   | "not_requested";
 
 /**
@@ -245,7 +251,9 @@ export type ExternalBlockStatus =
   | "loading"
   | "matched"
   | "unresolved"
-  | "error";
+  | "error"
+  /** Igual que en el catálogo: sin respuesta a tiempo, reintentable. */
+  | "timeout";
 
 /**
  * Resultado de matching de UNA detección, con catálogo y externo en bloques

@@ -1909,7 +1909,13 @@
         "scenes": "Cenas",
         "tracks": "Tracks",
         "uniqueProducts": "Produtos únicos",
-        "externalSearches": "Pesquisas externas"
+        "externalSearches": "Pesquisas externas",
+        "framesDiscarded": "Frames descartados",
+        "catalogTimeouts": "Tempos esgotados do catálogo",
+        "externalCandidates": "Candidatos externos",
+        "possibleDuplicates": "Possíveis duplicados",
+        "matchingRetries": "Repetições",
+        "productsMerged": "Produtos fundidos"
       }
     },
     "savings": {
@@ -1940,7 +1946,31 @@
       "scoreLine": "score {score} · fonte {source} ({provider})",
       "matchingSkipped": "correspondência omitida: {reason}",
       "noProductsDetected": "Não foram detetados produtos nas categorias selecionadas.",
-      "segmentTooltip": "{start} – {end}"
+      "segmentTooltip": "{start} – {end}",
+      "status": {
+        "catalog_matched": "Corresponde ao catálogo",
+        "external_candidate": "Candidato externo encontrado",
+        "no_match": "Sem correspondência no catálogo",
+        "catalog_timeout": "Tempo esgotado do catálogo · repetição pendente",
+        "external_timeout": "Tempo esgotado da Internet · repetição pendente",
+        "embedding_error": "Erro de embedding",
+        "partial_result": "Resultado parcial",
+        "not_searched": "Não pesquisado",
+        "matching_error": "Erro de matching"
+      },
+      "appearances": "{count} aparições",
+      "seenRange": "{start} – {end}",
+      "bestFrame": "Melhor frame: {time}",
+      "catalogLine": "Catálogo: {value}",
+      "externalLine": "Pesquisa externa: {value}",
+      "reviewLine": "Estado: {value}",
+      "reviewPending": "pendente de revisão",
+      "noCatalogMatch": "sem correspondência",
+      "externalFound": "candidato encontrado",
+      "externalNotRun": "não executada",
+      "possibleDuplicate": "Possível duplicado de {productId}",
+      "mergedFrom": "Fundido a partir de {count} tracks",
+      "retryHint": "Repetido {count} vezes"
     },
     "check": {
       "title": "Preflight da demo",

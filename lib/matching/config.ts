@@ -86,6 +86,16 @@ export type MatchingConfig = {
   catalogMatchMaxVisible: number;
   catalogRequestTimeoutMs: number;
   /**
+   * Presupuesto de tiempo de la ETAPA de catálogo dentro de una resolución
+   * (`CATALOG_MATCH_TIMEOUT_MS`). Distinto de `catalogRequestTimeoutMs`, que
+   * es el timeout de UNA petición HTTP al servicio de catálogo: aquí se acota
+   * la etapa entera (embedding + búsqueda vectorial + ranking), que es lo que
+   * el usuario percibe como "buscando en el catálogo…".
+   */
+  catalogMatchTimeoutMs: number;
+  /** Presupuesto de tiempo de la etapa externa (`EXTERNAL_SEARCH_TIMEOUT_MS`). */
+  externalSearchTimeoutMs: number;
+  /**
    * ¿Está disponible la búsqueda externa? `false` la desactiva por completo:
    * ni fallback automático ni botón manual. Es el interruptor de operador.
    */
@@ -129,6 +139,11 @@ export function getMatchingConfig(
     catalogMatchTopK: Math.floor(num(env.CATALOG_MATCH_TOP_K, 8)),
     catalogMatchMaxVisible: Math.floor(num(env.CATALOG_MATCH_MAX_VISIBLE, 4)),
     catalogRequestTimeoutMs: num(env.CATALOG_REQUEST_TIMEOUT_MS, 5000),
+    catalogMatchTimeoutMs: num(env.CATALOG_MATCH_TIMEOUT_MS, 10_000),
+    // Más holgado que el catálogo a propósito: Lens + verificación visual son
+    // varias llamadas de red encadenadas y con 10 s se abandonarían búsquedas
+    // que iban a devolver algo.
+    externalSearchTimeoutMs: num(env.EXTERNAL_SEARCH_TIMEOUT_MS, 25_000),
     externalSearchEnabled: bool(env.EXTERNAL_SEARCH_ENABLED, true),
     catalogExternalFallback: bool(
       env.EXTERNAL_SEARCH_AUTOMATIC_FALLBACK ?? env.CATALOG_EXTERNAL_FALLBACK,
