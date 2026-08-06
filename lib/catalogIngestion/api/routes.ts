@@ -30,7 +30,7 @@ import {
 } from "../catalog/matching";
 import { ingestProduct } from "../catalog/ingest";
 import { processImageBuffer, downloadAndProcessImage, type ProcessedImage } from "../images/processor";
-import { getEmbeddingProvider } from "../embeddings/index";
+import { embeddingDiagnostics, getEmbeddingProvider } from "../embeddings/index";
 import {
   getMetrics,
   ingestThroughput,
@@ -630,6 +630,11 @@ export function buildRouter(store: CatalogStore): Router {
         candidateCount: timings.candidateCount,
         usedVectorIndex: timings.usedVectorIndex,
       },
+      // Qué motor embebió la consulta. Sin esto, un CLIP que no carga en
+      // serverless es INDISTINGUIBLE de uno que sí: la respuesta es un
+      // "sin coincidencias" idéntico, porque los vectores de 64 y 512
+      // dimensiones no se comparan (se descartan en silencio).
+      embeddings: embeddingDiagnostics(),
     });
   });
 

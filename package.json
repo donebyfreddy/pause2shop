@@ -9,6 +9,7 @@
     "lint": "eslint",
     "test": "SCRAPER_AI_ENABLED=false SCRAPER_PLAYWRIGHT_ENABLED=false node --import tsx --test \"test/**/*.test.ts\"",
     "db:migrate": "node --import tsx scripts/migrate.ts",
+    "db:migrate:supabase": "node --import tsx scripts/migrateToSupabase.ts",
     "db:verify": "node --import tsx scripts/verifyDb.ts",
     "typecheck": "tsc --noEmit",
     "env:check": "node --import tsx scripts/envCheck.ts",

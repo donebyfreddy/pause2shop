@@ -229,6 +229,12 @@ export class CatalogMatchingProvider implements ProductMatchingProvider {
           vectorSearchMs: data.timings?.vectorSearchMs ?? 0,
           rankingMs: data.timings?.rankingMs ?? 0,
           fullScanMs: data.timings?.fullScanMs ?? 0,
+          // 512 = CLIP; 64 = el fallback `hash`. Va aquí, y no en un campo
+          // aparte, porque `timings` es lo único que llega intacto hasta la
+          // respuesta de /api/vision/match-object. Si esto vale 64 mientras el
+          // catálogo está indexado a 512, la búsqueda visual NO puede
+          // encontrar nada: los vectores de distinta dimensión se descartan.
+          embeddingDim: data.embeddings?.dimension ?? 0,
         };
 
     const threshold = catalogThresholdFor(this.config, input.item.category);

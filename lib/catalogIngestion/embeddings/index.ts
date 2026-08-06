@@ -1,3 +1,6 @@
+import { mkdirSync } from "node:fs";
+import { createRequire } from "node:module";
+import { pathToFileURL } from "node:url";
 import sharp from "sharp";
 import { dhash } from "../images/dhash";
 import { getConfig } from "../config/index";
@@ -138,6 +141,7 @@ class LocalEmbeddingProvider implements EmbeddingProvider {
   async init(): Promise<void> {
     // Import dinámico: el paquete puede no estar instalado (es opcional).
     const transformers: any = await optionalTransformersImport();
+    configureModelCache(transformers);
     this.imagePipeline = await transformers.pipeline("image-feature-extraction", this.model);
 
     // Torre de texto: tokenizador + CLIPTextModelWithProjection, NO un pipeline
@@ -219,13 +223,69 @@ class LocalEmbeddingProvider implements EmbeddingProvider {
  * Keep the large ONNX runtime genuinely optional. A literal dynamic import is
  * still resolved at build time by Turbopack, so use a runtime importer and
  * fall back to the built-in hash provider when the package is absent.
+ *
+ * OJO: esconder el import del bundler tiene un precio — el file tracing de Next
+ * tampoco lo ve, así que el paquete NO viaja solo a la función serverless. Se
+ * fuerza desde next.config.ts (`serverExternalPackages` +
+ * `outputFileTracingIncludes`). Si algún día se quita de ahí, esto degrada a
+ * `hash` en producción sin un solo error en los logs.
  */
 function optionalTransformersImport(): Promise<any> {
   const runtimeImport = new Function(
     "specifier",
     "return import(specifier)"
   ) as (specifier: string) => Promise<any>;
-  return runtimeImport("@huggingface/transformers");
+
+  /**
+   * Se importa por RUTA ABSOLUTA, no por el nombre del paquete.
+   *
+   * Un `import("@huggingface/transformers")` dentro de `new Function` no tiene
+   * módulo referente: el especificador *bare* se resuelve contra el contexto
+   * del `eval`, no contra este fichero. En dev funciona de casualidad (cwd = la
+   * app); dentro de la función serverless el bundle vive en
+   * `.next/server/...` y la resolución falla. `createRequire(import.meta.url)`
+   * sí resuelve relativo a ESTE módulo, y `pathToFileURL` da un especificador
+   * que `import()` acepta en cualquier contexto.
+   */
+  let specifier = "@huggingface/transformers";
+  try {
+    specifier = pathToFileURL(
+      createRequire(import.meta.url).resolve("@huggingface/transformers")
+    ).href;
+  } catch {
+    // Sin resolver, se intenta con el nombre a secas: si tampoco está, el
+    // llamador ya degrada a hash.
+  }
+  return runtimeImport(specifier);
+}
+
+/**
+ * Dónde deja transformers.js los pesos del modelo (~90 MB ONNX).
+ *
+ * Por defecto los escribe DENTRO del paquete
+ * (`node_modules/@huggingface/transformers/.cache`), que en una función
+ * serverless es de SOLO LECTURA: la descarga falla, `init()` lanza y el
+ * proveedor degrada a `hash` en silencio — con el catálogo indexado a 512
+ * dimensiones, eso es un matching visual que devuelve cero sin dar un error.
+ *
+ * En Vercel el único directorio escribible es /tmp, y sobrevive entre
+ * invocaciones de la MISMA instancia: con Fluid Compute (que reutiliza
+ * instancias) el modelo se descarga una vez por instancia, no por petición.
+ * Fuera de serverless no se toca nada y sigue usando su caché por defecto,
+ * que es lo que hace rápido el reindex por CLI.
+ */
+function configureModelCache(transformers: any): void {
+  if (!process.env.VERCEL) return;
+  const dir = "/tmp/transformers-cache";
+  try {
+    mkdirSync(dir, { recursive: true });
+    transformers.env.cacheDir = dir;
+  } catch (err) {
+    logger.warn("embeddings: no se pudo preparar la caché del modelo", {
+      dir,
+      error: err instanceof Error ? err.message : String(err),
+    });
+  }
 }
 
 /* ------------------------------- factory ------------------------------- */
@@ -244,6 +304,9 @@ let activeProvider: EmbeddingProvider | null = null;
  * memoria, que es la clase de defecto que no se ve sin medir.
  */
 let providerInFlight: Promise<EmbeddingProvider> | null = null;
+
+/** Último motivo por el que NO se usó CLIP. Lo lee `embeddingDiagnostics()`. */
+let lastLocalError: string | null = null;
 
 /**
  * Devuelve el provider activo. Si CATALOG_IMAGE_EMBEDDING_PROVIDER=local pero
@@ -279,13 +342,47 @@ async function initEmbeddingProvider(): Promise<EmbeddingProvider> {
       return activeProvider;
     } catch (err) {
       recordProviderUsage(`embeddings:local:${config.imageEmbeddingModel}`, false);
+      lastLocalError = err instanceof Error ? err.message : String(err);
       logger.warn("embeddings: provider local no disponible, degradando a hash", {
-        error: err instanceof Error ? err.message : String(err),
+        error: lastLocalError,
       });
     }
+  } else {
+    lastLocalError = `no solicitado (CATALOG_EMBEDDING_PROVIDER=${JSON.stringify(
+      process.env.CATALOG_IMAGE_EMBEDDING_PROVIDER ??
+        process.env.CATALOG_EMBEDDING_PROVIDER ??
+        null
+    )})`;
   }
   activeProvider = new HashEmbeddingProvider();
   return activeProvider;
+}
+
+/**
+ * Por qué el provider activo es el que es.
+ *
+ * Existe porque diagnosticar esto por logs es inviable en serverless: la
+ * instancia recibe SIGTERM en cuanto responde y el precalentado del modelo
+ * (que es `void import(...)`, sin await) muere antes de escribir nada. Sin
+ * esto, un CLIP que no carga es indistinguible de uno que sí: el matching
+ * simplemente devuelve cero, porque `matchProducts` descarta en silencio los
+ * vectores de dimensión distinta.
+ */
+export function embeddingDiagnostics(): {
+  provider: string | null;
+  dimension: number | null;
+  requested: string | null;
+  lastLocalError: string | null;
+} {
+  return {
+    provider: activeProvider?.name ?? null,
+    dimension: activeProvider?.dimension() ?? null,
+    requested:
+      process.env.CATALOG_IMAGE_EMBEDDING_PROVIDER ??
+      process.env.CATALOG_EMBEDDING_PROVIDER ??
+      null,
+    lastLocalError,
+  };
 }
 
 /** Solo para tests: resetea el provider cacheado. */

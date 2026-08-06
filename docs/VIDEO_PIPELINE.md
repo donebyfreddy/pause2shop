@@ -197,7 +197,7 @@ Arreglado memoizando la promesa en vuelo:
 | Búsqueda vectorial | 587 ms | 562-701 ms |
 | Ranking | 1,8 ms | 0,4-1,5 ms |
 
-> Los ~600 ms de búsqueda vectorial son casi todos RTT a Neon desde una máquina
+> Los ~600 ms de búsqueda vectorial son casi todos RTT a Supabase desde una máquina
 > de desarrollo. Ver `docs/MATCHING_PERFORMANCE.md`.
 
 ---
@@ -244,4 +244,4 @@ integración.
   `detecting_scenes`, `sampling`…) no está implementada como máquina de estados;
   el progreso se comunica con contadores y logs por etapa.
 - **Verificación en producción.** Todas las cifras salen de una máquina de
-  desarrollo contra Neon con ~250 ms de RTT.
+  desarrollo contra Supabase con ~250 ms de RTT.

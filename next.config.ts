@@ -4,55 +4,63 @@ import createNextIntlPlugin from "next-intl/plugin";
 
 const withNextIntl = createNextIntlPlugin("./i18n/request.ts");
 
-/**
- * Configuración de la app Next.
- *
- * `turbopack.root` es OBLIGATORIO aquí: el repo tiene package-lock.json en la
- * raíz (orquestación del monorepo) y otro en esta app. Con dos lockfiles,
- * Turbopack infiere la raíz del repo como workspace root, y al hacerlo resuelve
- * mal `@swc/helpers` y el manifest de React Server Components: la landing
- * devuelve 500 en dev. Fijando la raíz, la resolución vuelve a ser la de esta app.
- */
-/** Rutas que pueden lanzar un navegador y por tanto necesitan sus recursos. */
-const BROWSER_ROUTE_GLOBS = [
-  "/api/catalog/**",
-  "/api/cron/catalog-jobs",
-];
+const BROWSER_ROUTE_GLOBS = ["/api/catalog/**", "/api/cron/catalog-jobs"];
 
-/**
- * Ficheros que el file tracing NO puede descubrir solo.
- *
- * `playwright-core` lee su `browsers.json` en runtime con un require de ruta
- * CALCULADA (`require(path.join(packageRoot, "browsers.json"))`), y además el
- * fichero no está en el campo `exports` del paquete: no es alcanzable como
- * módulo, solo como fichero. El tracer analiza imports estáticos, así que no
- * ve esa lectura y no copia el fichero → en la función queda
- * `Cannot find module '/var/task/node_modules/playwright-core/browsers.json'`.
- *
- * @sparticuz/chromium está por lo mismo: su valor es el binario comprimido de
- * Chromium, que ningún análisis de imports va a encontrar.
- */
 const BROWSER_TRACE_FILES = [
   "./node_modules/playwright-core/browsers.json",
   "./node_modules/playwright-core/**/*",
   "./node_modules/@sparticuz/chromium/**/*",
 ];
 
+/**
+ * CLIP (transformers.js + runtime ONNX) SOLO en el endpoint de matching visual.
+ *
+ * Los vectores del catálogo se calculan offline por CLI, pero el recorte que
+ * manda el usuario hay que embeberlo en la petición. Sin CLIP aquí el proveedor
+ * degrada a `hash` (64 dimensiones) y `matchProducts` descarta en silencio todo
+ * el catálogo, que está a 512 — búsqueda visual que devuelve cero sin un solo
+ * error en los logs.
+ *
+ * ALCANCE MÍNIMO A PROPÓSITO. En el plan Hobby hay un techo de 12 funciones, y
+ * Vercel solo se mantiene por debajo fusionando rutas en lambdas hasta un tope
+ * de tamaño. Cargar estos ~138 MB en muchas rutas impide la fusión y cada ruta
+ * pasa a ser su propia función: probado con `/api/**` y con
+ * vision+analysis+catalog, y el despliegue falla con
+ * "No more than 12 Serverless Functions". Playwright + Chromium (79 MB en las
+ * rutas de catálogo) ya se comen casi todo el margen.
+ *
+ * Consecuencia asumida: la búsqueda por imagen desde /admin
+ * (`/api/catalog/search/image`) y el pipeline de vídeo (`/api/analysis/**`)
+ * siguen en `hash`. Con plan Pro desaparece el techo y se puede extender.
+ */
+const EMBEDDING_TRACE_FILES = [
+  "./node_modules/@huggingface/transformers/package.json",
+  "./node_modules/@huggingface/transformers/src/**/*",
+  "./node_modules/@huggingface/transformers/dist/**/*",
+  "./node_modules/@huggingface/transformers/node_modules/**/*",
+  "./node_modules/onnxruntime-node/package.json",
+  "./node_modules/onnxruntime-node/dist/**/*",
+  "./node_modules/onnxruntime-node/lib/**/*",
+  "./node_modules/onnxruntime-node/bin/napi-v3/linux/**/*",
+  "./node_modules/onnxruntime-common/**/*",
+];
+
 const nextConfig: NextConfig = {
   turbopack: {
     root: path.resolve(import.meta.dirname),
   },
-
-  /**
-   * Fuera del bundle: se resuelven desde node_modules en runtime. Empaquetarlos
-   * rompe a los dos — Playwright pierde sus recursos no-JS y el binario de
-   * Chromium no es empaquetable en absoluto.
-   */
-  serverExternalPackages: ["playwright-core", "@sparticuz/chromium"],
-
-  outputFileTracingIncludes: Object.fromEntries(
-    BROWSER_ROUTE_GLOBS.map((route) => [route, BROWSER_TRACE_FILES])
-  ),
+  serverExternalPackages: [
+    "playwright-core",
+    "@sparticuz/chromium",
+    "@huggingface/transformers",
+    "onnxruntime-node",
+  ],
+  outputFileTracingIncludes: {
+    ...Object.fromEntries(
+      BROWSER_ROUTE_GLOBS.map((route) => [route, BROWSER_TRACE_FILES])
+    ),
+    "/api/vision/match-object": EMBEDDING_TRACE_FILES,
+  },
 };
 
 export default withNextIntl(nextConfig);

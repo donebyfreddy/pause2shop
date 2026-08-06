@@ -195,7 +195,7 @@ correcta, y además ya era una columna indexada y filtrable.
 - **Coste.** Los niveles difusos recorren `store.allProducts()`, que trae hasta
   5.000 documentos jsonb completos (con embeddings) por CADA producto que no
   case por un nivel exacto. Un producto nuevo nunca casa, así que importar 1.000
-  fichas nuevas serían 1.000 escaneos completos: gigabytes de egreso de Neon para
+  fichas nuevas serían 1.000 escaneos completos: gigabytes de egreso de Supabase para
   no encontrar nada.
 - **Corrección.** Con ids únicos por construcción, el id ES la autoridad y el
   nivel difuso solo puede equivocarse. Y se equivoca justo con fotos de catálogo
@@ -206,10 +206,10 @@ correcta, y además ya era una columna indexada y filtrable.
 
 Medido: en serie, 100 fichas tardaron **236 s** (2,4 s por ficha) con CLIP
 costando solo 37 ms. El resto era latencia de red en serie: descarga de imagen,
-subida a storage y tres o cuatro viajes a Neon (eu-central-1).
+subida a storage y tres o cuatro viajes a Supabase (eu-central-1).
 
 Con `ROW_CONCURRENCY = 6`: **0,58 s por ficha**, 4× más rápido. No se sube más
-porque el pool de Neon es de 5 conexiones por proceso y HuggingFace responde 429.
+porque el pool de Supabase es de 5 conexiones por proceso y HuggingFace responde 429.
 
 ---
 
@@ -260,7 +260,7 @@ Dos arreglos, y el segundo es el que importa:
 
 ## Imágenes
 
-**Los binarios NUNCA van a Postgres** (regla del repositorio: Neon cobra por
+**Los binarios NUNCA van a Postgres** (regla del repositorio: Supabase cobra por
 almacenamiento y transferencia, y los blobs revientan los backups). En la base
 van la URL y los hashes.
 

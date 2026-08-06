@@ -1,6 +1,7 @@
 -- Índice vectorial para la búsqueda del catálogo.
 --
--- MEDICIÓN QUE MOTIVA ESTA MIGRACIÓN (1048 productos, Neon eu-central-1):
+-- MEDICIÓN QUE MOTIVA ESTA MIGRACIÓN (1048 productos, Postgres en eu-central-1;
+-- tomada sobre el proveedor anterior, misma región que Supabase hoy):
 --
 --   explain analyze de la búsqueda top-24  →  Seq Scan, Execution Time 3,7 ms
 --   la misma consulta medida desde el cliente →  248 ms

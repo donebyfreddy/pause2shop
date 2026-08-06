@@ -65,10 +65,23 @@ export type CatalogSearchTimings = {
   usedVectorIndex: boolean;
 };
 
+/**
+ * Qué motor embebió la consulta. La DIMENSIÓN es el dato que importa: si no
+ * coincide con la de los vectores del catálogo, `matchProducts` los descarta
+ * en silencio y la búsqueda devuelve cero sin ningún error.
+ */
+export type CatalogEmbeddingDiagnostics = {
+  provider: string | null;
+  dimension: number | null;
+  requested: string | null;
+  lastLocalError: string | null;
+};
+
 export type CatalogSearchResponse = {
   queryId: string;
   matches: CatalogSearchMatch[];
   timings?: CatalogSearchTimings;
+  embeddings?: CatalogEmbeddingDiagnostics;
 };
 
 export type CatalogImageSearchRequest = {

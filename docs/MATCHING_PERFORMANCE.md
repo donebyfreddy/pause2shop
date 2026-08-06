@@ -13,7 +13,7 @@ npm test -- matchingPerformance   # invariantes de forma y coste en memoria
 
 ## Cómo leer cualquier número de este documento
 
-Entre una máquina de desarrollo y Neon (`eu-central-1`) hay **~200-270 ms de ida
+Entre una máquina de desarrollo y Supabase (`eu-central-1`) hay **~200-270 ms de ida
 y vuelta**. Medido con `select 1`. Ese suelo está en TODAS las cifras de
 cliente y no existe en producción, donde las funciones de Vercel (`fra1`) y la
 base comparten región.
@@ -237,7 +237,7 @@ crece de forma logarítmica.
 ## Lo que no está hecho
 
 - **No verificado en producción.** Todas las cifras salen de una máquina de
-  desarrollo contra Neon con ~250 ms de RTT. La comparación antes/después es
+  desarrollo contra Supabase con ~250 ms de RTT. La comparación antes/después es
   válida (misma máquina, mismo enlace); la latencia absoluta en Vercel será
   bastante menor y conviene confirmarla con las métricas de
   `/api/matching/metrics`.

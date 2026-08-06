@@ -39,3 +39,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Volcados de scripts/migrateToSupabase.ts (datos reales: nunca al repo)
+.migration/
