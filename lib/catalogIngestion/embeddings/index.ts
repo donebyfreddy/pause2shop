@@ -125,14 +125,44 @@ export class HashEmbeddingProvider implements EmbeddingProvider {
 
 /* ------------------------------- local provider ------------------------------- */
 
+/**
+ * Precisión de los pesos de CLIP. `q8` = cuantización a entero de 8 bits.
+ *
+ * Sin fijarlo, transformers.js avisa ("dtype not specified … using fp32") y se
+ * baja los pesos en coma flotante de 32 bits. Medido en la caché real:
+ *
+ *   vision_model.onnx   fp32  335 MB      q8   96 MB
+ *   text_model.onnx     fp32  242 MB      q8   62 MB
+ *
+ * En una función serverless eso se paga en CADA arranque en frío, porque el
+ * modelo se descarga de HuggingFace a /tmp y /tmp muere con la instancia.
+ * Medido en producción con fp32: la petición tardaba 10-12 s y el catálogo
+ * expiraba, así que 4 de cada 5 búsquedas devolvían "sin coincidencias".
+ *
+ * Junto con la torre de texto perezosa (ver `ensureTextTower`), el arranque
+ * en frío baja de 577 MB (335 + 242) a 96 MB: seis veces menos.
+ *
+ * IMPORTANTE — esto tiene que ser el MISMO valor con el que se indexó el
+ * catálogo. La cuantización mueve ligeramente los vectores; consultar en q8
+ * contra un índice fp32 no rompe nada (la dimensión sigue siendo 512 y el
+ * coseno sigue siendo alto), pero baja la similitud justo donde más duele,
+ * cerca del umbral. Si se cambia, hay que reindexar:
+ *   npm run catalog:embeddings:reindex
+ */
+const EMBEDDING_DTYPE = "q8";
+
 class LocalEmbeddingProvider implements EmbeddingProvider {
   readonly name = "local" as const;
   readonly model: string;
   private dim = 0;
   private imagePipeline: any = null;
-  /** Tokenizador y torre de TEXTO de CLIP, cargados aparte del de imagen. */
+  /** Módulo transformers ya importado, para no repetir la resolución. */
+  private transformers: any = null;
+  /** Tokenizador y torre de TEXTO de CLIP, cargados aparte y bajo demanda. */
   private tokenizer: any = null;
   private textModel: any = null;
+  /** La torre de texto se intenta UNA vez; si falla, no se reintenta. */
+  private textTowerTried = false;
 
   constructor(model: string) {
     this.model = model;
@@ -141,25 +171,41 @@ class LocalEmbeddingProvider implements EmbeddingProvider {
   async init(): Promise<void> {
     // Import dinámico: el paquete puede no estar instalado (es opcional).
     const transformers: any = await optionalTransformersImport();
+    this.transformers = transformers;
     configureModelCache(transformers);
-    this.imagePipeline = await transformers.pipeline("image-feature-extraction", this.model);
+    this.imagePipeline = await transformers.pipeline(
+      "image-feature-extraction",
+      this.model,
+      { dtype: EMBEDDING_DTYPE }
+    );
+    // La torre de TEXTO ya no se carga aquí: ver `ensureTextTower()`.
+  }
 
-    // Torre de texto: tokenizador + CLIPTextModelWithProjection, NO un pipeline
-    // de "feature-extraction" sobre el modelo completo.
-    //
-    // Esto estaba mal y no se notaba: `pipeline("feature-extraction", clip)`
-    // carga el modelo CLIP ENTERO, que exige `input_ids` Y `pixel_values`.
-    // Construirlo funciona, así que el try/catch de aquí no cazaba nada; la
-    // llamada reventaba después con "Missing the following inputs:
-    // pixel_values". El único camino que llama a embedText es el reindex, que
-    // por eso terminaba con 3 errores y sin actualizar nada.
-    //
-    // La torre de texto devuelve 512 dimensiones — el MISMO espacio que las
-    // imágenes—, así que además habilita buscar imágenes por texto.
+  /**
+   * Torre de texto (tokenizador + CLIPTextModelWithProjection), BAJO DEMANDA.
+   *
+   * No es un pipeline de "feature-extraction" sobre el modelo completo: eso
+   * carga el CLIP entero, que exige `input_ids` Y `pixel_values`, y reventaba
+   * en la llamada con "Missing the following inputs: pixel_values" — el
+   * reindex terminaba con errores y sin actualizar nada.
+   *
+   * Es PEREZOSA porque solo la usan el reindex y la búsqueda por texto,
+   * mientras que el camino caliente (embeber el recorte del usuario) solo
+   * necesita la de imagen. Cargarla en `init()` costaba descargar
+   * `text_model.onnx` en CADA arranque en frío de la función serverless para
+   * no usarla nunca.
+   *
+   * Devuelve 512 dimensiones, el MISMO espacio que las imágenes.
+   */
+  private async ensureTextTower(): Promise<void> {
+    if (this.textTowerTried) return;
+    this.textTowerTried = true;
     try {
+      const transformers = this.transformers ?? (await optionalTransformersImport());
       this.tokenizer = await transformers.AutoTokenizer.from_pretrained(this.model);
       this.textModel = await transformers.CLIPTextModelWithProjection.from_pretrained(
-        this.model
+        this.model,
+        { dtype: EMBEDDING_DTYPE }
       );
     } catch (err) {
       logger.warn("embeddings: torre de texto no disponible", {
@@ -198,6 +244,7 @@ class LocalEmbeddingProvider implements EmbeddingProvider {
    * Sin dato es mejor que un dato que no cabe.
    */
   async embedText(text: string): Promise<number[] | null> {
+    await this.ensureTextTower();
     if (!this.tokenizer || !this.textModel) return null;
     try {
       const inputs = await this.tokenizer([text], {
@@ -230,33 +277,40 @@ class LocalEmbeddingProvider implements EmbeddingProvider {
  * `outputFileTracingIncludes`). Si algún día se quita de ahí, esto degrada a
  * `hash` en producción sin un solo error en los logs.
  */
-function optionalTransformersImport(): Promise<any> {
+async function optionalTransformersImport(): Promise<any> {
   const runtimeImport = new Function(
     "specifier",
     "return import(specifier)"
   ) as (specifier: string) => Promise<any>;
 
   /**
-   * Se importa por RUTA ABSOLUTA, no por el nombre del paquete.
+   * DOS intentos, y hacen falta los dos.
    *
-   * Un `import("@huggingface/transformers")` dentro de `new Function` no tiene
-   * módulo referente: el especificador *bare* se resuelve contra el contexto
-   * del `eval`, no contra este fichero. En dev funciona de casualidad (cwd = la
-   * app); dentro de la función serverless el bundle vive en
-   * `.next/server/...` y la resolución falla. `createRequire(import.meta.url)`
-   * sí resuelve relativo a ESTE módulo, y `pathToFileURL` da un especificador
-   * que `import()` acepta en cualquier contexto.
+   * 1. Por nombre de paquete. Es lo correcto: respeta el mapa `exports`, que
+   *    es lo que devuelve la entrada ESM con `pipeline` como named export.
+   *    Funciona en dev y en los scripts de CLI.
+   * 2. Por RUTA ABSOLUTA. Un `import()` dentro de `new Function` no tiene
+   *    módulo referente, así que el especificador *bare* se resuelve contra el
+   *    contexto del `eval` y no contra este fichero. En la función serverless
+   *    el bundle vive en `.next/server/...` y el paso 1 falla ahí.
+   *    `createRequire(import.meta.url)` sí resuelve relativo a ESTE módulo.
+   *
+   * El paso 2 salta el mapa `exports` y cae en el entry de `main`, así que el
+   * módulo puede llegar envuelto en `default` — de ahí el desempaquetado. Sin
+   * él, el fallo es "transformers.pipeline is not a function" y se degrada a
+   * hash como si el paquete no estuviera.
    */
-  let specifier = "@huggingface/transformers";
+  const unwrap = (mod: any): any =>
+    mod && typeof mod.pipeline !== "function" && mod.default ? mod.default : mod;
+
   try {
-    specifier = pathToFileURL(
+    return unwrap(await runtimeImport("@huggingface/transformers"));
+  } catch {
+    const abs = pathToFileURL(
       createRequire(import.meta.url).resolve("@huggingface/transformers")
     ).href;
-  } catch {
-    // Sin resolver, se intenta con el nombre a secas: si tampoco está, el
-    // llamador ya degrada a hash.
+    return unwrap(await runtimeImport(abs));
   }
-  return runtimeImport(specifier);
 }
 
 /**
