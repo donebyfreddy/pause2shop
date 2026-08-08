@@ -58,7 +58,7 @@ export default function CommerceSidePanel({
       </h3>
       <p className="mt-1 max-w-xs text-xs leading-relaxed text-ink-subtle">
         {paused
-          ? "Las cajas ya están listas. El catálogo se consulta solo cuando eliges un objeto."
+          ? "Buscando automáticamente en catálogo e Internet. Puedes elegir otra caja cuando quieras."
           : "Preparamos las detecciones mientras se reproduce para mostrarlas al instante."}
       </p>
     </div>
@@ -84,7 +84,7 @@ export default function CommerceSidePanel({
             {selectedItem?.name ?? "Productos del frame"}
           </h2>
           <p className="mt-0.5 text-xs text-ink-subtle">
-            Catálogo primero · fallback externo automático
+            Catálogo e Internet · búsqueda paralela automática
           </p>
         </div>
         {selectedItem ? (

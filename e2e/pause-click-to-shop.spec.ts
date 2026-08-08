@@ -274,7 +274,7 @@ test.describe("/studio · pausa exacta y click-to-shop", () => {
     await expect(page.getByRole("heading", { name: "Vídeo preprocesado" })).toHaveCount(0);
   });
 
-  test("pausa, cajas, catálogo bajo demanda y reanudación visible", async ({ page }, testInfo) => {
+  test("pausa, busca automáticamente en ambas fuentes y reanuda", async ({ page }, testInfo) => {
     test.setTimeout(90_000);
     const calls = await installApiMocks(page);
     await uploadVideo(page);
@@ -284,18 +284,17 @@ test.describe("/studio · pausa exacta y click-to-shop", () => {
     await expect(page.getByText(/Frame capturado · 00:02\./i)).toBeVisible();
     const polo = page.getByRole("button", { name: /seleccionar Polo oscuro/i });
     await expect(polo).toBeVisible({ timeout: 3_000 });
-    expect(calls).toHaveLength(0);
-
-    await polo.click();
     await expect(page.getByTestId("commerce-side-panel")).toContainText("Polo Essential negro");
-    await expect.poll(() => calls.length).toBe(1);
-    expect(calls[0].forceExternal).not.toBe(true);
-    expect(calls[0].matchingMode).toBe("catalog_only");
+    await expect.poll(() => calls.length).toBe(2);
+    const catalogCall = calls.find((body) => body.matchingMode === "catalog_only");
+    const externalCall = calls.find((body) => body.matchingMode === "external_only");
+    expect(catalogCall).toBeTruthy();
+    expect(externalCall?.forceExternal).toBe(true);
 
-    // Volver a clicar el mismo track reutiliza el resultado ya resuelto.
+    // Clicar el mismo track reutiliza los resultados ya resueltos.
     await polo.click();
     await page.waitForTimeout(100);
-    expect(calls).toHaveLength(1);
+    expect(calls).toHaveLength(2);
 
     await expect(page.getByRole("button", { name: /buscar también en internet/i })).toHaveCount(0);
 
@@ -316,15 +315,16 @@ test.describe("/studio · pausa exacta y click-to-shop", () => {
     const calls = await installApiMocks(page, [], true);
     await uploadVideo(page);
     await playUntil(page, 2.1);
-    const polo = page.getByRole("button", { name: /seleccionar Polo oscuro/i });
-    await polo.click();
-    await expect.poll(() => calls.length).toBeGreaterThanOrEqual(1);
+    await expect(page.getByRole("button", { name: /seleccionar Polo oscuro/i })).toBeVisible();
+    await expect.poll(() => calls.length).toBe(2);
     await expect(page.getByTestId("clickable-detection-overlay")).toBeVisible();
     await expect(page.getByTestId("commerce-side-panel")).toContainText(/Consultando Internet/i);
-    await expect.poll(() => calls.length).toBe(2);
-    expect(calls[0].matchingMode).toBe("catalog_only");
-    expect(calls[1].matchingMode).toBe("external_only");
-    expect(calls[1].forceExternal).toBe(true);
+    expect(calls.some((body) => body.matchingMode === "catalog_only")).toBe(true);
+    expect(
+      calls.some(
+        (body) => body.matchingMode === "external_only" && body.forceExternal === true
+      )
+    ).toBe(true);
     await expect(page.getByTestId("commerce-side-panel")).toContainText(/alternativa/i);
     await expect(page.getByTestId("commerce-side-panel")).toContainText(/Candidato externo/i);
     await page.screenshot({

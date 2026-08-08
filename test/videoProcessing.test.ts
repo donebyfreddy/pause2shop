@@ -84,3 +84,14 @@ test("la actualización externa conserva el bloque de catálogo ya visible", () 
   assert.equal(merged?.external.status, "matched");
   assert.equal(merged?.matchingMode, "catalog_first");
 });
+
+test("la comparación paralela conserva ambos bloques y su modo", () => {
+  const merged = mergeProgressiveDetection(
+    detection("catalog"),
+    detection("external"),
+    "catalog_and_external"
+  );
+  assert.equal(merged?.catalog.status, "unresolved");
+  assert.equal(merged?.external.status, "matched");
+  assert.equal(merged?.matchingMode, "catalog_and_external");
+});

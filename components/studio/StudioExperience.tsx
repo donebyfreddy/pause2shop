@@ -162,6 +162,56 @@ export default function StudioExperience({
   } = analysisHook;
   const [lastFrame, setLastFrame] = useState<{ url: string; meta: FrameMeta } | null>(null);
 
+  /**
+   * En directo prima la latencia: al pausar, catálogo y reverse image search
+   * arrancan automáticamente y en paralelo. Los modos explícitamente
+   * exclusivos siguen respetándose; "catálogo primero" se acelera solo en la
+   * experiencia de pausa, donde el usuario ha pedido resultados inmediatos.
+   */
+  const startPausedMatching = useCallback(
+    (
+      items: DetectedItem[],
+      context: PausedFrameContext,
+      savedCatalogItems: typeof savedItems = savedItems
+    ) => {
+      if (items.length === 0) return;
+      const cfg = analysisConfigRef.current;
+      const itemIdByFingerprint = new Map<string, string>();
+      for (const saved of savedCatalogItems) {
+        itemIdByFingerprint.set(clientFingerprint(saved.item), saved.item.id);
+      }
+      const matchingMode =
+        cfg.matchingMode === "catalog_first"
+          ? "catalog_and_external"
+          : cfg.matchingMode;
+      matching.enqueue(items, context.dataUrl, {
+        videoKey: context.meta.videoKey,
+        frameId: context.identity.frameId,
+        frameHash: context.meta.frameHash,
+        mediaTime: context.identity.mediaTime,
+        sessionId: context.identity.sessionId,
+        itemIdByFingerprint,
+        matchingMode,
+        timestampSeconds: context.identity.mediaTime,
+        immediate: true,
+      });
+
+      // El panel enseña el producto más relevante sin exigir un clic previo.
+      const primary = [...items]
+        .filter((item) => Boolean(item.bounding_box))
+        .sort(
+          (a, b) =>
+            (b.purchase_relevance ?? b.confidence) -
+            (a.purchase_relevance ?? a.confidence)
+        )[0];
+      if (primary) {
+        setSelectedItemKey(itemKey(primary));
+        setSelectedOverlayItem(primary);
+      }
+    },
+    [analysisConfigRef, matching, savedItems]
+  );
+
   const handleUploadedVideoFile = useCallback(async (file: File | null) => {
     setUploadedVideoHash(null);
     setHasPreprocessedCatalog(false);
@@ -263,8 +313,9 @@ export default function StudioExperience({
       for (const saved of result.savedItems) {
         itemIdByFingerprint.set(clientFingerprint(saved.item), saved.item.id);
       }
-      // En vídeo el matching es BAJO DEMANDA: detectar no inicia catálogo ni
-      // Internet. En imagen se conserva el flujo automático existente.
+      // Al pausar, el matching arranca solo y el panel se abre con el producto
+      // más relevante. El preanálisis durante reproducción sigue sin gastar
+      // búsquedas externas; la imagen conserva su flujo automático.
       if (meta.sourceType === "image_upload") {
         matching.enqueue(result.analysis.items, dataUrl, {
           videoKey: meta.videoKey,
@@ -291,6 +342,14 @@ export default function StudioExperience({
             meta.mediaTime ?? meta.timestampSeconds
           )
         );
+        if (meta.analysisTrigger === "pause" && identity) {
+          startPausedMatching(result.analysis.items, {
+            dataUrl,
+            meta,
+            identity,
+            pauseStartedAt: performance.now(),
+          }, result.savedItems);
+        }
       }
 
       setHistory(
@@ -334,7 +393,7 @@ export default function StudioExperience({
       });
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps -- matching.enqueue/reset son estables
-    [analyze, matching.enqueue, matching.reset]
+    [analyze, matching.enqueue, matching.reset, startPausedMatching]
   );
 
   const handleReanalyze = useCallback(() => {
@@ -584,6 +643,7 @@ export default function StudioExperience({
                         setSelectedOverlayItem(null);
                       }
                     }}
+                    onPausedDetectionsReady={startPausedMatching}
                     onDetectionSelect={handleVideoDetectionSelect}
                     onMetricsChange={setPauseMetrics}
                     selectedItemDetails={selectedCommerceItem}

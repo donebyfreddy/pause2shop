@@ -145,6 +145,8 @@ export type EnqueueMeta = {
    * instante en que se detectó y no se confunda con el de otro frame.
    */
   timestampSeconds?: number | null;
+  /** En una pausa no llegará otro frame mejor: evita esperar hasta 4 s. */
+  immediate?: boolean;
 };
 
 /** Forma de la respuesta de /api/vision/match-object que consume el hook. */
@@ -167,14 +169,15 @@ type MatchObjectPayload = {
 /** Une dos respuestas deliberadamente separadas sin mezclar procedencias. */
 export function mergeProgressiveDetection(
   catalog: DetectionMatchResult | undefined,
-  external: DetectionMatchResult | undefined
+  external: DetectionMatchResult | undefined,
+  matchingMode: ProductMatchingMode = "catalog_first"
 ): DetectionMatchResult | undefined {
-  if (!catalog) return external;
-  if (!external) return catalog;
+  if (!catalog) return external ? { ...external, matchingMode } : undefined;
+  if (!external) return { ...catalog, matchingMode };
   return {
     ...catalog,
     external: external.external,
-    matchingMode: "catalog_first",
+    matchingMode,
   };
 }
 
@@ -400,11 +403,25 @@ export function useObjectMatching() {
 
         const requestedMode = meta.matchingMode ?? "catalog_first";
         const progressive = requestedMode === "catalog_first" && !opts.forceExternal;
+        // En "comparar fuentes" no mandamos una petición combinada al
+        // servidor: catálogo e Internet arrancan en el mismo tick. Así el
+        // catálogo puede pintarse en cuanto termina, sin quedar retenido por
+        // la latencia (mucho mayor) del reverse image search.
+        const parallel = requestedMode === "catalog_and_external" && !opts.forceExternal;
         const initialMode: ProductMatchingMode = opts.forceExternal
           ? "external_only"
-          : progressive
+          : progressive || parallel
             ? "catalog_only"
             : requestedMode;
+        const parallelExternalStartedAt = parallel ? performance.now() : null;
+        const parallelExternalPromise = parallel
+          ? postMatch("external_only", true).catch(
+              (): MatchObjectPayload => ({
+                ok: false,
+                error: "Error de red en la búsqueda externa",
+              })
+            )
+          : null;
         const data = await postMatch(initialMode, opts.forceExternal === true);
         if (!data.ok) {
           finishAttempt(fp, "provider_error");
@@ -418,10 +435,11 @@ export function useObjectMatching() {
         const catalogFirstResultMs = performance.now() - startedAt;
         const catalogResolved = data.detection?.catalog.status === "matched";
         const shouldSearchExternal =
-          progressive &&
-          AUTOMATIC_EXTERNAL_FALLBACK &&
-          !catalogResolved &&
-          data.detection?.catalog.status !== "error";
+          parallel ||
+          (progressive &&
+            AUTOMATIC_EXTERNAL_FALLBACK &&
+            !catalogResolved &&
+            data.detection?.catalog.status !== "error");
 
         // Publica el resultado interno inmediatamente. Internet empieza
         // después y actualiza únicamente su bloque; la tarjeta ya es usable.
@@ -436,7 +454,7 @@ export function useObjectMatching() {
             fallbackUsed: false,
             cached: Boolean(data.cached),
             detail: data.detail,
-            matchingMode: "catalog_first",
+            matchingMode: parallel ? "catalog_and_external" : "catalog_first",
             detection: data.detection,
             externalLoading: true,
             phase: undefined,
@@ -449,20 +467,28 @@ export function useObjectMatching() {
             },
           });
 
-          if (EXTERNAL_SEARCH_DELAY_MS > 0) {
+          if (!parallelExternalPromise && EXTERNAL_SEARCH_DELAY_MS > 0) {
             await new Promise((resolve) =>
               window.setTimeout(resolve, EXTERNAL_SEARCH_DELAY_MS)
             );
           }
-          const externalStartedAt = performance.now();
-          const externalData = await postMatch("external_only", true);
+          const externalStartedAt =
+            parallelExternalStartedAt ?? performance.now();
+          const externalData = await (
+            parallelExternalPromise ?? postMatch("external_only", true)
+          );
           externalInFlight.current.delete(fp);
           if (!externalData.ok) {
-            finishAttempt(fp, "provider_error");
+            const fallbackStatus =
+              data.status === "matched" ? "matched" : "provider_error";
+            finishAttempt(fp, fallbackStatus);
             setEntry(fp, {
-              status: "provider_error",
+              status: fallbackStatus,
               externalLoading: false,
-              detail: externalData.error,
+              detail:
+                data.status === "matched"
+                  ? `El catálogo respondió; Internet falló: ${externalData.error}`
+                  : externalData.error,
               timings: {
                 cropMs,
                 catalogFirstResultMs,
@@ -475,13 +501,14 @@ export function useObjectMatching() {
 
           const mergedDetection = mergeProgressiveDetection(
             data.detection,
-            externalData.detection
+            externalData.detection,
+            parallel ? "catalog_and_external" : "catalog_first"
           );
           const finalStatus: MatchingEntry["status"] =
-            externalData.status === "storage_unavailable"
-              ? "provider_error"
-              : externalData.status === "matched"
-                ? "matched"
+            data.status === "matched" || externalData.status === "matched"
+              ? "matched"
+              : externalData.status === "storage_unavailable"
+                ? "provider_error"
                 : data.status === "similar_only" ||
                     externalData.status === "similar_only"
                   ? "similar_only"
@@ -497,8 +524,8 @@ export function useObjectMatching() {
             fallbackUsed: Boolean(externalData.fallbackUsed),
             cached: Boolean(data.cached || externalData.cached),
             detail: externalData.detail ?? data.detail,
-            matchingMode: "catalog_first",
-            externalFallbackUsed: true,
+            matchingMode: parallel ? "catalog_and_external" : "catalog_first",
+            externalFallbackUsed: !parallel,
             detection: mergedDetection,
             externalLoading: false,
             phase: undefined,
@@ -652,6 +679,13 @@ export function useObjectMatching() {
             clearTimeout(pending.timer);
             pendingBetter.current.delete(fp);
           }
+          pushTask(fp, item, frameDataUrl, meta, quality);
+          continue;
+        }
+
+        if (meta.immediate) {
+          // El vídeo está congelado: esperar un encuadre futuro solo añade
+          // latencia y nunca puede mejorar el crop de esta pausa.
           pushTask(fp, item, frameDataUrl, meta, quality);
           continue;
         }

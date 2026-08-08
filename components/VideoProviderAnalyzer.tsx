@@ -105,6 +105,11 @@ type Props = {
   preanalyzedFrames?: AnalyzedVideoFrame[];
   onPauseStart?: () => void;
   onPausedFrameChange?: (context: PausedFrameContext | null) => void;
+  /** Detecciones disponibles para la pausa, incluso si vienen de caché. */
+  onPausedDetectionsReady?: (
+    items: DetectedItem[],
+    context: PausedFrameContext
+  ) => void;
   onDetectionSelect?: (item: DetectedItem, context: PausedFrameContext) => void;
   onMetricsChange?: (metrics: PausePerformanceMetrics) => void;
   selectedItemDetails?: DetectedItem | null;
@@ -168,6 +173,7 @@ export default function VideoProviderAnalyzer({
   preanalyzedFrames = [],
   onPauseStart,
   onPausedFrameChange,
+  onPausedDetectionsReady,
   onDetectionSelect,
   onMetricsChange,
   selectedItemDetails = null,
@@ -485,7 +491,10 @@ export default function VideoProviderAnalyzer({
         captureToDetectionMs: nearest ? capturedAt - pauseStartedAt : null,
         detectionCacheHit: Boolean(nearest),
       };
-      if (nearest) setPausedDetections(nearest.detections);
+      if (nearest) {
+        setPausedDetections(nearest.detections);
+        onPausedDetectionsReady?.(nearest.detections, context);
+      }
       setPlayerState(nearest ? "paused_ready" : "detecting");
       publishPauseMetrics(metrics);
       logPauseCapture(debug, identity);
@@ -498,6 +507,7 @@ export default function VideoProviderAnalyzer({
         if (abortController.signal.aborted) return;
         if (persisted !== undefined) {
           setPausedDetections(persisted);
+          onPausedDetectionsReady?.(persisted, context);
           setPlayerState("paused_ready");
           publishPauseMetrics({
             ...metrics,
@@ -532,6 +542,7 @@ export default function VideoProviderAnalyzer({
     getPreprocessedDetections,
     onPauseStart,
     onPausedFrameChange,
+    onPausedDetectionsReady,
     onRequestAnalysis,
     publishPauseMetrics,
     logPauseCapture,
