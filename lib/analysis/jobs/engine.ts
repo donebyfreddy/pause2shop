@@ -82,12 +82,19 @@ export type { MatchProductFn };
  */
 export type EmbedCropFn = (dataUrl: string) => Promise<number[] | null>;
 
+export type PersistCatalogProductsFn = (
+  job: AnalysisJobRecord,
+  products: UniqueProductRecord[]
+) => Promise<{ saved: number; failed: number }>;
+
 export type JobEngineDeps = {
   store: AnalysisJobStore;
   detector: ObjectDetector;
   matchProduct: MatchProductFn;
   /** Ausente ⇒ el dedup cae al hash perceptual (peor, pero funciona). */
   embedCrop?: EmbedCropFn;
+  /** Copia el resultado final al catálogo público (/catalog). */
+  persistCatalogProducts?: PersistCatalogProductsFn;
   config?: VideoAnalysisJobConfig;
   env?: NodeJS.ProcessEnv;
   /** Log estructurado de etapas. Por defecto, `console`. */
@@ -179,11 +186,11 @@ export async function createAnalysisJob(
 
   const env = deps.env ?? process.env;
   const catalogVersion = env.CATALOG_VERSION?.trim() || "catalog:v1";
-  // v3: sampling adaptativo por escena, cobertura temporal, ReID con score
+  // v4: sampling adaptativo por escena, cobertura temporal, ReID con score
   // ponderado y matching en proceso (sin self-fetch). Un job "completed" de
-  // v2 se resolvió con un pipeline distinto y no debe servirse como si fuera
-  // el mismo resultado.
-  const analysisVersion = env.VIDEO_ANALYSIS_VERSION?.trim() || "video-pipeline:v3";
+  // v3 no copiaba sus productos únicos al catálogo público, por lo que no se
+  // reutiliza como si ya hubiera completado esa persistencia.
+  const analysisVersion = env.VIDEO_ANALYSIS_VERSION?.trim() || "video-pipeline:v4";
   let staleJob: AnalysisJobRecord | null = null;
   if (input.videoHash) {
     if (!input.forceReprocess) {
@@ -1145,6 +1152,31 @@ export async function finalizeAnalysisJob(
     product.matchProgress = terminalMatchProgress(product.matchStatus);
   }
 
+  // 4.5) Catálogo operativo/público. `product_matches` conserva el resultado
+  // analítico del job; esta segunda escritura hace que cada producto único
+  // aparezca también en /catalog con crop, estado y recomendaciones.
+  if (!cancelled && products.length > 0 && deps.persistCatalogProducts) {
+    try {
+      const catalogPersistence = await deps.persistCatalogProducts(job, products);
+      log(
+        catalogPersistence.failed > 0 ? "warn" : "success",
+        "CATALOG",
+        `${catalogPersistence.saved}/${products.length} productos guardados en el catálogo público`
+      );
+      if (catalogPersistence.failed > 0) {
+        job.warnings.push(
+          `${catalogPersistence.failed} producto(s) no pudieron guardarse en el catálogo público.`
+        );
+      }
+    } catch (error) {
+      job.warnings.push(
+        `No se pudo guardar el preprocesado en el catálogo público: ${
+          error instanceof Error ? error.message : "error desconocido"
+        }`
+      );
+    }
+  }
+
   // 5) Cobertura temporal real (no "frames analizados") + validación de
   // integridad. Un job no puede llegar a `completed` en silencio si algo de
   // esto falla — se degrada a `partially_completed` con el motivo exacto.
@@ -1192,7 +1224,7 @@ export async function finalizeAnalysisJob(
   log(
     "info",
     "PERSIST",
-    `${products.length} productos guardados · ${job.counters.catalogHits} en catálogo` +
+    `${products.length} productos analíticos guardados · ${job.counters.catalogHits} coincidencias previas de catálogo` +
       ` · ${job.counters.externalCandidates} candidatos externos · cobertura ${coverage.coveragePercent}%` +
       ` · ${integrityErrors.length} error(es) de integridad · ${job.timings.totalMs} ms`
   );

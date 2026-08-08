@@ -15,7 +15,17 @@ import type { CatalogListResponse } from "@/lib/api/types";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const STATUSES: ItemStatus[] = ["detected", "reviewed", "matched", "ignored"];
+const STATUSES: ItemStatus[] = [
+  "detected",
+  "catalog_matched",
+  "external_candidate",
+  "review_required",
+  "approved",
+  "published",
+  "reviewed",
+  "matched",
+  "ignored",
+];
 
 /**
  * GET /api/catalog/items

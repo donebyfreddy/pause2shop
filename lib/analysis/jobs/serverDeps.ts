@@ -5,6 +5,7 @@ import { noMatchResult } from "@/lib/matching/types";
 import { getVideoAnalysisJobConfig } from "./config";
 import { getAnalysisJobStore } from "./store";
 import type { EmbedCropFn, JobEngineDeps, MatchProductFn } from "./engine";
+import { persistPreprocessedProductsToCatalog } from "./catalogPersistence";
 
 /**
  * Wiring REAL del motor de jobs para los route handlers.
@@ -128,6 +129,10 @@ export function buildJobEngineDeps(origin: string): JobEngineDeps {
     detector: getObjectDetector(),
     matchProduct: buildMatchProduct(publicOrigin),
     embedCrop,
+    persistCatalogProducts: (job, products) =>
+      persistPreprocessedProductsToCatalog(job, products, {
+        requestOrigin: publicOrigin,
+      }),
     config: getVideoAnalysisJobConfig(),
   };
 }

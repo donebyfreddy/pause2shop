@@ -13,6 +13,7 @@
 export * from "./types";
 export * from "./config";
 export * from "./perceptualHash";
+export { persistPreprocessedProductsToCatalog } from "./catalogPersistence";
 export { getAnalysisJobStore, InMemoryAnalysisJobStore } from "./store";
 export type { AnalysisJobStore, FrameMetaRow } from "./store";
 export {
@@ -29,5 +30,6 @@ export {
   sameProductSignature,
   validateCreateJobInput,
   type JobEngineDeps,
+  type PersistCatalogProductsFn,
   type MatchProductFn,
 } from "./engine";

@@ -129,6 +129,11 @@ async function runE2E(
 test("E2E: frames → escenas → tracks → dedup global → productos → timeline", async () => {
   const calls: MatchCall[] = [];
   const { detector, deps } = e2eDeps(calls);
+  let catalogSaved: string[] = [];
+  deps.persistCatalogProducts = async (_job, products) => {
+    catalogSaved = products.map((product) => product.productId);
+    return { saved: products.length, failed: 0 };
+  };
   const { jobId, batch1 } = await runE2E(calls, deps);
 
   // Detección solo en frames seleccionados (todos aquí: hash off).
@@ -149,6 +154,7 @@ test("E2E: frames → escenas → tracks → dedup global → productos → time
   assert.equal(products.length, 2);
   assert.equal(job.counters.uniqueProducts, 2);
   assert.equal(job.counters.dedupMergedTracks, 1);
+  assert.deepEqual(catalogSaved, ["p1", "p2"]);
 
   const taza = products.find((p) => p.item.category === "taza")!;
   const portatil = products.find((p) => p.item.category === "laptop")!;
